@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class Core(object):
 
     base_url = "https://www.flightradar24.com"

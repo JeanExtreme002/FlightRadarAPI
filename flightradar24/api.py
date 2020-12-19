@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
+
 from .core import Core
 from .flight import Flight
 from .request import APIRequest
 
 class FlightRadar24API(object):
-    
+
     """
     Flight Radar 24 API
     """

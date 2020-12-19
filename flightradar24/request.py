@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import brotli
 import json
 import gzip

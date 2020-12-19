@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class Flight(object):
 
     def __init__(self, array):
