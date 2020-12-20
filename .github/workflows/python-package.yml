@@ -27,9 +27,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Install package
-      run: |
-        pip install FlightRadarAPI
     - name: Test with pytest
       run: |
         pytest tests -v
+    - name: Install package
+      run: |
+        pip install FlightRadarAPI
