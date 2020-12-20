@@ -11,22 +11,6 @@ class Core(object):
         "zones": "/js/zones.js.php"
         }
 
-    data_live_params = {
-        "bounds": "75.78,-75.78,-427.56,427.56",  # y1, y2, x1, x2
-        "faa": "1",
-        "satellite": "1",
-        "mlat": "1",
-        "flarm": "1",
-        "adsb": "1",
-        "gnd": "1",
-        "air": "1",
-        "vehicles": "1",
-        "estimated": "1",
-        "maxage": "14400",
-        "gliders": "1",
-        "stats": "1"
-        }
-
     headers = {
         "accept": "application/json, text/javascript, */*; q=0.01",
         "accept-encoding": "gzip, br",

@@ -22,15 +22,13 @@ class APIRequest(object):
 
     def __decode_response(self, response):
 
-        try:
-            content = json.loads(response.content)
+        try: content = json.loads(response.content)
 
         except json.decoder.JSONDecodeError:
             content = content_encodings[response.headers["Content-Encoding"]](response.content)
             content = json.loads(content)
 
-        finally:
-            return content
+        finally: return content
 
     def __params_to_string(self, params):
 
