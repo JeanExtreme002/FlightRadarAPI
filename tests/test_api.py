@@ -29,7 +29,7 @@ def test_get_flights(expect = 50):
 def test_get_flight_details():
 
     flight = fr_api.get_flights()[-1]
-    details = fr_api.get_flight_details(flight.flight_id)
+    details = fr_api.get_flight_details(flight.id)
 
     assert all([key in details for key in ["airport", "airline", "aircraft", "time", "status", "trail"]])
 
