@@ -44,10 +44,10 @@ zones = fr_api.get_zones()
 
 You can also get more information about a specific flight such as: aircraft images, estimated time, trail, etc.
 ```
-f_details = fr_api.get_flight_details(flight.flight_id)
+details = fr_api.get_flight_details(flight.id)
+flight.set_flight_details(details)
 
-flight.set_flight_details(f_details)
-print("Flying to", flight.destination_airport_info["name"])
+print("Flying to", flight.destination_airport_name)
 ```
 
 # Filtering flights and airports:
@@ -63,16 +63,10 @@ bounds = fr_api.get_bounds(zone)
 flights = fr_api.get_flights(bounds = bounds)
 ```
 
-**Getting airports by ICAO:**
+**Getting airport by ICAO or IATA:**
 ```
-icao = "VNLK"
-lukla_airport = fr_api.get_airport(icao = icao)
-```
-
-**Getting airports by IATA:**
-```
-iata = "LUA"
-lukla_airport = fr_api.get_airport(iata = iata)
+airport_icao = "VNLK"
+lukla_airport = fr_api.get_airport(airport_icao)
 ```
 
 **Getting and configuring Real-time Flight Tracker parameters:**

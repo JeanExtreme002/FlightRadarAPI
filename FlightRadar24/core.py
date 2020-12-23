@@ -2,16 +2,29 @@
 
 class Core(object):
 
+    # Base URLs.
     cdn_flightradar_base_url = "https://cdn.flightradar24.com"
     flightradar_base_url = "https://www.flightradar24.com"
     data_live_base_url = "https://data-live.flightradar24.com"
 
+    # Flights data URLs.
     real_time_flight_tracker_data_url = data_live_base_url + "/zones/fcgi/feed.js"
     flight_data_url = data_live_base_url + "/clickhandler/?flight={}"
-    airport_data_url = flightradar_base_url + "/_json/airports.php"
-    airline_data_url = flightradar_base_url + "/_json/airlines.php"
-    zone_data_url = flightradar_base_url + "/js/zones.js.php"
+
+    # Airports data URLs.
+    airport_data_url = flightradar_base_url + "/airports/traffic-stats/?airport={}"
+    airports_data_url = flightradar_base_url + "/_json/airports.php"
+
+    # Airlines data URL.
+    airlines_data_url = flightradar_base_url + "/_json/airlines.php"
+
+    # Zones data URL.
+    zones_data_url = flightradar_base_url + "/js/zones.js.php"
+
+    # Country flag image URL.
     country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.gif"
+
+    # Airline logo image URL.
     airline_logo_url = cdn_flightradar_base_url + "/assets/airlines/logotypes/{}_{}.png"
     alternative_airline_logo_url = flightradar_base_url + "/static/images/data/operators/{}_logo0.png"
 

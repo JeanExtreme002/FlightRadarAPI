@@ -28,7 +28,7 @@ class FlightRadar24API(object):
     def get_airlines(self):
 
         # Get the data from Flightradar24.
-        request = APIRequest(Core.airline_data_url, headers = Core.json_headers)
+        request = APIRequest(Core.airlines_data_url, headers = Core.json_headers)
         return request.get_content()["rows"]
 
     def get_airline_logo(self, iata, icao):
@@ -47,16 +47,16 @@ class FlightRadar24API(object):
         second_status_code = APIRequest(second_logo_url, headers = Core.image_headers).get_status_code()
         if not str(second_status_code).startswith("4"): return second_logo_url
 
-    def get_airport(self, icao = None, iata = None):
+    def get_airport(self, code):
 
-        # Get the airports and search for the airport that has the given ICAO or IATA.
-        for airport in self.get_airports():
-            if airport["iata"] == iata or airport["icao"] == icao: return airport
+        # Get the airport data from Flightradar24.
+        request = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
+        return request.get_content()["details"]
 
     def get_airports(self):
 
-        # Get the data from Flightradar24.
-        request = APIRequest(Core.airport_data_url, headers = Core.json_headers)
+        # Get the airports data from Flightradar24.
+        request = APIRequest(Core.airports_data_url, headers = Core.json_headers)
         return request.get_content()["rows"]
 
     def get_bounds(self, zone):
@@ -75,7 +75,7 @@ class FlightRadar24API(object):
 
     def get_flight_details(self, flight_id):
 
-        # Get the data from Data Live Flightradar24.
+        # Get the flight details from Data Live Flightradar24.
         request = APIRequest(Core.flight_data_url.format(flight_id), headers = Core.json_headers)
         return request.get_content()
 
@@ -92,7 +92,7 @@ class FlightRadar24API(object):
         if airline: request_params["airline"] = airline
         if bounds: request_params["bounds"] = bounds
 
-        # Get the data from Data Live Flightradar24.
+        # Get all flights from Data Live Flightradar24.
         request = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers)
         response = request.get_content()
 
@@ -112,8 +112,8 @@ class FlightRadar24API(object):
 
     def get_zones(self):
 
-        # Get the data from Flightradar24.
-        request = APIRequest(Core.zone_data_url, headers = Core.json_headers)
+        # Get the zones data from Flightradar24.
+        request = APIRequest(Core.zones_data_url, headers = Core.json_headers)
         zones = request.get_content()
 
         # Remove version information.
