@@ -17,5 +17,12 @@ setup(
     license = "MIT",
     keywords = "flightradar24 api",
     packages = find_packages(exclude = ("tests", "docs")),
-    install_requires = ["Brotli", "requests"]
+    install_requires = ["Brotli", "requests"],
+    classifiers = [
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8"
+    ]
 )
