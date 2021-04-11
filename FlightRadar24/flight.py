@@ -17,7 +17,7 @@ class Flight(object):
         self.aircraft_code = self.__get_info(info[8])
         self.registration = self.__get_info(info[9])
         self.time = self.__get_info(info[10])
-        self.origin_aiport_iata = self.__get_info(info[11])
+        self.origin_airport_iata = self.__get_info(info[11])
         self.destination_airport_iata = self.__get_info(info[12])
         self.number = self.__get_info(info[13])
         self.airline_iata = self.__get_info(info[13][:2])
