@@ -61,8 +61,8 @@ class FlightRadar24API(object):
 
     def get_bounds(self, zone):
 
-        # Convert coordinate dictionary (tl_y, tl_x, br_y, br_x) to string.
-        return "{},{},{},{}".format(zone["tl_y"], zone["tl_x"], zone["br_y"], zone["br_x"])
+        # Convert coordinate dictionary (tl_y, tl_x, br_y, br_x) to string "y1, y2, x1, x2".
+        return "{},{},{},{}".format(zone["tl_y"], zone["br_y"] , zone["tl_x"], zone["br_x"])
 
     def get_country_flag(self, country):
 
@@ -90,7 +90,7 @@ class FlightRadar24API(object):
 
         # Insert the parameters "airline" and "bounds" in the dictionary for the request.
         if airline: request_params["airline"] = airline
-        if bounds: request_params["bounds"] = bounds
+        if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
 
         # Get all flights from Data Live Flightradar24.
         request = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers)
