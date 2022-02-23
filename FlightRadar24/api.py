@@ -86,12 +86,16 @@ class FlightRadar24API(object):
         Parameter bounds: must be coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
         """
 
+        vehicles = 1 if vehicles else 0
+        gnd = 1 if gnd else 0
+        air = 1 if air else 0
+
         request_params = self.__real_time_flight_tracker_config.copy()
 
         # Insert the parameters "airline" and "bounds" in the dictionary for the request.
         if airline: request_params["airline"] = airline
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
-        
+
         request_params["vehicles"] = vehicles
         request_params["gnd"] = gnd
         request_params["air"] = air
