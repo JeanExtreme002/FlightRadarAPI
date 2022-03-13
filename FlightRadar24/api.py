@@ -3,6 +3,7 @@
 from .core import Core
 from .flight import Flight
 from .request import APIRequest
+import json
 
 class FlightRadar24API(object):
 
@@ -127,3 +128,21 @@ class FlightRadar24API(object):
             # Check if the parameter exists and if the value is numeric.
             if key in self.__real_time_flight_tracker_config and value.isnumeric():
                 self.__real_time_flight_tracker_config[key] = value
+
+    def search_flight_by(self, search):
+        request = APIRequest(Core.search_url.format(search, 50), headers = Core.json_headers)
+        response = json.loads(request.get_content())
+
+        results = response["results"]
+
+        # Get live flights only.
+        flights = []
+        for item in results:
+            flight_id = item.get("id")
+            flight_type = item.get("type")
+            if flight_id[0].isnumeric() and flight_type == "live":
+                details = item.get("detail", dict())
+                info = ["", details.get("lat"), details.get("lon"), 0, 0, 0, "", "", details.get("ac_type"), details.get("reg"), 0, "", "", "", 0, 0, details.get("callsign"), 0, details.get("operator")]
+                flights.append(Flight(flight_id, info))          
+
+        return flights

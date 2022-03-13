@@ -70,3 +70,12 @@ def test_get_country_flag(country = "United States"):
 
     flag_url = fr_api.get_country_flag(country)
     assert flag_url
+
+def test_search_flight():
+
+    results = fr_api.get_flights()
+    
+    res = fr_api.search_flight_by(results[0].registration)
+    assert len(res) == 1
+    res = fr_api.search_flight_by(results[0].callsign)
+    assert len(res) == 1

@@ -28,6 +28,9 @@ class Core(object):
     airline_logo_url = cdn_flightradar_base_url + "/assets/airlines/logotypes/{}_{}.png"
     alternative_airline_logo_url = flightradar_base_url + "/static/images/data/operators/{}_logo0.png"
 
+    # Seach flight
+    search_url = flightradar_base_url + "/v1/search/web/find?query={}&limit={}"
+
     headers = {
         "accept-encoding": "gzip, br",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
