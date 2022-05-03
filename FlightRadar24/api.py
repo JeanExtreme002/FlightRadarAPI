@@ -22,7 +22,8 @@ class FlightRadar24API(object):
         "estimated": "1",
         "maxage": "14400",
         "gliders": "1",
-        "stats": "1"
+        "stats": "1",
+        "limit": "5000"
         }
 
     def get_airlines(self):
