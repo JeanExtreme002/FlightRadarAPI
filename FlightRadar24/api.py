@@ -26,6 +26,19 @@ class FlightRadar24API(object):
         "limit": "5000"
         }
 
+    def login(self, user, password):
+
+        # Log in with Flightradar24 Premium user credentials
+        data = {'email': user,
+                'password': password,
+                'remember': 'true',
+                'type': 'web'}
+
+        request = APIRequest(Core.airlines_data_url, headers = Core.json_headers, data = data)
+        self.__real_time_flight_tracker_config["enc"] = request.get_cookie("_frPl")
+
+        return request.get_content()
+
     def get_airlines(self):
 
         # Get the data from Flightradar24.
