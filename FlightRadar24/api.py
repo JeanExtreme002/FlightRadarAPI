@@ -34,7 +34,7 @@ class FlightRadar24API(object):
                 'remember': 'true',
                 'type': 'web'}
 
-        request = APIRequest(Core.airlines_data_url, headers = Core.json_headers, data = data)
+        request = APIRequest(Core.user_login_url, headers = Core.json_headers, data = data)
         self.__real_time_flight_tracker_config["enc"] = request.get_cookie("_frPl")
 
         return request.get_content()

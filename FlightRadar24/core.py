@@ -8,6 +8,9 @@ class Core(object):
     data_live_base_url = "https://data-live.flightradar24.com"
     data_cloud_base_url = "https://data-cloud.flightradar24.com"
 
+    # User login URL.
+    user_login_url = flightradar_base_url + "/user/login"
+
     # Flights data URLs.
     real_time_flight_tracker_data_url = data_cloud_base_url + "/zones/fcgi/feed.js"
     flight_data_url = data_live_base_url + "/clickhandler/?flight={}"
