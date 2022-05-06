@@ -13,22 +13,30 @@ class APIRequest(object):
         "gzip": gzip.decompress
     }
 
-    def __init__(self, url, params = {}, headers = {}):
+    def __init__(self, url, params = {}, headers = {}, data = None):
 
         self.url = url
         self.params = params
         self.headers = headers
+        self.data = data
 
-        self.__response = self.__send_request(url, params, headers)
+        if data is not None:
+            self.__response = self.__post_request(url, data, headers)
+        else:
+            self.__response = self.__get_request(url, params, headers)
 
     def __params_to_string(self, params):
 
         return '&'.join(["{}={}".format(k, v) for k, v in params.items()])
 
-    def __send_request(self, url, params, headers):
+    def __get_request(self, url, params, headers):
 
         if params: url += "?" + self.__params_to_string(params)
         return requests.get(url, headers = headers)
+
+    def __post_request(self, url, data, headers):
+
+        return requests.post(url, data = data, headers = headers)
 
     def get_content(self):
 
@@ -57,3 +65,11 @@ class APIRequest(object):
     def get_status_code(self):
 
         return self.__response.status_code
+
+    def get_cookies(self):
+
+        return self.__response.cookies.get_dict()
+
+    def get_cookie(self, cookie):
+
+        return self.__response.cookies.get(cookie)
