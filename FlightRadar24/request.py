@@ -70,6 +70,6 @@ class APIRequest(object):
 
         return self.__response.cookies.get_dict()
 
-    def.get_cookie(self, cookie):
+    def get_cookie(self, cookie):
 
         return self.__response.cookies.get(cookie)
