@@ -29,10 +29,10 @@ class FlightRadar24API(object):
     def login(self, user, password):
 
         # Log in with Flightradar24 Premium user credentials
-        data = {'email': user,
-                'password': password,
-                'remember': 'true',
-                'type': 'web'}
+        data = {"email": user,
+                "password": password,
+                "remember": "true",
+                "type": "web"}
 
         request = APIRequest(Core.user_login_url, headers = Core.json_headers, data = data)
         self.__real_time_flight_tracker_config["enc"] = request.get_cookie("_frPl")

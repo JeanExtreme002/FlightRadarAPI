@@ -27,7 +27,7 @@ class APIRequest(object):
 
     def __params_to_string(self, params):
 
-        return '&'.join(["{}={}".format(k, v) for k, v in params.items()])
+        return "&".join(["{}={}".format(k, v) for k, v in params.items()])
 
     def __get_request(self, url, params, headers):
 
