@@ -26,6 +26,9 @@ class Flight(object):
         self.callsign = self.__get_info(info[16])
         self.airline_icao = self.__get_info(info[18])
 
+    def __get_details(self, data):
+        return dict() if data is None else data
+
     def __get_info(self, info):
 
         return info if (info or info == 0) and info != self.__default_text else self.__default_text
@@ -89,42 +92,42 @@ class Flight(object):
     def set_flight_details(self, flight_details):
 
         # Get aircraft data.
-        aircraft = flight_details.get("aircraft", dict())
+        aircraft = self.__get_details(flight_details.get("aircraft"))
 
         # Get airline data.
-        airline = flight_details.get("airline", dict())
+        airline = self.__get_details(flight_details.get("airline"))
 
         # Get airport data.
-        airport = flight_details.get("airport", dict())
+        airport = self.__get_details(flight_details.get("airport"))
 
         # Get destination data.
-        dest_aiport = airport.get("destination", dict())
-        dest_aiport_code = dest_aiport.get("code", dict())
-        dest_aiport_info = dest_aiport.get("info", dict())
-        dest_aiport_position = dest_aiport.get("position", dict())
-        dest_aiport_country = dest_aiport_position.get("country", dict())
-        dest_aiport_timezone = dest_aiport.get("timezone", dict())
+        dest_aiport = self.__get_details(airport.get("destination"))
+        dest_aiport_code = self.__get_details(dest_aiport.get("code"))
+        dest_aiport_info = self.__get_details(dest_aiport.get("info"))
+        dest_aiport_position = self.__get_details(dest_aiport.get("position"))
+        dest_aiport_country = self.__get_details(dest_aiport_position.get("country"))
+        dest_aiport_timezone = self.__get_details(dest_aiport.get("timezone"))
 
         # Get origin data.
-        orig_aiport = airport.get("origin", dict())
-        orig_aiport_code = orig_aiport.get("code", dict())
-        orig_aiport_info = orig_aiport.get("info", dict())
-        orig_aiport_position = orig_aiport.get("position", dict())
-        orig_aiport_country = orig_aiport_position.get("country", dict())
-        orig_aiport_timezone = orig_aiport.get("timezone", dict())
+        orig_aiport = self.__get_details(airport.get("origin"))
+        orig_aiport_code = self.__get_details(orig_aiport.get("code"))
+        orig_aiport_info = self.__get_details(orig_aiport.get("info"))
+        orig_aiport_position = self.__get_details(orig_aiport.get("position"))
+        orig_aiport_country = self.__get_details(orig_aiport_position.get("country"))
+        orig_aiport_timezone = self.__get_details(orig_aiport.get("timezone"))
 
         # Get flight history.
-        history = flight_details.get("flightHistory", dict())
+        history = self.__get_details(flight_details.get("flightHistory"))
 
         # Get flight status.
-        status = flight_details.get("status", dict())
+        status = self.__get_details(flight_details.get("status"))
 
         # Aircraft information.
         self.aircraft_age = self.__get_info(aircraft.get("age"))
         self.aircraft_country_id = self.__get_info(aircraft.get("countryId"))
         self.aircraft_history = history.get("aircraft", list())
         self.aircraft_images = aircraft.get("images", list())
-        self.aircraft_model = self.__get_info(aircraft.get("model", dict()).get("text"))
+        self.aircraft_model = self.__get_info(self.__get_details(aircraft.get("model")).get("text"))
 
         # Airline information.
         self.airline_name = self.__get_info(airline.get("name"))
@@ -181,7 +184,7 @@ class Flight(object):
         self.status_text = self.__get_info(status.get("text"))
 
         # Time details.
-        self.time_details = flight_details.get("time", dict())
+        self.time_details = self.__get_details(flight_details.get("time"))
 
         # Flight trail.
         self.trail = flight_details.get("trail", list())
