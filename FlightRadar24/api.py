@@ -83,9 +83,11 @@ class FlightRadar24API(object):
         # Get the country flag image URL.
         flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
 
-        # Check if there was a problem with the request. If not, the URL is returned.
-        status_code = APIRequest(flag_url, headers = Core.image_headers).get_status_code()
-        if not str(status_code).startswith("4"): return flag_url
+        # Check if there is a problem with the request. If not, the URL is returned.
+        # The for loop is necessary because the route sometimes doesn't work very well.
+        for attempt in range(20):
+            status_code = APIRequest(flag_url, headers = Core.image_headers).get_status_code()
+            if not str(status_code).startswith("4"): return flag_url
 
     def get_flight_details(self, flight_id):
 

@@ -48,4 +48,5 @@ class Core(object):
     json_headers["accept"] = "application/json"
 
     image_headers = headers.copy()
+    image_headers.pop("origin") # It doesn't work very well for image requests.
     image_headers["accept"] = "image/gif, image/jpg, image/jpeg, image/png"
