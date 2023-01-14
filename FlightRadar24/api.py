@@ -4,6 +4,9 @@ from .core import Core
 from .flight import Flight
 from .request import APIRequest
 
+from deprecated import deprecated
+
+
 class FlightRadar24API(object):
 
     """
@@ -78,16 +81,20 @@ class FlightRadar24API(object):
         # Convert coordinate dictionary (tl_y, tl_x, br_y, br_x) to string "y1, y2, x1, x2".
         return "{},{},{},{}".format(zone["tl_y"], zone["br_y"] , zone["tl_x"], zone["br_x"])
 
+    @deprecated(version='1.2.1', reason="Sometimes, the FlightRadar24 route used by this method doesn't work")
     def get_country_flag(self, country):
 
         # Get the country flag image URL.
         flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
 
+        headers = Core.image_headers.copy()
+        
+        if "origin" in headers:
+            headers = headers.pop("origin") # Doesn't work for this request
+
         # Check if there is a problem with the request. If not, the URL is returned.
-        # The for loop is necessary because the route sometimes doesn't work very well.
-        for attempt in range(50):
-            status_code = APIRequest(flag_url, headers = Core.image_headers).get_status_code()
-            if not str(status_code).startswith("4"): return flag_url
+        status_code = APIRequest(flag_url, headers = headers).get_status_code()
+        if not str(status_code).startswith("4"): return flag_url
 
     def get_flight_details(self, flight_id):
 
