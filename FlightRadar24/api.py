@@ -85,7 +85,7 @@ class FlightRadar24API(object):
 
         # Check if there is a problem with the request. If not, the URL is returned.
         # The for loop is necessary because the route sometimes doesn't work very well.
-        for attempt in range(20):
+        for attempt in range(50):
             status_code = APIRequest(flag_url, headers = Core.image_headers).get_status_code()
             if not str(status_code).startswith("4"): return flag_url
 
