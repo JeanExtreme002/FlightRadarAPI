@@ -13,4 +13,4 @@ https://www.flightradar24.com/terms-and-conditions
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "1.2.2"
+__version__ = "1.2.3"
