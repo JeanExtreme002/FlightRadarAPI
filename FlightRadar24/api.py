@@ -115,7 +115,7 @@ class FlightRadar24API(object):
         if airline: request_params["callsign"] = airline
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
-        if aircraft_type: request_params["type"] = registration
+        if aircraft_type: request_params["type"] = aircraft_type
 
 
         # Get all flights from Data Live Flightradar24.
