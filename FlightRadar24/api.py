@@ -111,8 +111,8 @@ class FlightRadar24API(object):
 
         request_params = self.__real_time_flight_tracker_config.copy()
 
-        # Insert the parameters "bounds", "reg", "callsign",and "type" in the dictionary for the request.
-        if airline: request_params["callsign"] = airline
+        # Insert the parameters "airline", "bonds", "reg",and "type" in the dictionary for the request.
+        if airline: request_params["airline"] = airline
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
