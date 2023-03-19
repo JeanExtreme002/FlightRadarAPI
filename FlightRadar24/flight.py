@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from typing import List, Any
+
+
 class Flight(object):
 
     __default_text = "N/A"
 
-    def __init__(self, flight_id, info):
-
+    def __init__(self, flight_id: str, info: List[Any]):
         self.id = flight_id
         self.icao_24bit = self.__get_info(info[0])
         self.latitude = self.__get_info(info[1])
@@ -26,24 +28,20 @@ class Flight(object):
         self.callsign = self.__get_info(info[16])
         self.airline_icao = self.__get_info(info[18])
 
-    def __get_details(self, data):
+    def __get_details(self, data) -> Dict:
         return dict() if data is None else data
 
-    def __get_info(self, info):
-
+    def __get_info(self, info: Any) -> Any:
         return info if (info or info == 0) and info != self.__default_text else self.__default_text
 
-    def __repr__(self):
-
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __str__(self):
-
+    def __str__(self) -> str:
         template = "<({}) {} - Altitude: {} - Ground Speed: {} - Heading: {}>"
         return template.format(self.aircraft_code, self.registration, self.altitude, self.ground_speed, self.heading)
 
-    def check_info(self, **info):
-
+    def check_info(self, **info: Any) -> bool:
         """
         Check one or more flight information.
 
@@ -56,7 +54,7 @@ class Flight(object):
         comparison_functions = {"max": max, "min": min}
 
         for key, value in info.items():
-
+            
             # Separate the comparison prefix if it exists.
             prefix, key = key.split("_", maxsplit = 1) if key[:4] == "max_" or key[:4] == "min_" else (None, key)
 
@@ -69,28 +67,23 @@ class Flight(object):
 
         return True
 
-    def get_altitude(self):
-
+    def get_altitude(self) -> str:
         return "{} ft".format(self.altitude)
 
-    def get_flight_level(self):
-
+    def get_flight_level(self) -> str:
         return str(self.altitude)[:3] + " FL" if self.altitude > 10000 else self.get_altitude()
 
-    def get_ground_speed(self):
-
+    def get_ground_speed(self) -> str:
         return "{} kt".format(self.ground_speed) + ("s" if self.ground_speed > 1 else "")
 
-    def get_heading(self):
-
+    def get_heading(self) -> str:
         return str(self.heading) + "°"
 
-    def get_vertical_speed(self):
-
+    def get_vertical_speed(self) -> str:
         return "{} fpm".format(self.vertical_speed)
 
-    def set_flight_details(self, flight_details):
-
+    def set_flight_details(self, flight_details: Dict) -> None:
+        
         # Get aircraft data.
         aircraft = self.__get_details(flight_details.get("aircraft"))
 

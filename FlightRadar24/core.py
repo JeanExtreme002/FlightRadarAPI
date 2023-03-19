@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-class Core(object):
+from abc import ABC
+
+
+class Core(ABC):
 
     # Base URLs.
     cdn_flightradar_base_url = "https://cdn.flightradar24.com"
