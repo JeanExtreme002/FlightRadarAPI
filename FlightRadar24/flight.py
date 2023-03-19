@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Any
+from typing import Any, List, Dict
 
 
 class Flight(object):

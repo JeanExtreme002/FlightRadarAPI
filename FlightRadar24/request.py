@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 import brotli
 import json
 import gzip
