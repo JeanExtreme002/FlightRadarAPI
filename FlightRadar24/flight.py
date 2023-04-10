@@ -82,6 +82,9 @@ class Flight(object):
     def get_vertical_speed(self) -> str:
         return "{} fpm".format(self.vertical_speed)
 
+    def get_icao_model(self) -> str:
+        return str(self.icao_24bit)
+
     def set_flight_details(self, flight_details: Dict) -> None:
         
         # Get aircraft data.
