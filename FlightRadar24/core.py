@@ -29,7 +29,7 @@ class Core(ABC):
     zones_data_url = flightradar_base_url + "/js/zones.js.php"
 
     # Country flag image URL.
-    country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.gif"
+    country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.svg"
 
     # Airline logo image URL.
     airline_logo_url = cdn_flightradar_base_url + "/assets/airlines/logotypes/{}_{}.png"
