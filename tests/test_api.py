@@ -66,7 +66,8 @@ def test_get_airline_logo(airlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"
     logo_url_list = [fr_api.get_airline_logo(*airline) for airline in airlines]
     assert any(logo_url_list)
 
-def test_get_country_flag(country = "United States"):
+def test_get_country_flag(countries = ["United States", "Brazil", "Egypt", "Japan", "South Korea", "Canada"]):
 
-    flag_url = fr_api.get_country_flag(country)
-    assert flag_url
+    for country in countries:
+        flag_url = fr_api.get_country_flag(country)
+        assert flag_url
