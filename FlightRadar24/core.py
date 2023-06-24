@@ -13,6 +13,7 @@ class Core(ABC):
 
     # User login URL.
     user_login_url = flightradar_base_url + "/user/login"
+    user_logout_url = flightradar_base_url + "/user/logout"
 
     # Flights data URLs.
     real_time_flight_tracker_data_url = data_cloud_base_url + "/zones/fcgi/feed.js"

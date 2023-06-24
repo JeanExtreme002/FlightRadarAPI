@@ -15,18 +15,19 @@ class APIRequest(object):
         "gzip": gzip.decompress
     }
 
-    def __init__(self, url, params = {}, headers = {}, data = None):
+    def __init__(self, url, params = {}, headers = {}, data = None, cookies = None):
 
         self.url = url
         self.params = params
         self.headers = headers
         self.data = data
+        self.cookies = cookies
 
         if data is None:
             if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
-            self.__response = requests.get(url, headers = headers)
+            self.__response = requests.get(url, headers = headers, cookies = cookies)
         else:
-            self.__response = requests.post(url, data = data, headers = headers)
+            self.__response = requests.post(url, headers = headers, cookies = cookies, data = data)
 
     def get_content(self) -> Union[Dict, bytes]:
         content = self.__response.content
