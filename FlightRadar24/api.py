@@ -5,7 +5,7 @@ from .flight import Flight
 from .request import APIRequest
 
 from deprecated import deprecated
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class FlightRadar24API(object):
@@ -44,59 +44,87 @@ class FlightRadar24API(object):
         return request.get_content()
 
     def get_airlines(self) -> List[Dict]:
-        # Get the data from Flightradar24.
+        """
+        Return a list with all airlines.
+        """
         request = APIRequest(Core.airlines_data_url, headers = Core.json_headers)
         return request.get_content()["rows"]
 
-    def get_airline_logo(self, iata: str, icao: str) -> str:
-        # Get the first airline logo URL.
+    def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
+        """
+        Download the logo of an airline from FlightRadar24 and return it as bytes.
+        """
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
-        # Check if there was a problem with the request. If not, the URL is returned.
-        first_status_code = APIRequest(first_logo_url, headers = Core.image_headers).get_status_code()
-        if not str(first_status_code).startswith("4"): return first_logo_url
+        # Try to get the image by the first URL option.
+        response = APIRequest(first_logo_url, headers = Core.image_headers)
+        status_code = response.get_status_code()
 
-        # Get the second airline logo URL.
+        if not str(status_code).startswith("4"):
+            return response.get_content(), first_logo_url.split(".")[-1]
+
+        # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
 
-        # Check if there was a problem with the request. If not, the URL is returned.
-        second_status_code = APIRequest(second_logo_url, headers = Core.image_headers).get_status_code()
-        if not str(second_status_code).startswith("4"): return second_logo_url
+        response = APIRequest(second_logo_url, headers = Core.image_headers)
+        status_code = response.get_status_code()
+
+        if not str(status_code).startswith("4"):
+            return response.get_content(), second_logo_url.split(".")[-1]
 
     def get_airport(self, code: str) -> Dict:
-        # Get the airport data from Flightradar24.
+        """
+        Return detailed information about an airport.
+
+        :param code: ICAO or IATA of the airport.
+        """
         request = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         return request.get_content()["details"]
 
     def get_airports(self) -> List[Dict]:
-        # Get the airports data from Flightradar24.
+        """
+        Return a list with all airports.
+        """
         request = APIRequest(Core.airports_data_url, headers = Core.json_headers)
         return request.get_content()["rows"]
 
     def get_bounds(self, zone: Dict[str, float]) -> str:
-        # Convert coordinate dictionary (tl_y, tl_x, br_y, br_x) to string "y1, y2, x1, x2".
+        """
+        Convert coordinate dictionary to a string "y1, y2, x1, x2".
+
+        :param zone: Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
+        """
         return "{},{},{},{}".format(zone["tl_y"], zone["br_y"] , zone["tl_x"], zone["br_x"])
 
-    def get_country_flag(self, country: str) -> str:
-        # Get the country flag image URL.
-        flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
+    def get_country_flag(self, country: str) -> Optional[Tuple[bytes, str]]:
+        """
+        Download the flag of a country from FlightRadar24 and return it as bytes.
 
+        :param country: Country name
+        """
+        flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
         headers = Core.image_headers.copy()
         
         if "origin" in headers:
-            headers.pop("origin") # Doesn't work for this request
+            headers.pop("origin")  # Does not work for this request.
 
-        # Check if there is a problem with the request. If not, the URL is returned.
-        status_code = APIRequest(flag_url, headers = headers).get_status_code()
-        if not str(status_code).startswith("4"): return flag_url
+        response = APIRequest(flag_url, headers = headers)
+        status_code = response.get_status_code()
 
-    def get_flight_details(self, flight_id: str) -> Dict:
-        # Get the flight details from Data Live Flightradar24.
+        if not str(status_code).startswith("4"):
+            return response.get_content(), flag_url.split(".")[-1]
+
+    def get_flight_details(self, flight_id: str) -> Dict[Any, Any]:
+        """
+        Return the flight details from Data Live Flightradar24.
+        """
         request = APIRequest(Core.flight_data_url.format(flight_id), headers = Core.json_headers)
         return request.get_content()
 
     def get_flights(self, airline: str = None, bounds: str = None, registration: str = None, aircraft_type: str = None) -> List[Flight]:
         """
+        Return a list of flights. See more options at set_real_time_flight_tracker_config() method.
+
         :param airline: the airline ICAO. Ex: "DAL"
         :param bounds: coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
         :param registration: aircraft registration
@@ -126,20 +154,27 @@ class FlightRadar24API(object):
         return flights
 
     def get_real_time_flight_tracker_config(self) -> Dict[str, str]:
+        """
+        Return the current config of the real time flight tracker, used by get_flights() method.
+        """
         return self.__real_time_flight_tracker_config.copy()
 
-    def get_zones(self) -> Dict:
-
-        # Get the zones data from Flightradar24.
+    def get_zones(self) -> Dict[str, Dict]:
+        """
+        Returns all major zones on the globe.
+        """
         request = APIRequest(Core.zones_data_url, headers = Core.json_headers)
         zones = request.get_content()
 
-        # Remove version information.
-        zones.pop("version")
+        if "version" in zones:
+            zones.pop("version")
+
         return zones
 
     def set_real_time_flight_tracker_config(self, **config: str) -> None:
-
+        """
+        Set config for the real time flight tracker, used by get_flights() method.
+        """
         for key, value in config.items():
 
             # Check if the parameter exists and if the value is numeric.
