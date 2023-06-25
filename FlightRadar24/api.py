@@ -1,10 +1,33 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, List, Optional, Tuple
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import dataclasses
 
 from .core import Core
 from .errors import LoginError
 from .flight import Flight
 from .request import APIRequest
+
+
+@dataclasses.dataclass
+class FlightTrackerConfig(object):
+    """
+    Data class with settings of the Real Time Flight Tracker.
+    """
+    faa: str = "1"
+    satellite: str = "1"
+    mlat: str = "1"
+    flarm: str = "1"
+    adsb: str = "1"
+    gnd: str = "1"
+    air: str = "1"
+    vehicles: str = "1"
+    estimated: str = "1"
+    maxage: str = "14400"
+    gliders: str = "1"
+    stats: str = "1"
+    limit: str = "5000"
 
 
 class FlightRadar24API(object):
@@ -13,21 +36,13 @@ class FlightRadar24API(object):
     """
 
     def __init__(self, user: Optional[str] = None, password: Optional[str] = None):
-        self.__real_time_flight_tracker_config = {
-            "faa": "1",
-            "satellite": "1",
-            "mlat": "1",
-            "flarm": "1",
-            "adsb": "1",
-            "gnd": "1",
-            "air": "1",
-            "vehicles": "1",
-            "estimated": "1",
-            "maxage": "14400",
-            "gliders": "1",
-            "stats": "1",
-            "limit": "5000"
-        }
+        """
+        Constructor of the FlightRadar24API class.
+
+        :param user: Your email (optional)
+        :param password: Your password (optional)
+        """
+        self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
 
         if user is not None and password is not None:
@@ -62,11 +77,11 @@ class FlightRadar24API(object):
         if not str(status_code).startswith("4"):
             return response.get_content(), second_logo_url.split(".")[-1]
 
-    def get_airport(self, code: str) -> Dict:
+    def get_airport(self, code: str, /) -> Dict:
         """
         Return detailed information about an airport.
 
-        :param code: ICAO or IATA of the airport.
+        :param code: ICAO or IATA of the airport
         """
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         return response.get_content()["details"]
@@ -111,18 +126,30 @@ class FlightRadar24API(object):
         response = APIRequest(Core.flight_data_url.format(flight_id), headers = Core.json_headers)
         return response.get_content()
 
-    def get_flights(self, airline: str = None, bounds: str = None, registration: str = None, aircraft_type: str = None) -> List[Flight]:
+    def get_flights(
+        self,
+        airline: str = None,
+        bounds: str = None,
+        registration: str = None,
+        aircraft_type: str = None,
+        *,
+        details: bool = False
+    ) -> List[Flight]:
         """
-        Return a list of flights. See more options at set_real_time_flight_tracker_config() method.
+        Return a list of flights. See more options at set_flight_tracker_config() method.
 
-        :param airline: the airline ICAO. Ex: "DAL"
-        :param bounds: coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
-        :param registration: aircraft registration
-        :param aircraft_type: aircraft model code. Ex: "B737"
+        :param airline: The airline ICAO. Ex: "DAL"
+        :param bounds: Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
+        :param registration: Aircraft registration
+        :param aircraft_type: Aircraft model code. Ex: "B737"
+        :param details: If True, it returns flights with detailed information
         """
-        request_params = self.__real_time_flight_tracker_config.copy()
+        request_params = dataclasses.asdict(self.__flight_tracker_config)
 
-        # Insert the parameters "airline", "bounds", "reg",and "type" in the dictionary for the request.
+        if self.__login_data is not None:
+            request_params["enc"] = self.__login_data["cookies"]["_frPl"]
+
+        # Insert the method parameters into the dictionary for the request.
         if airline: request_params["airline"] = airline
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
@@ -132,13 +159,21 @@ class FlightRadar24API(object):
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers)
         response = response.get_content()
 
-        flights = []
+        flights: List[Flight] = list()
 
         for flight_id, flight_info in response.items():
 
             # Get flights only.
-            if flight_id[0].isnumeric():
-                flights.append(Flight(flight_id, flight_info))
+            if not flight_id[0].isnumeric():
+                continue
+
+            flight = Flight(flight_id, flight_info)
+            flights.append(flight)
+
+            # Set flight details.
+            if details:
+                flight_details = self.get_flight_details(flight_id)
+                flight.set_flight_details(flight_details)
 
         return flights
 
@@ -151,15 +186,15 @@ class FlightRadar24API(object):
 
         return self.__login_data["userData"].copy()
 
-    def get_real_time_flight_tracker_config(self) -> Dict[str, str]:
+    def get_flight_tracker_config(self) -> FlightTrackerConfig:
         """
-        Return the current config of the real time flight tracker, used by get_flights() method.
+        Return a copy of the current config of the Real Time Flight Tracker, used by get_flights() method.
         """
-        return self.__real_time_flight_tracker_config.copy()
+        return dataclasses.replace(self.__flight_tracker_config)
 
     def get_zones(self) -> Dict[str, Dict]:
         """
-        Returns all major zones on the globe.
+        Return all major zones on the globe.
         """
         response = APIRequest(Core.zones_data_url, headers = Core.json_headers)
         zones = response.get_content()
@@ -197,30 +232,45 @@ class FlightRadar24API(object):
             if isinstance(content, dict): raise LoginError(content["message"])
             else: raise LoginError("Your email or password is incorrect")
 
-        self.__real_time_flight_tracker_config["enc"] = response.get_cookie("_frPl")
-
         self.__login_data = {
             "userData": content["userData"],
-            "cookies": response.get_cookies()
+            "cookies": response.get_cookies(),
         }
 
-    def logout(self) -> None:
+    def logout(self) -> bool:
         """
-        Log out of the Flightradar24 account.
+        Log out of the FlightRadar24 account.
+
+        Return a boolean indicating that it successfully logged out of the server.
         """
-        if not self.__login_data: return
+        if self.__login_data is None: return
 
-        APIRequest(Core.user_login_url, headers = Core.json_headers, cookies = self.__login_data["cookies"])
-
-        self.__real_time_flight_tracker_config.pop("enc")
+        cookies = self.__login_data["cookies"]
         self.__login_data = None
 
-    def set_real_time_flight_tracker_config(self, **config: str) -> None:
-        """
-        Set config for the real time flight tracker, used by get_flights() method.
-        """
-        for key, value in config.items():
+        response = APIRequest(Core.user_login_url, headers = Core.json_headers, cookies = cookies)
+        return str(response.get_status_code()).startswith("2")
 
-            # Check if the parameter exists and if the value is numeric.
-            if key in self.__real_time_flight_tracker_config and value.isnumeric():
-                self.__real_time_flight_tracker_config[key] = value
+    def set_flight_tracker_config(
+        self,
+        flight_tracker_config: Optional[FlightTrackerConfig] = None,
+        **config: Union[int, str]
+    ) -> None:
+        """
+        Set config for the Real Time Flight Tracker, used by get_flights() method.
+        """
+        if flight_tracker_config is not None:
+            self.__flight_tracker_config = flight_tracker_config
+
+        current_config_dict = dataclasses.asdict(self.__flight_tracker_config)
+
+        for key, value in config.items():
+            value = str(value)
+
+            if key not in current_config_dict:
+                raise KeyError(f"Unknown option: '{key}'")
+
+            if not value.isdecimal():
+                raise TypeError(f"Value must be a decimal. Got '{key}'")
+
+            setattr(self.__flight_tracker_config, key, value)

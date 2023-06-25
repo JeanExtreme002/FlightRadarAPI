@@ -19,7 +19,7 @@ pip3 install FlightRadarAPI
 Just create a `FlightRadar24API` object after importing it.
 
 ```
-from FlightRadar24.api import FlightRadar24API
+from FlightRadar24 import FlightRadar24API
 fr_api = FlightRadar24API()
 ```
 
@@ -35,7 +35,7 @@ airlines = fr_api.get_airlines()
 
 **Getting flights list:**
 ```
-flights = fr_api.get_flights()
+flights = fr_api.get_flights(...)
 ```
 
 **Getting zones list:**
@@ -72,6 +72,8 @@ lukla_airport = fr_api.get_airport(airport_icao)
 
 **Getting and configuring Real-time Flight Tracker parameters:**
 ```
-params = fr_api.get_real_time_flight_tracker_config()
-set_real_time_flight_tracker_config(**new_config)
+config = fr_api.get_flight_tracker_config()
+
+new_config = FlightTrackerConfig(...)
+fr_api.set_flight_tracker_config(new_config, limit = 500, ...)
 ```

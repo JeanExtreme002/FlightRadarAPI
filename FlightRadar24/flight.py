@@ -8,6 +8,12 @@ class Flight(object):
     __default_text = "N/A"
 
     def __init__(self, flight_id: str, info: List[Any]):
+        """
+        Constructor of the Flight class.
+
+        :param flight_id: The flight ID specifically used by FlightRadar24
+        :param info: Dictionary with received data from FlightRadar24
+        """
         self.id = flight_id
         self.icao_24bit = self.__get_info(info[0])
         self.latitude = self.__get_info(info[1])
@@ -62,28 +68,45 @@ class Flight(object):
             if prefix and key in self.__dict__:
                 if comparison_functions[prefix](value, self.__dict__[key]) != value: return False
 
-            # Check if the values ​​are equal.
+            # Check if the value is equal.
             elif key in self.__dict__ and value != self.__dict__[key]: return False
 
         return True
 
     def get_altitude(self) -> str:
+        """
+        Return the formatted altitude, with the unit of measure
+        """
         return "{} ft".format(self.altitude)
 
     def get_flight_level(self) -> str:
+        """
+        Return the formatted flight level, with the unit of measure.
+        """
         return str(self.altitude)[:3] + " FL" if self.altitude > 10000 else self.get_altitude()
 
     def get_ground_speed(self) -> str:
+        """
+        Return the formatted ground speed, with the unit of measure.
+        """
         return "{} kt".format(self.ground_speed) + ("s" if self.ground_speed > 1 else "")
 
     def get_heading(self) -> str:
+        """
+        Return the formatted heading, with the unit of measure.
+        """
         return str(self.heading) + "°"
 
     def get_vertical_speed(self) -> str:
+        """
+        Return the formatted vertical speed, with the unit of measure.
+        """
         return "{} fpm".format(self.vertical_speed)
 
     def set_flight_details(self, flight_details: Dict) -> None:
-        
+        """
+        Set flight details to the instance. Use FlightRadar24API.get_flight_details(...) method to get it.
+        """
         # Get aircraft data.
         aircraft = self.__get_details(flight_details.get("aircraft"))
 

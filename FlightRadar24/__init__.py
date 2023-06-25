@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-API for Flight Radar 24.
+API for FlightRadar24.
 
 This API provides flight and airport data available to the public
 on the FlightRadar24 website. If you want to use the data collected
@@ -13,4 +13,7 @@ https://www.flightradar24.com/terms-and-conditions
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "1.3.1"
+__version__ = "1.3.2"
+
+from .api import FlightRadar24API, FlightTrackerConfig
+from .flight import Flight
