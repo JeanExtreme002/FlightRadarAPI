@@ -9,6 +9,8 @@ import gzip
 import requests
 import requests.structures
 
+from .errors import CloudflareError
+
 
 class APIRequest(object):
     """
@@ -50,6 +52,12 @@ class APIRequest(object):
 
         if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
         self.__response = request_method(url, headers = headers, cookies = cookies, data = data)
+
+        if self.get_status_code() == 520:
+            raise CloudflareError(
+                message = "An unexpected error has occurred. Perhaps you are making too many calls?",
+                response = self.__response
+            )
 
     def get_content(self) -> Union[Dict, bytes]:
         """
