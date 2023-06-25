@@ -5,7 +5,9 @@ from .entity import Entity
 
 
 class Flight(Entity):
-
+    """
+    Flight representation.
+    """
     __default_text = "N/A"
 
     def __init__(self, flight_id: str, info: List[Any]):
@@ -38,18 +40,18 @@ class Flight(Entity):
         self.callsign = self.__get_info(info[16])
         self.airline_icao = self.__get_info(info[18])
 
-    def __get_details(self, data) -> Dict:
-        return dict() if data is None else data
-
-    def __get_info(self, info: Any) -> Any:
-        return info if (info or info == 0) and info != self.__default_text else self.__default_text
-
     def __repr__(self) -> str:
         return self.__str__()
 
     def __str__(self) -> str:
         template = "<({}) {} - Altitude: {} - Ground Speed: {} - Heading: {}>"
         return template.format(self.aircraft_code, self.registration, self.altitude, self.ground_speed, self.heading)
+
+    def __get_details(self, data) -> Dict:
+        return dict() if data is None else data
+
+    def __get_info(self, info: Any) -> Any:
+        return info if (info or info == 0) and info != self.__default_text else self.__default_text
 
     def check_info(self, **info: Any) -> bool:
         """

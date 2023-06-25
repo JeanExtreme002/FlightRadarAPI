@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import dataclasses
 
 from .core import Core
+from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import LoginError
 from .request import APIRequest
@@ -77,21 +78,32 @@ class FlightRadar24API(object):
         if not str(status_code).startswith("4"):
             return response.get_content(), second_logo_url.split(".")[-1]
 
-    def get_airport(self, code: str) -> Dict:
+    def get_airport(self, code: str) -> Airport:
         """
         Return detailed information about an airport.
 
         :param code: ICAO or IATA of the airport
         """
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
-        return response.get_content()["details"]
+        return Airport(details=response.get_content()["details"])
 
-    def get_airports(self) -> List[Dict]:
+    def get_airports(self, *, details: bool = False) -> List[Airport]:
         """
         Return a list with all airports.
         """
         response = APIRequest(Core.airports_data_url, headers = Core.json_headers)
-        return response.get_content()["rows"]
+
+        airports: List[Airport] = list()
+
+        for airport_data in response.get_content()["rows"]:
+            airport = Airport(info = airport_data)
+
+            # Get airport details.
+            if details: airport = self.get_airport(airport.icao)
+
+            airports.append(airport)
+
+        return airports
 
     def get_bounds(self, zone: Dict[str, float]) -> str:
         """
