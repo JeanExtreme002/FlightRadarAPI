@@ -243,7 +243,7 @@ class FlightRadar24API(object):
 
         Return a boolean indicating that it successfully logged out of the server.
         """
-        if self.__login_data is None: return
+        if self.__login_data is None: return True
 
         cookies = self.__login_data["cookies"]
         self.__login_data = None
