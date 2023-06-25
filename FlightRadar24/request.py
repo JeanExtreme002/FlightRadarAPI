@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from requests.models import Response
-from requests.structures import CaseInsensitiveDict
 from typing import Dict, Optional, Union
 
 import brotli
 import json
 import gzip
+
 import requests
+import requests.structures
 
 
 class APIRequest(object):
@@ -76,13 +76,13 @@ class APIRequest(object):
         """
         return self.__response.cookies.get_dict()
 
-    def get_headers(self) -> CaseInsensitiveDict:
+    def get_headers(self) -> requests.structures.CaseInsensitiveDict:
         """
         Return the headers of the response.
         """
         return self.__response.headers
 
-    def get_response_object(self) -> Response:
+    def get_response_object(self) -> requests.models.Response:
         """
         Return the received response object.
         """
