@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import dataclasses
 
 from .core import Core
+from .entities.flight import Flight
 from .errors import LoginError
-from .flight import Flight
 from .request import APIRequest
 
 

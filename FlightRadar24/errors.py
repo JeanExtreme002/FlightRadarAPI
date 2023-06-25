@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class CloudflareError(Exception):
     def __init__(self, message, response):
         self.message = message
