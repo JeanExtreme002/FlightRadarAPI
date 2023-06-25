@@ -77,7 +77,7 @@ class FlightRadar24API(object):
         if not str(status_code).startswith("4"):
             return response.get_content(), second_logo_url.split(".")[-1]
 
-    def get_airport(self, code: str, /) -> Dict:
+    def get_airport(self, code: str) -> Dict:
         """
         Return detailed information about an airport.
 
