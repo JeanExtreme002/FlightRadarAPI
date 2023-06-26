@@ -35,6 +35,4 @@ jobs:
         pytest tests -v -s
     - name: Install package
       run: |
-        python setup.py build
-        python setup.py install
-        python -c "import FlightRadar24"
+        pip install FlightRadar24

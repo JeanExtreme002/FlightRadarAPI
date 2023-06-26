@@ -1,0 +1,41 @@
+[project]
+name = "FlightRadarAPI"
+dynamic = ["version"]
+description = "API for FlightRadar24"
+authors = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "jeanextreme002@gmail.com" },
+]
+license = "MIT"
+readme = "README.md"
+keywords = ["flightradar24", "api"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11"
+]
+exclude = ["tests"]
+requires-python = ">=3.7"
+dependencies = [
+  "Brotli",
+  "Deprecated",
+  "requests",
+]
+
+[project.optional-dependencies]
+tests = [
+  "pytest",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/JeanExtreme002/FlightRadarAPI"
+
+[tool.hatch.version]
+path = "FlightRadar24/__init__.py"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
