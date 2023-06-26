@@ -87,7 +87,7 @@ class FlightRadar24API(object):
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         return Airport(details=response.get_content()["details"])
 
-    def get_airport_details(self, code: str, flight_limit: int = 100):
+    def get_airport_details(self, code: str, flight_limit: int = 100) -> Dict:
         """
         Return the airport details from FlightRadar24.
 
