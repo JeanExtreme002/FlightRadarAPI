@@ -16,4 +16,4 @@ __author__ = "Jean Loui Bernard Silva de Jesus"
 __version__ = "1.3.6"
 
 from .api import FlightRadar24API, FlightTrackerConfig
-from FlightRadar24.entities import Airport, Flight
+from .entities import Airport, Flight
