@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import brotli
 import json
@@ -28,7 +28,8 @@ class APIRequest(object):
         params: Optional[Dict] = None,
         headers: Optional[Dict] = None,
         data: Optional[Dict] = None,
-        cookies: Optional[Dict] = None
+        cookies: Optional[Dict] = None,
+        exclude_status_codes: List[int] = list()
     ):
         """
         Constructor of the APIRequest class.
@@ -38,6 +39,7 @@ class APIRequest(object):
         :param headers: headers for the request
         :param data: data for the request. If "data" is None, request will be a GET. Otherwise, it will be a POST
         :param cookies: cookies for the request
+        :param exclude_status_codes: raise for status code except those on the excluded list
         """
         self.url = url
 
@@ -59,6 +61,9 @@ class APIRequest(object):
                 response = self.__response
             )
 
+        if self.get_status_code() not in exclude_status_codes:
+            self.__response.raise_for_status()
+
     def get_content(self) -> Union[Dict, bytes]:
         """
         Return the received content from the request.
@@ -73,7 +78,7 @@ class APIRequest(object):
         except Exception: pass
 
         # Return a dictionary if the content type is JSON.
-        if content_type == "application/json":
+        if "application/json" in content_type:
             return json.loads(content)
 
         return content

@@ -6,6 +6,7 @@ from abc import ABC
 class Core(ABC):
 
     # Base URLs.
+    api_flightradar_base_url = "https://api.flightradar24.com/common/v1"
     cdn_flightradar_base_url = "https://cdn.flightradar24.com"
     flightradar_base_url = "https://www.flightradar24.com"
     data_live_base_url = "https://data-live.flightradar24.com"
@@ -20,6 +21,7 @@ class Core(ABC):
     flight_data_url = data_live_base_url + "/clickhandler/?flight={}"
 
     # Airports data URLs.
+    api_airport_data_url = api_flightradar_base_url + "/airport.json"
     airport_data_url = flightradar_base_url + "/airports/traffic-stats/?airport={}"
     airports_data_url = flightradar_base_url + "/_json/airports.php"
 

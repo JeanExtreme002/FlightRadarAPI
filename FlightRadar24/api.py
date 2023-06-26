@@ -63,7 +63,7 @@ class FlightRadar24API(object):
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
         # Try to get the image by the first URL option.
-        response = APIRequest(first_logo_url, headers = Core.image_headers)
+        response = APIRequest(first_logo_url, headers = Core.image_headers, exclude_status_codes=[403,])
         status_code = response.get_status_code()
 
         if not str(status_code).startswith("4"):
@@ -80,14 +80,39 @@ class FlightRadar24API(object):
 
     def get_airport(self, code: str) -> Airport:
         """
-        Return detailed information about an airport.
+        Return information about a specific airport.
 
         :param code: ICAO or IATA of the airport
         """
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         return Airport(details=response.get_content()["details"])
 
-    def get_airports(self, *, details: bool = False) -> List[Airport]:
+    def get_airport_details(self, code: str, flight_limit: int = 100):
+        """
+        Return the airport details from FlightRadar24.
+
+        :param code: ICAO or IATA of the airport
+        :param flight_limit: Limit of flights related to the airport
+        """
+        request_params = {"format": "json"}
+
+        if self.__login_data is not None:
+            request_params["token"] = self.__login_data["cookies"]["_frPl"]
+
+        # Insert the method parameters into the dictionary for the request.
+        request_params["code"] = code
+        request_params["limit"] = flight_limit
+
+        # Request details from the FlightRadar24.
+        response = APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, exclude_status_codes=[400,])
+        content: Dict = response.get_content()
+
+        if response.get_status_code() == 400 and isinstance(content, dict) and content.get("errors"):
+            raise ValueError(content["errors"]["errors"]["parameters"]["limit"]["notBetween"])
+
+        return content["result"]["response"]
+
+    def get_airports(self) -> List[Airport]:
         """
         Return a list with all airports.
         """
@@ -97,10 +122,6 @@ class FlightRadar24API(object):
 
         for airport_data in response.get_content()["rows"]:
             airport = Airport(info = airport_data)
-
-            # Get airport details.
-            if details: airport = self.get_airport(airport.icao)
-
             airports.append(airport)
 
         return airports
@@ -133,7 +154,7 @@ class FlightRadar24API(object):
 
     def get_flight_details(self, flight_id: str) -> Dict[Any, Any]:
         """
-        Return the flight details from Data Live Flightradar24.
+        Return the flight details from Data Live FlightRadar24.
         """
         response = APIRequest(Core.flight_data_url.format(flight_id), headers = Core.json_headers)
         return response.get_content()
@@ -167,7 +188,7 @@ class FlightRadar24API(object):
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
 
-        # Get all flights from Data Live Flightradar24.
+        # Get all flights from Data Live FlightRadar24.
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers)
         response = response.get_content()
 
@@ -189,6 +210,12 @@ class FlightRadar24API(object):
 
         return flights
 
+    def get_flight_tracker_config(self) -> FlightTrackerConfig:
+        """
+        Return a copy of the current config of the Real Time Flight Tracker, used by get_flights() method.
+        """
+        return dataclasses.replace(self.__flight_tracker_config)
+
     def get_login_data(self) -> Dict[Any, Any]:
         """
         Return the user data.
@@ -197,12 +224,6 @@ class FlightRadar24API(object):
             raise LoginError("You must log in to your account.")
 
         return self.__login_data["userData"].copy()
-
-    def get_flight_tracker_config(self) -> FlightTrackerConfig:
-        """
-        Return a copy of the current config of the Real Time Flight Tracker, used by get_flights() method.
-        """
-        return dataclasses.replace(self.__flight_tracker_config)
 
     def get_zones(self) -> Dict[str, Dict]:
         """

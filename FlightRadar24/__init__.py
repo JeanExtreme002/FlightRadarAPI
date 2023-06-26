@@ -13,7 +13,7 @@ https://www.flightradar24.com/terms-and-conditions
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "1.3.6"
+__version__ = "1.3.7"
 
 from .api import FlightRadar24API, FlightTrackerConfig
 from .entities import Airport, Flight

@@ -10,13 +10,16 @@ def test_get_airlines(expect = 100):
     results = fr_api.get_airlines()
     assert len(results) >= expect
 
-def test_get_airport(airports = ["ATL", "LAX", "DXB", "DFW"], expect = 3):
-    count = 0
+def test_get_airport(airports = ["ATL", "LAX", "DXB", "DFW"]):
+    for airport in airports:
+        assert fr_api.get_airport(airport).iata == airport
+
+def test_get_airport_details(airports = ["ATL", "LAX", "DXB", "DFW"]):
+    data = ["airport", "airlines", "aircraftImages"]
 
     for airport in airports:
-        if fr_api.get_airport(airport): count += 1
-
-    assert count >= expect
+        details = fr_api.get_airport_details(airport, flight_limit = 1)
+        assert all([key in details for key in data]) and details["airport"]["pluginData"]["details"]
 
 def test_get_airports(expect = 1000):
     results = fr_api.get_airports()
@@ -25,50 +28,69 @@ def test_get_airports(expect = 1000):
 def test_get_zones(expect = 5):
     results = fr_api.get_zones()
 
+    assert len(results) >= expect
+
     for zone, data in results.items():
-        assert all([key in data for key in ["tl_y", "tl_x", "br_y", "br_x"]]) and len(results) >= expect
+        assert all([key in data for key in ["tl_y", "tl_x", "br_y", "br_x"]])
 
 def test_get_flights(expect = 100):
     results = fr_api.get_flights()
     assert len(results) >= expect
 
-def test_get_flight_details(data = ["airport", "airline", "aircraft", "time", "status", "trail"]):
-    flight = fr_api.get_flights()[-1]
-    details = fr_api.get_flight_details(flight.id)
+def test_get_flight_details():
+    data = ["airport", "airline", "aircraft", "time", "status", "trail"]
 
-    assert all([key in details for key in data])
+    flights = fr_api.get_flights()
+    middle = len(flights) // 2
+
+    flights = flights[middle - 2: middle + 2]
+
+    for flight in flights:
+        details = fr_api.get_flight_details(flight.id)
+        assert all([key in details for key in data]) and details["aircraft"]
 
 def test_get_flights_by_airline(airlines = ["SWA", "GLO", "AZU", "UAL", "THY"], expect = 3):
     count = 0
 
     for airline in airlines:
-        if fr_api.get_flights(airline = airline): count += 1
+        flights = fr_api.get_flights(airline = airline)
+
+        for flight in flights:
+            assert flight.airline_icao == airline
+
+        if len(flights) > 0: count += 1
 
     assert count >= expect
 
-def test_get_flights_by_bounds(zone = "northamerica", expect = 30):
-    zone = fr_api.get_zones()[zone]
-    bounds = fr_api.get_bounds(zone)
+def test_get_flights_by_bounds(zones = ["northamerica", "southamerica"], expect = 30):
+    for zone in zones:
+        zone = fr_api.get_zones()[zone]
+        bounds = fr_api.get_bounds(zone)
 
-    results = fr_api.get_flights(bounds = bounds)
-    assert len(results) >= expect
+        flights = fr_api.get_flights(bounds = bounds)
+
+        for flight in flights:
+            assert zone["tl_y"] >= flight.latitude >= zone["br_y"]
+            assert zone["tl_x"] <= flight.longitude <= zone["br_x"]
+
+        assert len(flights) >= expect
 
 def test_get_airline_logo(airlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]]):
-    expected = len(airlines) // 2
+    expected = len(airlines) * 0.8
     found = 0
 
     for airline in airlines:
         result = fr_api.get_airline_logo(*airline)
-        if result and len(result[0]) > 1024: found += 1
+        if result and len(result[0]) > 512: found += 1
 
     assert found >= expected
 
 def test_get_country_flag(countries = ["United States", "Brazil", "Egypt", "Japan", "South Korea", "Canada"]):
-    expected = len(countries) // 2
+    expected = len(countries) * 0.8
     found = 0
 
     for country in countries:
         result = fr_api.get_country_flag(country)
-        if result and len(result[0]) > 1024: found += 1
+        if result and len(result[0]) > 512: found += 1
 
     assert found >= expected
