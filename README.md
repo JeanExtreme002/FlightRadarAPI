@@ -24,12 +24,12 @@ fr_api = FlightRadar24API(...)
 
 **Getting flights list:**
 ```
-flights = fr_api.get_flights(...)
+flights = fr_api.get_flights(...)  # Returns a list of Flight objects
 ```
 
 **Getting airports list:**
 ```
-airports = fr_api.get_airports(...)
+airports = fr_api.get_airports(...)  # Returns a list of Airport objects
 ```
 
 **Getting airlines list:**
@@ -57,7 +57,7 @@ airport_details = fr_api.get_airport_details(airport.icao)
 
 ## Filtering flights and airports:
 The `get_flights(...)` method has some parameters to search for flights by: area line, bounds (customized coordinates 
-or obtained by the get_zones method), aircraft registration or aircraft type. See the example below:
+or obtained by the `get_zones()` method), aircraft registration or aircraft type. See the example below:
 ```
 airline_icao = "UAE"
 aircraft_type = "B77W"
@@ -94,7 +94,8 @@ print(f"The flight is {distance} km away from the airport.")
 Set it by using the `set_flight_tracker_config(...)` method. It receives a `FlightTrackerConfig` dataclass instance, but
 you can also use keyword arguments directly to the method.
 
-Get the current configurations with the `get_flight_tracker_config()` method, that returns a `FlightTrackerConfig` instance.
+Get the current configuration with the `get_flight_tracker_config()` method, that returns a `FlightTrackerConfig` 
+instance. Note: creating a new `FlightTrackerConfig` instance means resetting all parameters to default.
 ```
 flight_tracker = fr_api.get_flight_tracker_config()
 flight_tracker.limit = 10
