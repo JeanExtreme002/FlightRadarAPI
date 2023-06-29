@@ -67,7 +67,7 @@ def test_get_flight_details():
     flights = flights[middle - 2: middle + 2]
 
     for flight in flights:
-        details = fr_api.get_flight_details(flight.id)
+        details = fr_api.get_flight_details(flight)
         assert all([key in details for key in data]) and details["aircraft"]
 
 
