@@ -21,7 +21,6 @@ exclude = ["tests"]
 requires-python = ">=3.7"
 dependencies = [
   "Brotli",
-  "Deprecated",
   "requests",
 ]
 
