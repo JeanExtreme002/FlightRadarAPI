@@ -152,19 +152,24 @@ class FlightRadar24API(object):
         if not str(status_code).startswith("4"):
             return response.get_content(), flag_url.split(".")[-1]
 
-    def get_flight_details(self, flight_id: str) -> Dict[Any, Any]:
+    def get_flight_details(self, flight: Union[Flight, str]) -> Dict[Any, Any]:
         """
         Return the flight details from Data Live FlightRadar24.
+
+        :param flight: A Flight instance or the Flight ID (no longer recommended)
         """
+        # TODO: Only accept Flight instance at a next version.
+        flight_id: str = flight if isinstance(flight, str) else flight.id
+
         response = APIRequest(Core.flight_data_url.format(flight_id), headers = Core.json_headers)
         return response.get_content()
 
     def get_flights(
         self,
-        airline: str = None,
-        bounds: str = None,
-        registration: str = None,
-        aircraft_type: str = None,
+        airline: Optional[str] = None,
+        bounds: Optional[str] = None,
+        registration: Optional[str] = None,
+        aircraft_type: Optional[str] = None,
         *,
         details: bool = False
     ) -> List[Flight]:

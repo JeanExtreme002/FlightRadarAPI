@@ -44,7 +44,7 @@ zones = fr_api.get_zones()
 
 You can also get more information about a specific flight such as: estimated time, trail, aircraft details, etc.
 ```
-flight_details = fr_api.get_flight_details(flight.id)
+flight_details = fr_api.get_flight_details(flight)
 flight.set_flight_details(flight_details)
 
 print("Flying to", flight.destination_airport_name)
