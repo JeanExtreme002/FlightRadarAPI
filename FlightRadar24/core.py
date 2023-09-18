@@ -16,6 +16,12 @@ class Core(ABC):
     user_login_url = flightradar_base_url + "/user/login"
     user_logout_url = flightradar_base_url + "/user/logout"
 
+    # Most tracked data URL
+    most_tracked_url = flightradar_base_url + "/flights/most-tracked"
+
+    # Search data URL
+    search_data_url = flightradar_base_url + "/v1/search/web/find?query={}&limit=50"
+
     # Flights data URLs.
     real_time_flight_tracker_data_url = data_cloud_base_url + "/zones/fcgi/feed.js"
     flight_data_url = data_live_base_url + "/clickhandler/?flight={}"

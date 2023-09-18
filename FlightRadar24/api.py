@@ -242,6 +242,32 @@ class FlightRadar24API(object):
 
         return zones
 
+    def search(self, query: str) -> Dict:
+        """
+        Return the search result
+        """
+        response = APIRequest(Core.search_data_url.format(query), headers = Core.json_headers)
+        results = response.get_content().get("results", [])
+        stats = response.get_content().get("stats", {})
+
+        i = 0
+        counted_total = 0
+        data = {}
+        for name, count in stats.get("count", {}).items():
+            data[name] = []
+            while i < counted_total + count and i < len(results):
+                data[name].append(results[i])
+                i += 1
+            counted_total += count
+        return data
+
+    def get_most_tracked(self) -> Dict:
+        """
+        Return the most tracked data
+        """
+        response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
+        return response.get_content()
+
     def is_logged_in(self) -> bool:
         """
         Check if the user is logged into the FlightRadar24 account.
