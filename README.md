@@ -17,33 +17,33 @@ pip3 install FlightRadarAPI
 
 ## Basic Usage:
 Import the class `FlightRadar24API` and create an instance of it.
-```
+```py
 from FlightRadar24 import FlightRadar24API
 fr_api = FlightRadar24API(...)
 ```
 
 **Getting flights list:**
-```
+```py
 flights = fr_api.get_flights(...)  # Returns a list of Flight objects
 ```
 
 **Getting airports list:**
-```
+```py
 airports = fr_api.get_airports(...)  # Returns a list of Airport objects
 ```
 
 **Getting airlines list:**
-```
+```py
 airlines = fr_api.get_airlines()
 ```
 
 **Getting zones list:**
-```
+```py
 zones = fr_api.get_zones()
 ```
 
 You can also get more information about a specific flight such as: estimated time, trail, aircraft details, etc.
-```
+```py
 flight_details = fr_api.get_flight_details(flight)
 flight.set_flight_details(flight_details)
 
@@ -51,14 +51,14 @@ print("Flying to", flight.destination_airport_name)
 ```
 
 Or get more information about a specific airport such as: runways, temperature, arrived flights, etc.
-```
+```py
 airport_details = fr_api.get_airport_details(airport.icao)
 ```
 
 ## Filtering flights and airports:
 The `get_flights(...)` method has some parameters to search for flights by: area line, bounds (customized coordinates 
 or obtained by the `get_zones()` method), aircraft registration or aircraft type. See the example below:
-```
+```py
 airline_icao = "UAE"
 aircraft_type = "B77W"
 
@@ -76,14 +76,14 @@ There are more configurations that you may set by using the `set_flight_tracker_
 for more information.
 
 **Getting airport by ICAO or IATA:**
-```
+```py
 lukla_airport = fr_api.get_airport(code = "VNLK")
 ```
 
 ## Getting the distance between flights and airports:
 The `Flight` and `Airport` classes inherit from `Entity`, which contains the `get_distance_from(...)` method. That method
 returns the distance between the self instance and another entity in kilometers. Example:
-```
+```py
 airport = fr_api.get_airport("KJFK")
 distance = flight.get_distance_from(airport)
 
@@ -96,7 +96,7 @@ you can also use keyword arguments directly to the method.
 
 Get the current configuration with the `get_flight_tracker_config()` method, that returns a `FlightTrackerConfig` 
 instance. Note: creating a new `FlightTrackerConfig` instance means resetting all parameters to default.
-```
+```py
 flight_tracker = fr_api.get_flight_tracker_config()
 flight_tracker.limit = 10
 
