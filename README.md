@@ -1,7 +1,7 @@
 # FlightRadarAPI
-Unofficial API for [FlightRadar24](https://www.flightradar24.com/) written in Python 3.
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) written in Python 3.
 
-If you want to use the data collected using this API commercially, you need to subscribe to the [Business plan](https://www.flightradar24.com/premium/).</br>
+If you want to use the data collected using this SDK commercially, you need to subscribe to the [Business plan](https://www.flightradar24.com/premium/).</br>
 See more information at: https://www.flightradar24.com/terms-and-conditions
 
 [![Python Package](https://github.com/JeanExtreme002/FlightRadarAPI/workflows/Python%20Package/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
