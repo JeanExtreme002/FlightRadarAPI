@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-API for FlightRadar24.
+Unofficial SDK for FlightRadar24.
 
-This API provides flight and airport data available to the public
+This SDK provides flight and airport data available to the public
 on the FlightRadar24 website. If you want to use the data collected
 using this API commercially, you need to subscribe to the Business plan.
 
