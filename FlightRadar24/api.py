@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dataclasses
+import math
 
 from .core import Core
 from .entities.airport import Airport
@@ -133,6 +134,55 @@ class FlightRadar24API(object):
         :param zone: Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
         """
         return "{},{},{},{}".format(zone["tl_y"], zone["br_y"], zone["tl_x"], zone["br_x"])
+
+    @staticmethod
+    def get_bounds_by_point(latitude: float, longitude: float, radius: float) -> str:
+        """
+        Convert a point coordinate and a radius to a string "y1, y2, x1, x2".
+
+        :param latitude: Latitude of the point
+        :param longitude: Longitude of the point
+        :param radius: Radius in meters to create area around the point
+        """
+        half_side_in_km = abs(radius) / 1000
+
+        lat = math.radians(latitude)
+        lon = math.radians(longitude)
+
+        approx_earth_radius = 6371
+        hypotenuse_distance = math.sqrt(2 * (math.pow(half_side_in_km, 2)))
+
+        lat_min = math.asin(
+            math.sin(lat) * math.cos(hypotenuse_distance / approx_earth_radius)
+            + math.cos(lat)
+            * math.sin(hypotenuse_distance / approx_earth_radius)
+            * math.cos(225 * (math.pi / 180)),
+        )
+        lon_min = lon + math.atan2(
+            math.sin(225 * (math.pi / 180))
+            * math.sin(hypotenuse_distance / approx_earth_radius)
+            * math.cos(lat),
+            math.cos(hypotenuse_distance / approx_earth_radius)
+            - math.sin(lat) * math.sin(lat_min),
+        )
+
+        lat_max = math.asin(
+            math.sin(lat) * math.cos(hypotenuse_distance / approx_earth_radius)
+            + math.cos(lat)
+            * math.sin(hypotenuse_distance / approx_earth_radius)
+            * math.cos(45 * (math.pi / 180)),
+        )
+        lon_max = lon + math.atan2(
+            math.sin(45 * (math.pi / 180))
+            * math.sin(hypotenuse_distance / approx_earth_radius)
+            * math.cos(lat),
+            math.cos(hypotenuse_distance / approx_earth_radius)
+            - math.sin(lat) * math.sin(lat_max),
+        )
+
+        rad2deg = math.degrees
+
+        return "{},{},{},{}".format(rad2deg(lat_max), rad2deg(lat_min), rad2deg(lon_min), rad2deg(lon_max))
 
     def get_country_flag(self, country: str) -> Optional[Tuple[bytes, str]]:
         """

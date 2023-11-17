@@ -55,6 +55,16 @@ Or get more information about a specific airport such as: runways, temperature, 
 airport_details = fr_api.get_airport_details(airport.icao)
 ```
 
+## Get flights above your position:
+The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` for your position.
+And `radius` for what distance in meters from the point to start tracking
+```py
+# Your point is 52°34'04.7"N 13°16'57.5"E from Google maps and radius 2km
+bounds = fr_api.get_bounds_by_point(52.567967, 13.282644, 2000)
+
+flights = fr_api.get_flights(bounds=bounds)
+```
+
 ## Filtering flights and airports:
 The `get_flights(...)` method has some parameters to search for flights by: area line, bounds (customized coordinates 
 or obtained by the `get_zones()` method), aircraft registration or aircraft type. See the example below:
