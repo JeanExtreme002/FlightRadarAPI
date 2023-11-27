@@ -135,8 +135,7 @@ class FlightRadar24API(object):
         """
         return "{},{},{},{}".format(zone["tl_y"], zone["br_y"], zone["tl_x"], zone["br_x"])
 
-    @staticmethod
-    def get_bounds_by_point(latitude: float, longitude: float, radius: float) -> str:
+    def get_bounds_by_point(self, latitude: float, longitude: float, radius: float) -> str:
         """
         Convert a point coordinate and a radius to a string "y1, y2, x1, x2".
 
@@ -182,7 +181,13 @@ class FlightRadar24API(object):
 
         rad2deg = math.degrees
 
-        return "{},{},{},{}".format(rad2deg(lat_max), rad2deg(lat_min), rad2deg(lon_min), rad2deg(lon_max))
+        zone = {
+            "tl_y": rad2deg(lat_max),
+            "br_y": rad2deg(lat_min),
+            "tl_x": rad2deg(lon_min),
+            "br_x": rad2deg(lon_max)
+        }
+        return self.get_bounds(zone)
 
     def get_country_flag(self, country: str) -> Optional[Tuple[bytes, str]]:
         """
