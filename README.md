@@ -59,7 +59,7 @@ airport_details = fr_api.get_airport_details(airport.icao)
 The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` for your position.
 And `radius` for what distance in meters from the point to start tracking
 ```py
-# Your point is 52°34'04.7"N 13°16'57.5"E from Google maps and radius 2km
+# Your point is 52°34'04.7"N 13°16'57.5"E from Google Maps and radius 2km
 bounds = fr_api.get_bounds_by_point(52.567967, 13.282644, 2000)
 
 flights = fr_api.get_flights(bounds=bounds)
