@@ -12,7 +12,7 @@ See more information at: https://www.flightradar24.com/terms-and-conditions
 
 ## Installing FlightRadarAPI:
 ```
-pip3 install FlightRadarAPI
+pip install FlightRadarAPI
 ```
 
 ## Basic Usage:
