@@ -123,3 +123,10 @@ def test_get_country_flag(countries = ["United States", "Brazil", "Egypt", "Japa
         if result and len(result[0]) > 512: found += 1
 
     assert found >= expected
+
+
+def test_get_bounds_by_point():
+    expected = '52.58594974202871,52.54997688140807,13.253064418048115,13.3122478541492'
+    actual = FlightRadar24API.get_bounds_by_point(52.567967, 13.282644, 2000)
+
+    assert actual == expected

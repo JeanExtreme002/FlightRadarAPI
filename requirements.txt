@@ -1,3 +1,4 @@
 Brotli
 pytest
 requests
+math
