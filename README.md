@@ -58,13 +58,12 @@ Arrivals and departures can have a limit `flight_limit` (max value is 100) to di
 
 
 ## Get flights above your position:
-The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` for your position.
-And `radius` for what distance in meters from the point to start tracking
+The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` for your position and `radius` for the distance in meters from your position to designate a tracking area.
 ```py
 # Your point is 52°34'04.7"N 13°16'57.5"E from Google Maps and radius 2km
 bounds = fr_api.get_bounds_by_point(52.567967, 13.282644, 2000)
 
-flights = fr_api.get_flights(bounds=bounds)
+flights = fr_api.get_flights(bounds = bounds)
 ```
 
 ## Filtering flights and airports:
