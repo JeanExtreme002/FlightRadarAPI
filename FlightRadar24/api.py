@@ -88,12 +88,13 @@ class FlightRadar24API(object):
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         return Airport(details=response.get_content()["details"])
 
-    def get_airport_details(self, code: str, flight_limit: int = 100) -> Dict:
+    def get_airport_details(self, code: str, flight_limit: int = 100, page: int = 1) -> Dict:
         """
         Return the airport details from FlightRadar24.
 
         :param code: ICAO or IATA of the airport
         :param flight_limit: Limit of flights related to the airport
+        :param page: page of result to display
         """
         request_params = {"format": "json"}
 
@@ -103,6 +104,7 @@ class FlightRadar24API(object):
         # Insert the method parameters into the dictionary for the request.
         request_params["code"] = code
         request_params["limit"] = flight_limit
+        request_params["page"] = page
 
         # Request details from the FlightRadar24.
         response = APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, exclude_status_codes=[400,])

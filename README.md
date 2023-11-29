@@ -89,6 +89,8 @@ for more information.
 ```py
 lukla_airport = fr_api.get_airport(code = "VNLK")
 ```
+Arrivals and departures can have a limit 'flight_limit' (default value is 100) to display. When you need to reach more than 100 flights - you can use additional parameter 'page' to view other pages.
+
 
 ## Getting the distance between flights and airports:
 The `Flight` and `Airport` classes inherit from `Entity`, which contains the `get_distance_from(...)` method. That method
