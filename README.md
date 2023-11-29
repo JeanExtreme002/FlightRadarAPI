@@ -54,7 +54,7 @@ Or get more information about a specific airport such as: runways, temperature, 
 ```py
 airport_details = fr_api.get_airport_details(airport.icao)
 ```
-Arrivals and departures can have a limit 'flight_limit' (default value is 100) to display. When you need to reach more than 100 flights - you can use additional parameter 'page' to view other pages.
+Arrivals and departures can have a limit `flight_limit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
 
 
 ## Get flights above your position:
