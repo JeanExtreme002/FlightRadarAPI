@@ -42,6 +42,7 @@ airlines = fr_api.get_airlines()
 zones = fr_api.get_zones()
 ```
 
+### Getting flight and airport details
 You can also get more information about a specific flight such as: estimated time, trail, aircraft details, etc.
 ```py
 flight_details = fr_api.get_flight_details(flight)
