@@ -1,7 +1,7 @@
 [project]
 name = "FlightRadarAPI"
 dynamic = ["version"]
-description = "API for FlightRadar24"
+description = "SDK for FlightRadar24"
 authors = [
     { name = "Jean Loui Bernard Silva de Jesus", email = "jeanextreme002@gmail.com" },
 ]
@@ -23,6 +23,9 @@ dependencies = [
   "Brotli",
   "requests",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["FlightRadar24"]
 
 [project.optional-dependencies]
 tests = [

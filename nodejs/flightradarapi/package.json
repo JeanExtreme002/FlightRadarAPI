@@ -1,0 +1,23 @@
+{
+  "name": "flightradarapi",
+  "version": "1.3.12",
+  "description": "SDK for FlightRadar24",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeanExtreme002/FlightRadarAPI.git"
+  },
+  "keywords": [
+    "flightradar24",
+    "api"
+  ],
+  "author": "Jean Loui Bernard Silva de Jesus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JeanExtreme002/FlightRadarAPI/issues"
+  },
+  "homepage": "https://github.com/JeanExtreme002/FlightRadarAPI#readme"
+}

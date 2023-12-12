@@ -81,7 +81,7 @@ class Flight(Entity):
 
     def get_altitude(self) -> str:
         """
-        Return the formatted altitude, with the unit of measure
+        Return the formatted altitude, with the unit of measure.
         """
         return "{} ft".format(self.altitude)
 
@@ -89,7 +89,7 @@ class Flight(Entity):
         """
         Return the formatted flight level, with the unit of measure.
         """
-        return str(self.altitude)[:3] + " FL" if self.altitude > 10000 else self.get_altitude()
+        return str(self.altitude)[:3] + " FL" if self.altitude >= 10000 else self.get_altitude()
 
     def get_ground_speed(self) -> str:
         """
