@@ -1,8 +1,5 @@
-import fetch from "node-fetch";
-
 const {CloudflareError} = require("./errors");
-const brotli = require("brotli");
-const {ungzip} = require("node-gzip");
+const fetch = (...args) => import("node-fetch").then(({default: fetch}) => fetch(...args));
 
 
 class APIRequest {
@@ -20,18 +17,17 @@ class APIRequest {
      * @param {object} cookies
      * @param {object} exclude_status_codes
      */
-    constructor(url, params, headers, data, cookies, exclude_status_codes) {
-
+    constructor(url, params=null, headers=null, data=null, cookies=null, exclude_status_codes=[]) {
+        
         this.request_params = {
             "params": params,
             "headers": headers,
             "data": data,
             "cookies": cookies
         }
-
+        
+        this.request_method = data == null ? "GET" : "POST";
         this.__exclude_status_codes = exclude_status_codes;
-
-        this.request_method = data == null ? "get" : "post";
 
         if (params != null && Object.keys(params).length > 0) {
             url += "?";
@@ -51,14 +47,17 @@ class APIRequest {
      * Send the request.
      */
     async request() {
-        this.__response = await fetch(this.url, {
+        const settings = {
             method: this.request_method,
-            body: JSON.stringify(this.request_params["data"]),
             headers: this.request_params["headers"],
             cookies: this.request_params["cookies"]
-        });
+        };
 
-        const data = await response.json();
+        if (settings["method"] == "POST") {
+            settings["body"] = JSON.stringify(this.request_params["data"]);
+        }
+
+        this.__response = await fetch(this.url, settings);
 
         if (this.get_status_code() == 520) {
             throw new CloudflareError(
@@ -77,28 +76,14 @@ class APIRequest {
      * Return the received content from the request.
      */
     async get_content() {
-        content = this.__response.content
+        const content = await this.__response.text();
 
-        content_encoding = this.__response.headers["Content-Encoding"];
-        content_encoding = content_encoding == null ? "" : content_encoding;
-
-        content_type = this.__response.headers["Content-Type"];
-
-        // Try to decode the content.
-        try {
-            if (content_encoding === "gzip") {
-                content = await ungzip(content);
-            }
-            else if (content_encoding === "br") {
-                content = brotli.decompress(content);
-            }
-        } catch(error) {
-            // Go ahead.
-        }
+        let content_type = this.get_headers()["content-type"];
+        content_type = content_type == null ? "" : content_type;
 
         // Return a dictionary if the content type is JSON.
         if (content_type.includes("application/json")) {
-            return json.loads(content);
+            return JSON.parse(content);
         }
         return content;
     }
@@ -114,7 +99,12 @@ class APIRequest {
      * Return the headers of the response.
      */
     get_headers() {
-        return this.__response.headers;
+        const headers_as_dict = {};
+
+        this.__response.headers.forEach((value, key) => {
+            headers_as_dict[key] = value;
+        });
+        return headers_as_dict;
     }
 
     /**
@@ -127,7 +117,9 @@ class APIRequest {
     /**
      * Return the status code of the response.
      */
-    get_status_code(self) {
+    get_status_code() {
         return this.__response.status;
     }
 }
+
+module.exports = APIRequest;
