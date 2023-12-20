@@ -66,8 +66,8 @@ class FlightRadar24API {
     /**
      * Return a list with all airlines.
      */
-    async get_airlines(self) {
-        const response = new APIRequest(Core.airlines_data_url, params = null, headers = Core.json_headers);
+    async get_airlines() {
+        const response = new APIRequest(Core.airlines_data_url, null, Core.json_headers);
         await response.receive();
 
         return (await response.get_content())["rows"];
@@ -79,16 +79,15 @@ class FlightRadar24API {
      * @param {string} iata
      * @param {string} icao
      */
-    async get_airline_logo(self, iata, icao) {
-        const first_logo_url = Core.airline_logo_url.format(iata, icao);
+    async get_airline_logo(iata, icao) {
+        iata = iata.toUpperCase();
+        icao = icao.toUpperCase();
+
+        let first_logo_url = Core.airline_logo_url.split("{}");
+        first_logo_url = first_logo_url[0] + iata + first_logo_url[1] + icao + first_logo_url[2];
 
         // Try to get the image by the first URL option.
-        let response = new APIRequest(
-            first_logo_url, params = null, 
-            headers = Core.image_headers, 
-            data = null, cookies = null,
-            exclude_status_codes=[403,]
-        );
+        let response = new APIRequest(first_logo_url, null, Core.image_headers, null, null, [403,]);
         await response.receive();
 
         let status_code = response.get_status_code();
@@ -99,9 +98,9 @@ class FlightRadar24API {
         }
 
         // Get the image by the second airline logo URL.
-        const second_logo_url = Core.alternative_airline_logo_url.format(icao)
+        const second_logo_url = Core.alternative_airline_logo_url.replace("{}", icao);
 
-        response = new APIRequest(second_logo_url, params = null, headers = Core.image_headers);
+        response = new APIRequest(second_logo_url, null, Core.image_headers);
         await response.receive();
 
         status_code = response.get_status_code();
@@ -118,13 +117,10 @@ class FlightRadar24API {
      * @return {Airport}
      */
     async get_airport(code) {
-        const response = new APIRequest(
-            Core.airport_data_url.replace("{}", code), 
-            params = null, headers = Core.json_headers
-        );
+        const response = new APIRequest(Core.airport_data_url.replace("{}", code), null, Core.json_headers);
         await response.receive();
 
-        return new Airport(info = null, details = (await response.get_content())["details"]);
+        return new Airport({}, (await response.get_content())["details"]);
     }
 
     /**
@@ -147,13 +143,7 @@ class FlightRadar24API {
         request_params["page"] = page
 
         // Request details from the FlightRadar24.
-        const response = new APIRequest(
-            Core.api_airport_data_url, 
-            params = request_params, 
-            headers = Core.json_headers, 
-            data = null, cookies = null,
-            exclude_status_codes = [400,]
-        );
+        const response = new APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, null, null, [400,]);
         await response.receive();
         
         const content = await response.get_content();
@@ -168,14 +158,14 @@ class FlightRadar24API {
      * Return a list with all airports.
      */
     async get_airports() {
-        const response = new APIRequest(Core.airports_data_url, params = null, headers = Core.json_headers);
+        const response = new APIRequest(Core.airports_data_url, null, Core.json_headers);
         await response.receive();
 
         const content = await response.get_content();
         const airports = [];
 
         for (const airport_data of content["rows"]) {
-            const airport = new Airport(info = airport_data);
+            const airport = new Airport(airport_data);
             airports.push(airport);
         }
         return airports;
@@ -254,14 +244,14 @@ class FlightRadar24API {
      * @param {string} - Country name 
      */
     async get_country_flag(country) {
-        const flag_url = Core.country_flag_url.replace("{}", country.lower().replace(" ", "-"));
-        const headers = [... Core.image_headers];
+        const flag_url = Core.country_flag_url.replace("{}", country.toLowerCase().replace(" ", "-"));
+        const headers = {... Core.image_headers};
         
         if (headers.hasOwnProperty("origin")) {
             delete headers["origin"];  // Does not work for this request.
         }
 
-        const response = new APIRequest(flag_url, params = null, headers = headers);
+        const response = new APIRequest(flag_url, null, headers);
         await response.receive();
 
         const status_code = response.get_status_code();
@@ -278,7 +268,7 @@ class FlightRadar24API {
      * @param {Flight} flight - A Flight instance.
      */
     async get_flight_details(flight) {
-        const response = new APIRequest(Core.flight_data_url.replace("{}", flight.id), params = null, headers = Core.json_headers);
+        const response = new APIRequest(Core.flight_data_url.replace("{}", flight.id), null, Core.json_headers);
         await response.receive();
 
         return (await response.get_content());
@@ -374,7 +364,7 @@ class FlightRadar24API {
      * Return all major zones on the globe.
      */
     async get_zones() {
-        const response = new APIRequest(Core.zones_data_url, params = null, headers = Core.json_headers);
+        const response = new APIRequest(Core.zones_data_url, null, Core.json_headers);
         await response.receive();
 
         let zones = await response.get_content();
@@ -391,7 +381,7 @@ class FlightRadar24API {
      * @param {string} query 
      */
     async search(query) {
-        const response = new APIRequest(Core.search_data_url.replace("{}", query), params = null, headers = Core.json_headers);
+        const response = new APIRequest(Core.search_data_url.replace("{}", query), null, Core.json_headers);
         await response.receive();
 
         const content = await response.get_content();
@@ -416,7 +406,7 @@ class FlightRadar24API {
             data[name] = [];
 
             while (index < (counted_total + count) && (index < results.length)) {
-                data[name].append(results[i]);
+                data[name].push(results[index]);
                 index++;
             }
             counted_total += count;
@@ -429,7 +419,7 @@ class FlightRadar24API {
      * Return the most tracked data.
      */
     async get_most_tracked() {
-        const response = new APIRequest(Core.most_tracked_url, params = null, headers = Core.json_headers);
+        const response = new APIRequest(Core.most_tracked_url, null, Core.json_headers);
         await response.receive();
 
         return await response.get_content();
@@ -458,7 +448,7 @@ class FlightRadar24API {
             "type": "web"
         }
 
-        const response = new APIRequest(Core.user_login_url, params = null, headers = Core.json_headers, data = data);
+        const response = new APIRequest(Core.user_login_url, null, Core.json_headers, data);
         await response.receive();
 
         const status_code = response.get_status_code();

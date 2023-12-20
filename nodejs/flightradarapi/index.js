@@ -15,7 +15,7 @@ const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
 
 const author = "Jean Loui Bernard Silva de Jesus"
-const version = "1.3.12"
+const version = "1.3.13"
 
 module.exports = {
     FlightRadar24API: FlightRadar24API, 
@@ -26,4 +26,6 @@ module.exports = {
 
 f = new FlightRadar24API();
 
-f.get_flights().then((resp) => console.log(resp));
+// Below, errors for fixing
+// f.get_flights(null, null, null, null, true).then((resp) => console.log(resp));
+// f.login(...).then((resp) => console.log(resp));

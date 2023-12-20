@@ -67,8 +67,15 @@ class APIRequest {
             );
         }
 
-        if (this.__exclude_status_codes.includes(this.get_status_code())) {
-            this.__response.raise_for_status();
+        if (!this.__exclude_status_codes.includes(this.get_status_code())) {
+            if (![200, 201, 202].includes(this.get_status_code())) {
+                throw new Error(
+                    "Received status code '" 
+                    + this.get_status_code() + ": " 
+                    + this.__response.statusText + "' for the URL "
+                    + this.url
+                );
+            }
         }
         return this;
     }

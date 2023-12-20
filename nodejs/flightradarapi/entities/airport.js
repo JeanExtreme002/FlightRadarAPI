@@ -71,7 +71,7 @@ class Airport extends Entity {
         this.city = this.__getInfo(position.get("region", {})).get("city")
 
         // Timezone information.
-        const timezone = details.get("timezone", dict())
+        const timezone = details.get("timezone", {})
 
         this.timezone_name = this.__getInfo(timezone.get("name"))
         this.timezone_offset = this.__getInfo(timezone.get("offset"))
@@ -84,3 +84,5 @@ class Airport extends Entity {
         this.website = this.__getInfo(details.get("website"))
     }
 }
+
+module.exports = Airport;
