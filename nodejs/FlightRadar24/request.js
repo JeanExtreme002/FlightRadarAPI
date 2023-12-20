@@ -1,4 +1,6 @@
 const {CloudflareError} = require("./errors");
+
+const FormData = require("form-data");
 const fetch = (...args) => import("node-fetch").then(({default: fetch}) => fetch(...args));
 
 
@@ -55,7 +57,13 @@ class APIRequest {
         };
 
         if (settings["method"] == "POST") {
-            settings["body"] = JSON.stringify(this.request_params["data"]);
+            const formData = new FormData();
+
+            Object.entries(this.request_params["data"]).forEach(([key, value]) => {
+              formData.append(key, value);
+            });
+
+            settings["body"] = formData;
         }
 
         this.__response = await fetch(this.url, settings);

@@ -12,6 +12,7 @@
 
 const {FlightRadar24API, FlightTrackerConfig} = require("./api");
 const Airport = require("./entities/airport");
+const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
 
 const author = "Jean Loui Bernard Silva de Jesus"
@@ -20,12 +21,6 @@ const version = "1.3.13"
 module.exports = {
     FlightRadar24API: FlightRadar24API, 
     FlightTrackerConfig: FlightTrackerConfig,
-    Airport: Airport, Flight: Flight,
+    Airport: Airport, Entity: Entity, Flight: Flight,
     author: author, version: version
 };
-
-f = new FlightRadar24API();
-f.set_flight_tracker_config(null, {limit:10});
-
-// Below, errors for fixing
-// f.login(...).then((resp) => console.log(resp));

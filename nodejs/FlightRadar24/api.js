@@ -287,7 +287,7 @@ class FlightRadar24API {
         const request_params = this.__flight_tracker_config.asdict();
 
         if (this.__login_data != null) {
-            request_params["enc"] = self.__login_data["cookies"]["_frPl"];
+            request_params["enc"] = this.__login_data["cookies"]["_frPl"];
         }
 
         // Insert the method parameters into the dictionary for the request.
@@ -354,10 +354,10 @@ class FlightRadar24API {
      * Return the user data.
      */
     get_login_data() {
-        if (!self.is_logged_in()) {
+        if (!this.is_logged_in()) {
             throw new LoginError("You must log in to your account.");
         }
-        return [... this.__login_data["userData"]];
+        return {... this.__login_data["userData"]};
     }
 
     /**
@@ -482,14 +482,10 @@ class FlightRadar24API {
         const cookies = this.__login_data["cookies"];
         this.__login_data = null;
 
-        const response = new APIRequest(
-            Core.user_login_url, params = null, 
-            headers = Core.json_headers, 
-            data = null, cookies = cookies
-        );
+        const response = new APIRequest(Core.user_login_url, null, Core.json_headers, null, cookies);
         await response.receive();
 
-        return status_code.toString().startsWith("2");
+        return response.get_status_code().toString().startsWith("2");
     }
 
     /**

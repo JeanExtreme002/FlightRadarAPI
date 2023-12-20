@@ -2,7 +2,7 @@
   "name": "flightradarapi",
   "version": "1.3.13",
   "description": "SDK for FlightRadar24",
-  "main": "index.js",
+  "main": "./FlightRadar24/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/JeanExtreme002/FlightRadarAPI#readme",
   "dependencies": {
+    "form-data": "^4.0.0",
     "node-fetch": "^3.3.2"
   }
 }
