@@ -94,7 +94,7 @@ class FlightRadar24API(object):
 
         :param code: ICAO or IATA of the airport
         :param flight_limit: Limit of flights related to the airport
-        :param page: page of result to display
+        :param page: Page of result to display
         """
         request_params = {"format": "json"}
 
@@ -301,7 +301,7 @@ class FlightRadar24API(object):
 
     def search(self, query: str) -> Dict:
         """
-        Return the search result
+        Return the search result.
         """
         response = APIRequest(Core.search_data_url.format(query), headers = Core.json_headers)
         results = response.get_content().get("results", [])
@@ -320,7 +320,7 @@ class FlightRadar24API(object):
 
     def get_most_tracked(self) -> Dict:
         """
-        Return the most tracked data
+        Return the most tracked data.
         """
         response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
         return response.get_content()

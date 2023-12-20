@@ -14,7 +14,7 @@ class Entity {
         function getter(x, defaultValue = null) {
             let value = defaultValue;
 
-            if (x in this) {
+            if (this.hasOwnProperty(x)) {
                 value = this[x];
             }
 

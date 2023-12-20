@@ -41,12 +41,13 @@ class APIRequest {
         this.url = url;
 
         this.__response = {};
+        this.__content = null;
     }
 
     /**
-     * Send the request.
+     * Send the request and receive a response.
      */
-    async request() {
+    async receive() {
         const settings = {
             method: this.request_method,
             headers: this.request_params["headers"],
@@ -77,15 +78,16 @@ class APIRequest {
      */
     async get_content() {
         const content = await this.__response.text();
+        this.__content = content;
 
         let content_type = this.get_headers()["content-type"];
         content_type = content_type == null ? "" : content_type;
 
         // Return a dictionary if the content type is JSON.
         if (content_type.includes("application/json")) {
-            return JSON.parse(content);
+            this.__content = JSON.parse(content);
         }
-        return content;
+        return this.__content;
     }
 
     /**

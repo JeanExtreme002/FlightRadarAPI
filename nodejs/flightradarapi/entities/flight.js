@@ -64,13 +64,13 @@ class Flight extends Entity {
             }
 
             // Check if the value is greater than or less than the attribute value.
-            if (prefix && key in this) {
+            if (this.hasOwnProperty(key) && prefix) {
                 if (comparisonFunctions[prefix](value, this[key]) !== value) {
                     return false;
                 }
             }
             // Check if the value is equal.
-            else if (key in this && value !== this[key]) {
+            else if (this.hasOwnProperty(key) && value !== this[key]) {
                 return false;
             }
         }

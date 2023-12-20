@@ -1,19 +1,18 @@
 const Entity = require("./entity");
 
 
-const proxyHandler = {
-    get: function(target, name) {
-        return name in target? target[name] : target.__raw_information[name];
-    }
-};
-
-
 class Airport extends Entity {
     /**
      * Airport representation.
      */
     
     static __default_text = "N/A"
+
+    __proxyHandler = {
+        get: function(target, name) {
+            return name in target? target[name] : target.__raw_information[name];
+        }
+    };
 
     /**
      * Constructor of Airport class.
@@ -32,7 +31,7 @@ class Airport extends Entity {
 
         this.__raw_information = Object.assign(info, details);
 
-        return new Proxy(this, proxyHandler);
+        return new Proxy(this, this.__proxyHandler);
     }
 
     /**
