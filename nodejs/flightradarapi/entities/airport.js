@@ -21,11 +21,15 @@ class Airport extends Entity {
      * @param {object} details - Dictionary with more information about the airport
      */
     constructor(info = {}, details = {}) {
+        super();
+
         if (info && Object.keys(info).length > 0) {
+            this.__set_position(info["lat"], info["lon"]);
             this.__initializeWithBasicInfo(info);
         }
 
         if (details && Object.keys(details).length > 0) {
+            this.__set_position(details["position"]["latitude"], details["position"]["longitude"]);
             this.__initializeWithDetails(details);
         }
 
@@ -38,8 +42,6 @@ class Airport extends Entity {
      * Initialize instance with basic information about the airport.
      */
     __initializeWithBasicInfo(info) {
-        super(info["lat"], info["lon"]);
-
         this.altitude = info["alt"]
 
         this.name = info["name"]
@@ -53,7 +55,6 @@ class Airport extends Entity {
      * Initialize instance with detailed information about the airport.
      */
     __initializeWithDetails(details) {
-        super(details["position"]["latitude"], details["position"]["longitude"]);
         details = this.__createGetterMethodFor(details);
 
         this.altitude = details["position"]["altitude"];

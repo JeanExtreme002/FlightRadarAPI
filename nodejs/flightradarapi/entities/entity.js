@@ -5,7 +5,11 @@ class Entity {
      * @param {number} latitude
      * @param {number} longitude
      */
-    constructor(latitude, longitude) {
+    constructor(latitude=null, longitude=null) {
+        this.__set_position(latitude, longitude);
+    }
+
+    __set_position(latitude, longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }

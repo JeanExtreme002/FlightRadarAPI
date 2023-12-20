@@ -59,7 +59,7 @@ class FlightRadar24API {
      */
 
     constructor() {
-        this.__flight_tracker_config = FlightTrackerConfig();
+        this.__flight_tracker_config = new FlightTrackerConfig();
         this.__login_data = null;
     }
 
@@ -540,3 +540,5 @@ class FlightRadar24API {
         this.__flight_tracker_config = new FlightTrackerConfig(current_config_dict);
     }
 }
+
+module.exports = {FlightRadar24API: FlightRadar24API, FlightTrackerConfig: FlightTrackerConfig};

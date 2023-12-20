@@ -15,7 +15,9 @@ class Flight extends Entity {
      * @param {*} info - Dictionary with received data from FlightRadar24
      */
     constructor(flight_id, info) {
-        super(this.__getInfo(info[1]), this.__getInfo(info[2]));
+        super();
+        
+        this.__set_position(this.__getInfo(info[1]), this.__getInfo(info[2]));
 
         this.id = flight_id;
         this.icao_24bit = this.__getInfo(info[0]);
