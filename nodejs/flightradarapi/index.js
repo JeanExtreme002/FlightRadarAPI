@@ -25,7 +25,7 @@ module.exports = {
 };
 
 f = new FlightRadar24API();
+f.set_flight_tracker_config(null, {limit:10});
 
 // Below, errors for fixing
-// f.get_flights(null, null, null, null, true).then((resp) => console.log(resp));
 // f.login(...).then((resp) => console.log(resp));

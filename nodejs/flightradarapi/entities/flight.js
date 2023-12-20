@@ -164,8 +164,8 @@ class Flight extends Entity {
         // Aircraft information.
         this.aircraft_age = this.__getInfo(aircraft.get("age"));
         this.aircraft_country_id = this.__getInfo(aircraft.get("countryId"));
-        this.aircraft_history = history.get("aircraft", list());
-        this.aircraft_images = aircraft.get("images", list());
+        this.aircraft_history = history.get("aircraft", []);
+        this.aircraft_images = aircraft.get("images", []);
         this.aircraft_model = this.__getInfo(this.__getDetails(aircraft.get("model")).get("text"));
 
         // Airline information.
@@ -226,7 +226,7 @@ class Flight extends Entity {
         this.time_details = this.__getDetails(flight_details.get("time"));
 
         // Flight trail.
-        this.trail = flight_details.get("trail", list());
+        this.trail = flight_details.get("trail", []);
     }
 }
 

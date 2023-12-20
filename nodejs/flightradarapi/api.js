@@ -333,7 +333,7 @@ class FlightRadar24API {
 
             // Set flight details.
             if (details) {
-                const flight_details = await this.get_flight_details(flight_id);
+                const flight_details = await this.get_flight_details(flight);
                 flight.set_flight_details(flight_details);
             }
         }
@@ -358,6 +358,16 @@ class FlightRadar24API {
             throw new LoginError("You must log in to your account.");
         }
         return [... this.__login_data["userData"]];
+    }
+
+    /**
+     * Return the most tracked data.
+     */
+    async get_most_tracked() {
+        const response = new APIRequest(Core.most_tracked_url, null, Core.json_headers);
+        await response.receive();
+
+        return await response.get_content();
     }
 
     /**
@@ -413,16 +423,6 @@ class FlightRadar24API {
         }
 
         return data;
-    }
-
-    /**
-     * Return the most tracked data.
-     */
-    async get_most_tracked() {
-        const response = new APIRequest(Core.most_tracked_url, null, Core.json_headers);
-        await response.receive();
-
-        return await response.get_content();
     }
     
     /**
@@ -497,7 +497,7 @@ class FlightRadar24API {
      * 
      * @param {FlightTrackerConfig} flight_tracker_config - If null, set to default config.
      */
-    async set_flight_tracker_config(flight_tracker_config = null, data = {}) {
+    async set_flight_tracker_config(flight_tracker_config = null, config = {}) {
         if (flight_tracker_config != null) {
             this.__flight_tracker_config = flight_tracker_config;
         }

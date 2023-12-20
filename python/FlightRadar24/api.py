@@ -61,6 +61,8 @@ class FlightRadar24API(object):
         """
         Download the logo of an airline from FlightRadar24 and return it as bytes.
         """
+        iata, icao = iata.upper(), icao.upper()
+        
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
         # Try to get the image by the first URL option.
@@ -267,7 +269,7 @@ class FlightRadar24API(object):
 
             # Set flight details.
             if details:
-                flight_details = self.get_flight_details(flight_id)
+                flight_details = self.get_flight_details(flight)
                 flight.set_flight_details(flight_details)
 
         return flights
@@ -286,6 +288,13 @@ class FlightRadar24API(object):
             raise LoginError("You must log in to your account.")
 
         return self.__login_data["userData"].copy()
+
+    def get_most_tracked(self) -> Dict:
+        """
+        Return the most tracked data.
+        """
+        response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
+        return response.get_content()
 
     def get_zones(self) -> Dict[str, Dict]:
         """
@@ -317,13 +326,6 @@ class FlightRadar24API(object):
                 i += 1
             counted_total += count
         return data
-
-    def get_most_tracked(self) -> Dict:
-        """
-        Return the most tracked data.
-        """
-        response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
-        return response.get_content()
 
     def is_logged_in(self) -> bool:
         """
