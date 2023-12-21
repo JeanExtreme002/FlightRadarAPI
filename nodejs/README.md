@@ -75,7 +75,7 @@ or obtained by the `get_zones()` method), aircraft registration or aircraft type
 let airline_icao = "UAE";
 let aircraft_type = "B77W";
 
-# You may also set a custom region, such as: bounds = "73,-12,-156,38"
+// You may also set a custom region, such as: bounds = "73,-12,-156,38"
 let zone = (await fr_api.get_zones())["northamerica"];
 let bounds = fr_api.get_bounds(zone);
 
