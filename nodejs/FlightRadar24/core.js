@@ -47,12 +47,12 @@ class Core {
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+            "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
         };
 
-        this.json_headers = {accept: "application/json", ... this.headers};
+        this.json_headers = {accept: "application/json", ...this.headers};
 
-        this.image_headers = {accept: "image/gif, image/jpg, image/jpeg, image/png", ... this.headers};
+        this.image_headers = {accept: "image/gif, image/jpg, image/jpeg, image/png", ...this.headers};
     }
 }
 

@@ -47,20 +47,20 @@ class Entity {
      * Return the distance from another entity (in kilometers).
      *
      * @param {Entity} entity
-     * @returns {number}
+     * @return {number}
      */
     get_distance_from(entity) {
         Math.radians = (x) => x * (Math.PI / 180);
-        
-        let lat1 = Math.radians(this.latitude);
-        let lon1 = Math.radians(this.longitude);
 
-        let lat2 = Math.radians(entity.latitude);
-        let lon2 = Math.radians(entity.longitude);
+        const lat1 = Math.radians(this.latitude);
+        const lon1 = Math.radians(this.longitude);
+
+        const lat2 = Math.radians(entity.latitude);
+        const lon2 = Math.radians(entity.longitude);
 
         return Math.acos(
             Math.sin(lat1) * Math.sin(lat2) +
-            Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)
+            Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1),
         ) * 6371;
     }
 }

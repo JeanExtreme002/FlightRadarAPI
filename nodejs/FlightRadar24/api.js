@@ -16,7 +16,7 @@ class FlightTrackerConfig {
     flarm = "1";
     adsb = "1";
     gnd = "1";
-    air = "1"
+    air = "1";
     vehicles = "1";
     estimated = "1";
     maxage = "14400";
@@ -33,11 +33,11 @@ class FlightTrackerConfig {
                 throw new Error("Value must be a decimal. Got '" + key + "'");
             }
             target[key] = value.toString();
-        }
+        },
     };
 
     constructor(data) {
-        for (let key in data) {
+        for (const key in data) {
             const value = data[key];
 
             if (this.hasOwnProperty(key) && (typeof(value) == "number" || this.__isNumeric(value))) {
@@ -87,10 +87,10 @@ class FlightRadar24API {
 
         return (await response.get_content())["rows"];
     }
-    
+
     /**
      * Download the logo of an airline from FlightRadar24 and return it as bytes.
-     * 
+     *
      * @param {string} iata
      * @param {string} icao
      */
@@ -102,7 +102,7 @@ class FlightRadar24API {
         first_logo_url = first_logo_url[0] + iata + first_logo_url[1] + icao + first_logo_url[2];
 
         // Try to get the image by the first URL option.
-        let response = new APIRequest(first_logo_url, null, Core.image_headers, null, null, [403,]);
+        let response = new APIRequest(first_logo_url, null, Core.image_headers, null, null, [403]);
         await response.receive();
 
         let status_code = response.get_status_code();
@@ -127,7 +127,7 @@ class FlightRadar24API {
 
     /**
      * Return information about a specific airport.
-     * 
+     *
      * @param {string} code - ICAO or IATA of the airport
      * @return {Airport}
      */
@@ -140,7 +140,7 @@ class FlightRadar24API {
 
     /**
      * Return the airport details from FlightRadar24.
-     * 
+     *
      * @param {string} code - ICAO or IATA of the airport
      * @param {number} flight_limit - Limit of flights related to the airport
      * @param {number} page - Page of result to display
@@ -155,12 +155,12 @@ class FlightRadar24API {
         // Insert the method parameters into the dictionary for the request.
         request_params["code"] = code;
         request_params["limit"] = flight_limit;
-        request_params["page"] = page
+        request_params["page"] = page;
 
         // Request details from the FlightRadar24.
-        const response = new APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, null, null, [400,]);
+        const response = new APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, null, null, [400]);
         await response.receive();
-        
+
         const content = await response.get_content();
 
         if (response.get_status_code() == 400 && typeof(content) == "object" && content["errors"]) {
@@ -188,9 +188,9 @@ class FlightRadar24API {
 
     /**
      * Convert coordinate dictionary to a string "y1, y2, x1, x2".
-     * 
+     *
      * @param {object} zone - Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
-     * @returns {string}
+     * @return {string}
      */
     get_bounds(zone) {
         return "" + zone["tl_y"] + "," + zone["br_y"] + "," + zone["tl_x"] + "," + zone["br_x"];
@@ -198,11 +198,11 @@ class FlightRadar24API {
 
     /**
      * Convert a point coordinate and a radius to a string "y1, y2, x1, x2".
-     * 
+     *
      * @param {number} latitude - Latitude of the point
      * @param {number} longitude - Longitude of the point
      * @param {number} radius - Radius in meters to create area around the point
-     * @returns {string}
+     * @return {string}
      */
     get_bounds_by_point(latitude, longitude, radius) {
         const half_side_in_km = Math.abs(radius) / 1000;
@@ -217,53 +217,53 @@ class FlightRadar24API {
         const hypotenuse_distance = Math.sqrt(2 * (Math.pow(half_side_in_km, 2)));
 
         const lat_min = Math.asin(
-            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius)
-            + Math.cos(lat)
-            * Math.sin(hypotenuse_distance / approx_earth_radius)
-            * Math.cos(225 * (Math.PI / 180)),
-        )
+            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius) +
+            Math.cos(lat) *
+            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.cos(225 * (Math.PI / 180)),
+        );
         const lon_min = lon + Math.atan2(
-            Math.sin(225 * (Math.PI / 180))
-            * Math.sin(hypotenuse_distance / approx_earth_radius)
-            * Math.cos(lat),
-            Math.cos(hypotenuse_distance / approx_earth_radius)
-            - Math.sin(lat) * Math.sin(lat_min),
-        )
+            Math.sin(225 * (Math.PI / 180)) *
+            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.cos(lat),
+            Math.cos(hypotenuse_distance / approx_earth_radius) -
+            Math.sin(lat) * Math.sin(lat_min),
+        );
 
         const lat_max = Math.asin(
-            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius)
-            + Math.cos(lat)
-            * Math.sin(hypotenuse_distance / approx_earth_radius)
-            * Math.cos(45 * (Math.PI / 180)),
-        )
+            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius) +
+            Math.cos(lat) *
+            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.cos(45 * (Math.PI / 180)),
+        );
         const lon_max = lon + Math.atan2(
-            Math.sin(45 * (Math.PI / 180))
-            * Math.sin(hypotenuse_distance / approx_earth_radius)
-            * Math.cos(lat),
-            Math.cos(hypotenuse_distance / approx_earth_radius)
-            - Math.sin(lat) * Math.sin(lat_max),
-        )
+            Math.sin(45 * (Math.PI / 180)) *
+            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.cos(lat),
+            Math.cos(hypotenuse_distance / approx_earth_radius) -
+            Math.sin(lat) * Math.sin(lat_max),
+        );
 
         const zone = {
             "tl_y": Math.rad2deg(lat_max),
             "br_y": Math.rad2deg(lat_min),
             "tl_x": Math.rad2deg(lon_min),
-            "br_x": Math.rad2deg(lon_max)
-        }
+            "br_x": Math.rad2deg(lon_max),
+        };
         return this.get_bounds(zone);
     }
 
     /**
      * Download the flag of a country from FlightRadar24 and return it as bytes.
-     * 
-     * @param {string} - Country name 
+     *
+     * @param {string} - Country name
      */
     async get_country_flag(country) {
         const flag_url = Core.country_flag_url.replace("{}", country.toLowerCase().replace(" ", "-"));
-        const headers = {... Core.image_headers};
-        
+        const headers = {...Core.image_headers};
+
         if (headers.hasOwnProperty("origin")) {
-            delete headers["origin"];  // Does not work for this request.
+            delete headers["origin"]; // Does not work for this request.
         }
 
         const response = new APIRequest(flag_url, null, headers);
@@ -279,7 +279,7 @@ class FlightRadar24API {
 
     /**
      * Return the flight details from Data Live FlightRadar24.
-     * 
+     *
      * @param {Flight} flight - A Flight instance.
      */
     async get_flight_details(flight) {
@@ -288,10 +288,10 @@ class FlightRadar24API {
 
         return (await response.get_content());
     }
-    
+
     /**
      * Return a list of flights. See more options at set_flight_tracker_config() method.
-     * 
+     *
      * @param {string} airline - The airline ICAO. Ex: "DAL"
      * @param {string} bounds - Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
      * @param {string} registration - Aircraft registration
@@ -358,8 +358,8 @@ class FlightRadar24API {
 
     /**
      * Return a copy of the current config of the Real Time Flight Tracker, used by get_flights() method.
-     * 
-     * @returns {FlightTrackerConfig}
+     *
+     * @return {FlightTrackerConfig}
      */
     get_flight_tracker_config() {
         return new FlightTrackerConfig(this.__flight_tracker_config.asdict());
@@ -372,7 +372,7 @@ class FlightRadar24API {
         if (!this.is_logged_in()) {
             throw new LoginError("You must log in to your account.");
         }
-        return {... this.__login_data["userData"]};
+        return {...this.__login_data["userData"]};
     }
 
     /**
@@ -392,7 +392,7 @@ class FlightRadar24API {
         const response = new APIRequest(Core.zones_data_url, null, Core.json_headers);
         await response.receive();
 
-        let zones = await response.get_content();
+        const zones = await response.get_content();
 
         if (zones.hasOwnProperty("version")) {
             delete zones["version"];
@@ -402,8 +402,8 @@ class FlightRadar24API {
 
     /**
      * Return the search result
-     * 
-     * @param {string} query 
+     *
+     * @param {string} query
      */
     async search(query) {
         const response = new APIRequest(Core.search_data_url.replace("{}", query), null, Core.json_headers);
@@ -422,7 +422,7 @@ class FlightRadar24API {
 
         let index = 0;
         let counted_total = 0;
-            
+
         const data = {};
 
         for (const name in count_dict) {
@@ -439,11 +439,11 @@ class FlightRadar24API {
 
         return data;
     }
-    
+
     /**
      * Check if the user is logged into the FlightRadar24 account.
-     * 
-     * @returns {boolean}
+     *
+     * @return {boolean}
      */
     is_logged_in() {
         return this.__login_data != null;
@@ -451,7 +451,7 @@ class FlightRadar24API {
 
     /**
      * Log in to a FlightRadar24 account.
-     * 
+     *
      * @param {string} user - Your email.
      * @param {string} password - Your password.
      */
@@ -460,8 +460,8 @@ class FlightRadar24API {
             "email": user,
             "password": password,
             "remember": "true",
-            "type": "web"
-        }
+            "type": "web",
+        };
 
         const response = new APIRequest(Core.user_login_url, null, Core.json_headers, data);
         await response.receive();
@@ -472,8 +472,7 @@ class FlightRadar24API {
         if (!status_code.toString().startsWith("2") || !content["success"]) {
             if (typeof(content) == "object") {
                 throw new LoginError(content["message"]);
-            }
-            else {
+            } else {
                 throw new LoginError("Your email or password is incorrect");
             }
         }
@@ -481,13 +480,13 @@ class FlightRadar24API {
         this.__login_data = {
             "userData": content["userData"],
             "cookies": response.get_cookies(),
-        }
+        };
     }
 
     /**
      * Log out of the FlightRadar24 account.
-     * 
-     * @returns {boolean} - Return a boolean indicating that it successfully logged out of the server. 
+     *
+     * @return {boolean} - Return a boolean indicating that it successfully logged out of the server.
      */
     async logout() {
         if (this.__login_data == null) {
@@ -505,7 +504,7 @@ class FlightRadar24API {
 
     /**
      * Set config for the Real Time Flight Tracker, used by get_flights() method.
-     * 
+     *
      * @param {FlightTrackerConfig} flight_tracker_config - If null, set to default config.
      */
     async set_flight_tracker_config(flight_tracker_config = null, config = {}) {
@@ -516,7 +515,7 @@ class FlightRadar24API {
         const current_config_dict = this.__flight_tracker_config.asdict();
 
         for (const key in config) {
-            const value = config[key].toString();            
+            const value = config[key].toString();
             current_config_dict[key] = value;
         }
 

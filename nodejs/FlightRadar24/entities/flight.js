@@ -5,18 +5,18 @@ class Flight extends Entity {
     /**
      * Flight representation.
      */
-   
+
     static __default_text = "N/A";
 
     /**
      * Constructor of Flight class.
-     * 
+     *
      * @param {*} flight_id - The flight ID specifically used by FlightRadar24
      * @param {*} info - Dictionary with received data from FlightRadar24
      */
     constructor(flight_id, info) {
         super();
-        
+
         this.__set_position(this.__getInfo(info[1]), this.__getInfo(info[2]));
 
         this.id = flight_id;
@@ -45,23 +45,21 @@ class Flight extends Entity {
      * to compare numeric data with ">" or "<".
      *
      * Example: check_info({min_altitude: 6700}, {max_altitude: 13000}, {icao: "THY"})
-     * @param {object} info 
-     * @returns {boolean}
+     * @param {object} info
+     * @return {boolean}
      */
     check_info(info) {
-
         const comparisonFunctions = {"max": Math.max, "min": Math.min};
 
         for (let key in info) {
             let prefix = key.slice(0, 4);
-            let value = info[key];
-            
+            const value = info[key];
+
             // Separate the comparison prefix if it exists.
             if ((prefix === "max_") || (prefix === "min_")) {
-                key = key.split("_", 1)[1];  
+                key = key.split("_", 1)[1];
                 prefix = prefix.slice(0, -1);
-            }
-            else {
+            } else {
                 prefix = null;
             }
 
@@ -81,7 +79,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted altitude, with the unit of measure.
-     * @returns {string}
+     * @return {string}
      */
     get_altitude() {
         return this.altitude.toString() + " ft";
@@ -89,7 +87,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted flight level, with the unit of measure.
-     * @returns {string}
+     * @return {string}
      */
     get_flight_level() {
         if (this.altitude >= 10000) {
@@ -100,7 +98,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted ground speed, with the unit of measure.
-     * @returns {string}
+     * @return {string}
      */
     get_ground_speed() {
         const sufix = this.ground_speed > 1 ? "s" : "";
@@ -109,7 +107,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted heading, with the unit of measure.
-     * @returns {string}
+     * @return {string}
      */
     get_heading() {
         return this.heading.toString() + "°";
@@ -117,7 +115,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted vertical speed, with the unit of measure.
-     * @returns {string}
+     * @return {string}
      */
     get_vertical_speed() {
         return this.vertical_speed.toString() + " fpm";

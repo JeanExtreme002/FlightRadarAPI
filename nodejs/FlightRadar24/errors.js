@@ -1,5 +1,5 @@
-class LoginError extends Error {  
-    constructor (message) {
+class LoginError extends Error {
+    constructor(message) {
         super(message);
 
         this.name = this.constructor.name;
@@ -8,8 +8,8 @@ class LoginError extends Error {
     }
 }
 
-class CloudflareError extends Error {  
-    constructor (message, response) {
+class CloudflareError extends Error {
+    constructor(message, response) {
         super(message);
 
         this.name = this.constructor.name;

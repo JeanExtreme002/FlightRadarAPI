@@ -11,7 +11,7 @@ class APIRequest {
 
     /**
      * Constructor of the APIRequest class.
-     * 
+     *
      * @param {string} url
      * @param {object} params
      * @param {object} headers
@@ -20,21 +20,20 @@ class APIRequest {
      * @param {object} exclude_status_codes
      */
     constructor(url, params=null, headers=null, data=null, cookies=null, exclude_status_codes=[]) {
-        
         this.request_params = {
             "params": params,
             "headers": headers,
             "data": data,
-            "cookies": cookies
-        }
-        
+            "cookies": cookies,
+        };
+
         this.request_method = data == null ? "GET" : "POST";
         this.__exclude_status_codes = exclude_status_codes;
 
         if (params != null && Object.keys(params).length > 0) {
             url += "?";
 
-            for (let key in params) {
+            for (const key in params) {
                 url += key + "=" + params[key] + "&";
             }
             url = url.slice(0, -1);
@@ -53,14 +52,14 @@ class APIRequest {
         const settings = {
             method: this.request_method,
             headers: this.request_params["headers"],
-            cookies: this.request_params["cookies"]
+            cookies: this.request_params["cookies"],
         };
 
         if (settings["method"] == "POST") {
             const formData = new FormData();
 
             Object.entries(this.request_params["data"]).forEach(([key, value]) => {
-              formData.append(key, value);
+                formData.append(key, value);
             });
 
             settings["body"] = formData;
@@ -71,17 +70,17 @@ class APIRequest {
         if (this.get_status_code() == 520) {
             throw new CloudflareError(
                 message = "An unexpected error has occurred. Perhaps you are making too many calls?",
-                response = this.__response
+                response = this.__response,
             );
         }
 
         if (!this.__exclude_status_codes.includes(this.get_status_code())) {
             if (![200, 201, 202].includes(this.get_status_code())) {
                 throw new Error(
-                    "Received status code '" 
-                    + this.get_status_code() + ": " 
-                    + this.__response.statusText + "' for the URL "
-                    + this.url
+                    "Received status code '" +
+                    this.get_status_code() + ": " +
+                    this.__response.statusText + "' for the URL " +
+                    this.url,
                 );
             }
         }
