@@ -25,8 +25,14 @@ class FlightTrackerConfig {
     limit = "5000";
 
     __proxyHandler = {
-        set: function(target, name) {
-            return;  // Do nothing.
+        set: function(target, key, value) {
+            if (!target.hasOwnProperty(key)) {
+                throw new Error("Unknown option: '" + key + "'");
+            }
+            if ((typeof(value) != "number") && (!target.__isNumeric(value))) {
+                throw new Error("Value must be a decimal. Got '" + key + "'");
+            }
+            target[key] = value.toString();
         }
     };
 
@@ -34,11 +40,20 @@ class FlightTrackerConfig {
         for (let key in data) {
             const value = data[key];
 
-            if (this.hasOwnProperty(key) && typeof(value) == "string") {
+            if (this.hasOwnProperty(key) && (typeof(value) == "number" || this.__isNumeric(value))) {
                 this[key] = value;
             }
         }
         return new Proxy(this, this.__proxyHandler);
+    }
+
+    __isNumeric(string) {
+        for (let index = 0; index < string.length; index++) {
+            if (!"0123456789".includes(string[index])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     asdict() {
@@ -229,7 +244,7 @@ class FlightRadar24API {
             - Math.sin(lat) * Math.sin(lat_max),
         )
 
-        zone = {
+        const zone = {
             "tl_y": Math.rad2deg(lat_max),
             "br_y": Math.rad2deg(lat_min),
             "tl_x": Math.rad2deg(lon_min),
@@ -346,7 +361,7 @@ class FlightRadar24API {
      * 
      * @returns {FlightTrackerConfig}
      */
-    async get_flight_tracker_config() {
+    get_flight_tracker_config() {
         return new FlightTrackerConfig(this.__flight_tracker_config.asdict());
     }
 
@@ -500,26 +515,8 @@ class FlightRadar24API {
 
         const current_config_dict = this.__flight_tracker_config.asdict();
 
-        function isNumeric(string) {
-            for (let index = 0; index < string.length; index++) {
-                if (!"0123456789".includes(string[index])) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         for (const key in config) {
-            const value = config[key].toString();
-
-            if (!current_config_dict.hasOwnProperty(key)) {
-                throw new Error("Unknown option: '" + key + "'");
-            }
-
-            if (!isNumeric(value)) {
-                throw new Error("Value must be a decimal. Got '" + key + "'");
-            }
-            
+            const value = config[key].toString();            
             current_config_dict[key] = value;
         }
 

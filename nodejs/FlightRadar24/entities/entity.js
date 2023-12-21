@@ -50,6 +50,8 @@ class Entity {
      * @returns {number}
      */
     get_distance_from(entity) {
+        Math.radians = (x) => x * (Math.PI / 180);
+        
         let lat1 = Math.radians(this.latitude);
         let lon1 = Math.radians(this.longitude);
 
