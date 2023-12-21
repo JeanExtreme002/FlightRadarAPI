@@ -19,8 +19,8 @@ const author = "Jean Loui Bernard Silva de Jesus";
 const version = "1.3.15";
 
 module.exports = {
-    FlightRadar24API: FlightRadar24API,
-    FlightTrackerConfig: FlightTrackerConfig,
-    Airport: Airport, Entity: Entity, Flight: Flight,
-    author: author, version: version,
+    FlightRadar24API,
+    FlightTrackerConfig,
+    Airport, Entity, Flight,
+    author, version,
 };

@@ -2,7 +2,7 @@ const Core = require("./core");
 const APIRequest = require("./request");
 const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
-const { LoginError } = require("./errors");
+const {LoginError} = require("./errors");
 
 
 class FlightTrackerConfig {
