@@ -75,7 +75,7 @@ let airline_icao = "UAE";
 let aircraft_type = "B77W";
 
 # You may also set a custom region, such as: bounds = "73,-12,-156,38"
-let zone = await fr_api.get_zones()["northamerica"];
+let zone = (await fr_api.get_zones())["northamerica"];
 let bounds = fr_api.get_bounds(zone);
 
 let emirates_flights = await fr_api.get_flights(airline_icao, bounds, null, aircraft_type);
@@ -106,7 +106,7 @@ Get the current configuration with the `get_flight_tracker_config()` method, tha
 instance. Note: creating a new `FlightTrackerConfig` instance means resetting all parameters to default.
 ```javascript
 let flight_tracker = fr_api.get_flight_tracker_config();
-let flight_tracker.limit = 10
+flight_tracker.limit = 10
 
 fr_api.set_flight_tracker_config(flight_tracker, ...);
 
