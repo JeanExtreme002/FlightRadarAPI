@@ -2,7 +2,7 @@
 
 import os, sys
 
-current_dir = os.getcwd()
+current_dir = os.path.join(os.getcwd(), "python")
 sys.path.append(current_dir)
 
 from FlightRadar24 import __version__ as version
