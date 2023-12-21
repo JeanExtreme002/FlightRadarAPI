@@ -17,7 +17,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
     describe("Getting Airport By IATA", function() {
         const expected = ["ATL", "LAX", "DXB", "DFW"];
 
-        it("Expected finding the following airports: " + expected.join(", ") + ".", async function() {          
+        it("Expected finding the following airports: " + expected.join(", ") + ".", async function() {
             for (const iata of expected) {
                 const airport = await frApi.getAirport(iata);
                 expect(airport.iata).to.be.equal(iata);
@@ -31,11 +31,11 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
         it("Expected getting details of the following airports: " + expected.join(", ") + ".", async function() {
             const results = [];
-            
+
             for (const iata of expected) {
                 const details = await frApi.getAirportDetails(iata, 1);
-                expect(details).to.have.any.keys(targetKeys); 
-                expect(details["airport"]["pluginData"]).to.have.any.keys("details"); 
+                expect(details).to.have.any.keys(targetKeys);
+                expect(details["airport"]["pluginData"]).to.have.any.keys("details");
             }
         });
     });
@@ -81,7 +81,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
             const middle = Math.trunc(flights.length / 2);
 
             const someFlights = flights.slice(middle - 2, middle + 2);
-            
+
             for (const flight of someFlights) {
                 const details = await frApi.getFlightDetails(flight);
                 expect(details).to.have.any.keys(targetKeys);
@@ -93,7 +93,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const expected = 3;
         const targetAirlines = ["SWA", "GLO", "AZU", "UAL", "THY"];
 
-        let message = "Expected getting flights from at least " + expected 
+        let message = "Expected getting flights from at least " + expected;
         message += " of the following airlines: " + targetAirlines.join(", ") + ".";
 
         it(message, async function() {
@@ -128,7 +128,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
                 for (const flight of flights) {
                     expect(flight.latitude).to.be.below(zone["tl_y"]);
                     expect(flight.latitude).to.be.above(zone["br_y"]);
-                    
+
                     expect(flight.longitude).to.be.below(zone["br_x"]);
                     expect(flight.latitude).to.be.above(zone["tl_x"]);
                 }
@@ -152,5 +152,5 @@ describe("Testing FlightRadarAPI version " + version, function() {
             const bounds = frApi.getBoundsByPoint(52.567967, 13.282644, 2000);
             expect(bounds).to.be.equal(expected);
         });
-    }); 
+    });
 });
