@@ -17,18 +17,18 @@ class APIRequest {
      * @param {object} headers
      * @param {object} data
      * @param {object} cookies
-     * @param {object} exclude_status_codes
+     * @param {object} excludeStatusCodes
      */
-    constructor(url, params=null, headers=null, data=null, cookies=null, exclude_status_codes=[]) {
-        this.request_params = {
+    constructor(url, params = null, headers = null, data = null, cookies = null, excludeStatusCodes = []) {
+        this.requestParams = {
             "params": params,
             "headers": headers,
             "data": data,
             "cookies": cookies,
         };
 
-        this.request_method = data == null ? "GET" : "POST";
-        this.__exclude_status_codes = exclude_status_codes;
+        this.requestMethod = data == null ? "GET" : "POST";
+        this.__excludeStatusCodes = excludeStatusCodes;
 
         if (params != null && Object.keys(params).length > 0) {
             url += "?";
@@ -50,15 +50,15 @@ class APIRequest {
      */
     async receive() {
         const settings = {
-            method: this.request_method,
-            headers: this.request_params["headers"],
-            cookies: this.request_params["cookies"],
+            method: this.requestMethod,
+            headers: this.requestParams["headers"],
+            cookies: this.requestParams["cookies"],
         };
 
         if (settings["method"] == "POST") {
             const formData = new FormData();
 
-            Object.entries(this.request_params["data"]).forEach(([key, value]) => {
+            Object.entries(this.requestParams["data"]).forEach(([key, value]) => {
                 formData.append(key, value);
             });
 
@@ -67,18 +67,18 @@ class APIRequest {
 
         this.__response = await fetch(this.url, settings);
 
-        if (this.get_status_code() == 520) {
+        if (this.getStatusCode() == 520) {
             throw new CloudflareError(
                 message = "An unexpected error has occurred. Perhaps you are making too many calls?",
                 response = this.__response,
             );
         }
 
-        if (!this.__exclude_status_codes.includes(this.get_status_code())) {
-            if (![200, 201, 202].includes(this.get_status_code())) {
+        if (!this.__excludeStatusCodes.includes(this.getStatusCode())) {
+            if (![200, 201, 202].includes(this.getStatusCode())) {
                 throw new Error(
                     "Received status code '" +
-                    this.get_status_code() + ": " +
+                    this.getStatusCode() + ": " +
                     this.__response.statusText + "' for the URL " +
                     this.url,
                 );
@@ -90,15 +90,15 @@ class APIRequest {
     /**
      * Return the received content from the request.
      */
-    async get_content() {
+    async getContent() {
         const content = await this.__response.text();
         this.__content = content;
 
-        let content_type = this.get_headers()["content-type"];
-        content_type = content_type == null ? "" : content_type;
+        let contentType = this.getHeaders()["content-type"];
+        contentType = contentType == null ? "" : contentType;
 
         // Return a dictionary if the content type is JSON.
-        if (content_type.includes("application/json")) {
+        if (contentType.includes("application/json")) {
             this.__content = JSON.parse(content);
         }
         return this.__content;
@@ -107,33 +107,33 @@ class APIRequest {
     /**
      * Return the received cookies from the request.
      */
-    get_cookies() {
+    getCookies() {
         return this.__response.headers.getSetCookie;
     }
 
     /**
      * Return the headers of the response.
      */
-    get_headers() {
-        const headers_as_dict = {};
+    getHeaders() {
+        const headersAsDict = {};
 
         this.__response.headers.forEach((value, key) => {
-            headers_as_dict[key] = value;
+            headersAsDict[key] = value;
         });
-        return headers_as_dict;
+        return headersAsDict;
     }
 
     /**
      * Return the received response object.
      */
-    get_response_object() {
+    getResponseObject() {
         return this.__response;
     }
 
     /**
      * Return the status code of the response.
      */
-    get_status_code() {
+    getStatusCode() {
         return this.__response.status;
     }
 }

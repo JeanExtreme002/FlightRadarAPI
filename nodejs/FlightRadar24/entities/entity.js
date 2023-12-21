@@ -5,11 +5,11 @@ class Entity {
      * @param {number} latitude
      * @param {number} longitude
      */
-    constructor(latitude=null, longitude=null) {
-        this.__set_position(latitude, longitude);
+    constructor(latitude = null, longitude = null) {
+        this.__setPosition(latitude, longitude);
     }
 
-    __set_position(latitude, longitude) {
+    __setPosition(latitude, longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }
@@ -40,7 +40,7 @@ class Entity {
     }
 
     __getInfo(info) {
-        return (info || info === 0) && (info !== this.__default_text) ? info : this.__default_text;
+        return (info || info === 0) && (info !== this.__defaultText) ? info : this.__defaultText;
     }
 
     /**
@@ -49,7 +49,7 @@ class Entity {
      * @param {Entity} entity
      * @return {number}
      */
-    get_distance_from(entity) {
+    getDistanceFrom(entity) {
         Math.radians = (x) => x * (Math.PI / 180);
 
         const lat1 = Math.radians(this.latitude);

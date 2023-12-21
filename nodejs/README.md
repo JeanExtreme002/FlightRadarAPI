@@ -24,31 +24,31 @@ Import the class `FlightRadar24API` and create an instance of it.
 
 ```javascript
 const { FlightRadar24API } = require("flightradarapi");
-const fr_api = new FlightRadar24API();
+const frApi = new FlightRadar24API();
 ```
 
 **Getting flights list:**
 
 ```javascript
-let flights = await fr_api.get_flights(...);  // Returns a list of Flight objects
+let flights = await frApi.getFlights(...);  // Returns a list of Flight objects
 ```
 
 **Getting airports list:**
 
 ```javascript
-let airports = await fr_api.get_airports(...);  // Returns a list of Airport objects
+let airports = await frApi.getAirports(...);  // Returns a list of Airport objects
 ```
 
 **Getting airlines list:**
 
 ```javascript
-let airlines = await fr_api.get_airlines();
+let airlines = await frApi.getAirlines();
 ```
 
 **Getting zones list:**
 
 ```javascript
-let zones = await fr_api.get_zones();
+let zones = await frApi.getZones();
 ```
 
 ### Getting flight and airport details
@@ -56,86 +56,86 @@ let zones = await fr_api.get_zones();
 You can also get more information about a specific flight such as: estimated time, trail, aircraft details, etc.
 
 ```javascript
-let flight_details = await fr_api.get_flight_details(flight);
-flight.set_flight_details(flight_details);
+let flightDetails = await frApi.getFlightDetails(flight);
+flight.setFlightDetails(flightDetails);
 
-console.log("Flying to", flight.destination_airport_name);
+console.log("Flying to", flight.destinationAirportName);
 ```
 
 Or get more information about a specific airport such as: runways, temperature, arrived flights, etc.
 
 ```javascript
-let airport_details = await fr_api.get_airport_details(airport.icao);
+let airportDetails = await frApi.getAirportDetails(airport.icao);
 ```
 
-Arrivals and departures can have a limit `flight_limit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
+Arrivals and departures can have a limit `flightLimit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
 
 ## Get flights above your position:
 
-The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` for your position and `radius` for the distance in meters from your position to designate a tracking area.
+The `getBoundsByPoint(...)` method has parameters `latitude` and `longitude` for your position and `radius` for the distance in meters from your position to designate a tracking area.
 
 ```javascript
 // Your point is 52°34'04.7"N 13°16'57.5"E from Google Maps and radius 2km
-let bounds = fr_api.get_bounds_by_point(52.567967, 13.282644, 2000);
+let bounds = frApi.getBoundsByPoint(52.567967, 13.282644, 2000);
 
-let flights = await fr_api.get_flights(null, bounds);
+let flights = await frApi.getFlights(null, bounds);
 ```
 
 ## Filtering flights and airports:
 
-The `get_flights(...)` method has some parameters to search for flights by: area line, bounds (customized coordinates
-or obtained by the `get_zones()` method), aircraft registration or aircraft type. See the example below:
+The `getFlights(...)` method has some parameters to search for flights by: area line, bounds (customized coordinates
+or obtained by the `getZones()` method), aircraft registration or aircraft type. See the example below:
 
 ```javascript
-let airline_icao = "UAE";
-let aircraft_type = "B77W";
+let airlineIcao = "UAE";
+let aircraftType = "B77W";
 
 // You may also set a custom region, such as: bounds = "73,-12,-156,38"
-let zone = (await fr_api.get_zones())["northamerica"];
-let bounds = fr_api.get_bounds(zone);
+let zone = (await frApi.getZones())["northamerica"];
+let bounds = frApi.getBounds(zone);
 
-let emirates_flights = await fr_api.get_flights(
-  airline_icao,
+let emiratesFlights = await frApi.getFlights(
+  airlineIcao,
   bounds,
   null,
-  aircraft_type,
+  aircraftType,
 );
 ```
 
-There are more configurations that you may set by using the `set_flight_tracker_config(...)` method. See the method documentation
+There are more configurations that you may set by using the `setFlightTrackerConfig(...)` method. See the method documentation
 for more information.
 
 **Getting airport by ICAO or IATA:**
 
 ```javascript
-let lukla_airport = await fr_api.get_airport("VNLK");
+let luklaAirport = await frApi.getAirport("VNLK");
 ```
 
 ## Getting the distance between flights and airports:
 
-The `Flight` and `Airport` classes inherit from `Entity`, which contains the `get_distance_from(...)` method. That method
+The `Flight` and `Airport` classes inherit from `Entity`, which contains the `getDistanceFrom(...)` method. That method
 returns the distance between the self instance and another entity in kilometers. Example:
 
 ```javascript
-let airport = await fr_api.get_airport("KJFK");
-let distance = flight.get_distance_from(airport);
+let airport = await frApi.getAirport("KJFK");
+let distance = flight.getDistanceFrom(airport);
 
 console.log("The flight is", distance, "km away from the airport.");
 ```
 
 ## Setting and getting Real-time Flight Tracker parameters:
 
-Set it by using the `set_flight_tracker_config(...)` method. It receives a `FlightTrackerConfig` dataclass instance, but
+Set it by using the `setFlightTrackerConfig(...)` method. It receives a `FlightTrackerConfig` dataclass instance, but
 you can also use keyword arguments directly to the method.
 
-Get the current configuration with the `get_flight_tracker_config()` method, that returns a `FlightTrackerConfig`
+Get the current configuration with the `getFlightTrackerConfig()` method, that returns a `FlightTrackerConfig`
 instance. Note: creating a new `FlightTrackerConfig` instance means resetting all parameters to default.
 
 ```javascript
-let flight_tracker = fr_api.get_flight_tracker_config();
-flight_tracker.limit = 10
+let flightTracker = frApi.getFlightTrackerConfig();
+flightTracker.limit = 10
 
-fr_api.set_flight_tracker_config(flight_tracker, ...);
+frApi.setFlightTrackerConfig(flightTracker, ...);
 
-let flights = fr_api.get_flights(...);  // Returns only 10 flights
+let flights = await frApi.getFlights(...);  // Returns only 10 flights
 ```

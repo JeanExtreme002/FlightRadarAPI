@@ -2,7 +2,7 @@ const Core = require("./core");
 const APIRequest = require("./request");
 const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
-const {LoginError} = require("./errors");
+const { LoginError } = require("./errors");
 
 
 class FlightTrackerConfig {
@@ -74,18 +74,18 @@ class FlightRadar24API {
      */
 
     constructor() {
-        this.__flight_tracker_config = new FlightTrackerConfig();
-        this.__login_data = null;
+        this.__flightTrackerConfig = new FlightTrackerConfig();
+        this.__loginData = null;
     }
 
     /**
      * Return a list with all airlines.
      */
-    async get_airlines() {
-        const response = new APIRequest(Core.airlines_data_url, null, Core.json_headers);
+    async getAirlines() {
+        const response = new APIRequest(Core.airlinesDataUrl, null, Core.jsonHeaders);
         await response.receive();
 
-        return (await response.get_content())["rows"];
+        return (await response.getContent())["rows"];
     }
 
     /**
@@ -94,34 +94,34 @@ class FlightRadar24API {
      * @param {string} iata
      * @param {string} icao
      */
-    async get_airline_logo(iata, icao) {
+    async getAirlineLogo(iata, icao) {
         iata = iata.toUpperCase();
         icao = icao.toUpperCase();
 
-        let first_logo_url = Core.airline_logo_url.split("{}");
-        first_logo_url = first_logo_url[0] + iata + first_logo_url[1] + icao + first_logo_url[2];
+        let firstLogoUrl = Core.airlineLogoUrl.split("{}");
+        firstLogoUrl = firstLogoUrl[0] + iata + firstLogoUrl[1] + icao + firstLogoUrl[2];
 
         // Try to get the image by the first URL option.
-        let response = new APIRequest(first_logo_url, null, Core.image_headers, null, null, [403]);
+        let response = new APIRequest(firstLogoUrl, null, Core.imageHeaders, null, null, [403]);
         await response.receive();
 
-        let status_code = response.get_status_code();
+        let statusCode = response.getStatusCode();
 
-        if (!status_code.toString().startsWith("4")) {
-            const split_url = first_logo_url.split(".");
-            return [(await response.get_content()), split_url[split_url.length]];
+        if (!statusCode.toString().startsWith("4")) {
+            const splitUrl = firstLogoUrl.split(".");
+            return [(await response.getContent()), splitUrl[splitUrl.length]];
         }
 
         // Get the image by the second airline logo URL.
-        const second_logo_url = Core.alternative_airline_logo_url.replace("{}", icao);
+        const secondLogoUrl = Core.alternativeAirlineLogoUrl.replace("{}", icao);
 
-        response = new APIRequest(second_logo_url, null, Core.image_headers);
+        response = new APIRequest(secondLogoUrl, null, Core.imageHeaders);
         await response.receive();
 
-        status_code = response.get_status_code();
+        statusCode = response.getStatusCode();
 
-        if (!status_code.toString().startsWith("4")) {
-            return [(await response.get_content()), second_logo_url.split(".")[-1]];
+        if (!statusCode.toString().startsWith("4")) {
+            return [(await response.getContent()), secondLogoUrl.split(".")[-1]];
         }
     }
 
@@ -131,39 +131,39 @@ class FlightRadar24API {
      * @param {string} code - ICAO or IATA of the airport
      * @return {Airport}
      */
-    async get_airport(code) {
-        const response = new APIRequest(Core.airport_data_url.replace("{}", code), null, Core.json_headers);
+    async getAirport(code) {
+        const response = new APIRequest(Core.airportDataUrl.replace("{}", code), null, Core.jsonHeaders);
         await response.receive();
 
-        return new Airport({}, (await response.get_content())["details"]);
+        return new Airport({}, (await response.getContent())["details"]);
     }
 
     /**
      * Return the airport details from FlightRadar24.
      *
      * @param {string} code - ICAO or IATA of the airport
-     * @param {number} flight_limit - Limit of flights related to the airport
+     * @param {number} flightLimit - Limit of flights related to the airport
      * @param {number} page - Page of result to display
      */
-    async get_airport_details(code, flight_limit = 100, page = 1) {
-        const request_params = {"format": "json"};
+    async getAirportDetails(code, flightLimit = 100, page = 1) {
+        const requestParams = {"format": "json"};
 
-        if (this.__login_data != null) {
-            request_params["token"] = this.__login_data["cookies"]["_frPl"];
+        if (this.__loginData != null) {
+            requestParams["token"] = this.__loginData["cookies"]["_frPl"];
         }
 
         // Insert the method parameters into the dictionary for the request.
-        request_params["code"] = code;
-        request_params["limit"] = flight_limit;
-        request_params["page"] = page;
+        requestParams["code"] = code;
+        requestParams["limit"] = flightLimit;
+        requestParams["page"] = page;
 
         // Request details from the FlightRadar24.
-        const response = new APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, null, null, [400]);
+        const response = new APIRequest(Core.apiAirportDataUrl, requestParams, Core.jsonHeaders, null, null, [400]);
         await response.receive();
 
-        const content = await response.get_content();
+        const content = await response.getContent();
 
-        if (response.get_status_code() == 400 && typeof(content) == "object" && content["errors"]) {
+        if (response.getStatusCode() == 400 && typeof(content) == "object" && content["errors"]) {
             throw Error(content["errors"]["errors"]["parameters"]["limit"]["notBetween"]);
         }
         return content["result"]["response"];
@@ -172,15 +172,15 @@ class FlightRadar24API {
     /**
      * Return a list with all airports.
      */
-    async get_airports() {
-        const response = new APIRequest(Core.airports_data_url, null, Core.json_headers);
+    async getAirports() {
+        const response = new APIRequest(Core.airportsDataUrl, null, Core.jsonHeaders);
         await response.receive();
 
-        const content = await response.get_content();
+        const content = await response.getContent();
         const airports = [];
 
-        for (const airport_data of content["rows"]) {
-            const airport = new Airport(airport_data);
+        for (const airportData of content["rows"]) {
+            const airport = new Airport(airportData);
             airports.push(airport);
         }
         return airports;
@@ -192,7 +192,7 @@ class FlightRadar24API {
      * @param {object} zone - Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
      * @return {string}
      */
-    get_bounds(zone) {
+    getBounds(zone) {
         return "" + zone["tl_y"] + "," + zone["br_y"] + "," + zone["tl_x"] + "," + zone["br_x"];
     }
 
@@ -204,8 +204,8 @@ class FlightRadar24API {
      * @param {number} radius - Radius in meters to create area around the point
      * @return {string}
      */
-    get_bounds_by_point(latitude, longitude, radius) {
-        const half_side_in_km = Math.abs(radius) / 1000;
+    getBoundsByPoint(latitude, longitude, radius) {
+        const halfSideInKm = Math.abs(radius) / 1000;
 
         Math.rad2deg = (x) => x * (180 / Math.PI);
         Math.radians = (x) => x * (Math.PI / 180);
@@ -213,44 +213,44 @@ class FlightRadar24API {
         const lat = Math.radians(latitude);
         const lon = Math.radians(longitude);
 
-        const approx_earth_radius = 6371;
-        const hypotenuse_distance = Math.sqrt(2 * (Math.pow(half_side_in_km, 2)));
+        const approxEarthRadius = 6371;
+        const hypotenuseDistance = Math.sqrt(2 * (Math.pow(halfSideInKm, 2)));
 
-        const lat_min = Math.asin(
-            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius) +
+        const latMin = Math.asin(
+            Math.sin(lat) * Math.cos(hypotenuseDistance / approxEarthRadius) +
             Math.cos(lat) *
-            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(225 * (Math.PI / 180)),
         );
-        const lon_min = lon + Math.atan2(
+        const lonMin = lon + Math.atan2(
             Math.sin(225 * (Math.PI / 180)) *
-            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(lat),
-            Math.cos(hypotenuse_distance / approx_earth_radius) -
-            Math.sin(lat) * Math.sin(lat_min),
+            Math.cos(hypotenuseDistance / approxEarthRadius) -
+            Math.sin(lat) * Math.sin(latMin),
         );
 
-        const lat_max = Math.asin(
-            Math.sin(lat) * Math.cos(hypotenuse_distance / approx_earth_radius) +
+        const latMax = Math.asin(
+            Math.sin(lat) * Math.cos(hypotenuseDistance / approxEarthRadius) +
             Math.cos(lat) *
-            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(45 * (Math.PI / 180)),
         );
-        const lon_max = lon + Math.atan2(
+        const lonMax = lon + Math.atan2(
             Math.sin(45 * (Math.PI / 180)) *
-            Math.sin(hypotenuse_distance / approx_earth_radius) *
+            Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(lat),
-            Math.cos(hypotenuse_distance / approx_earth_radius) -
-            Math.sin(lat) * Math.sin(lat_max),
+            Math.cos(hypotenuseDistance / approxEarthRadius) -
+            Math.sin(lat) * Math.sin(latMax),
         );
 
         const zone = {
-            "tl_y": Math.rad2deg(lat_max),
-            "br_y": Math.rad2deg(lat_min),
-            "tl_x": Math.rad2deg(lon_min),
-            "br_x": Math.rad2deg(lon_max),
+            "tl_y": Math.rad2deg(latMax),
+            "br_y": Math.rad2deg(latMin),
+            "tl_x": Math.rad2deg(lonMin),
+            "br_x": Math.rad2deg(lonMax),
         };
-        return this.get_bounds(zone);
+        return this.getBounds(zone);
     }
 
     /**
@@ -258,22 +258,22 @@ class FlightRadar24API {
      *
      * @param {string} - Country name
      */
-    async get_country_flag(country) {
-        const flag_url = Core.country_flag_url.replace("{}", country.toLowerCase().replace(" ", "-"));
-        const headers = {...Core.image_headers};
+    async getCountryFlag(country) {
+        const flagUrl = Core.countryFlagUrl.replace("{}", country.toLowerCase().replace(" ", "-"));
+        const headers = {...Core.imageHeaders};
 
         if (headers.hasOwnProperty("origin")) {
             delete headers["origin"]; // Does not work for this request.
         }
 
-        const response = new APIRequest(flag_url, null, headers);
+        const response = new APIRequest(flagUrl, null, headers);
         await response.receive();
 
-        const status_code = response.get_status_code();
+        const statusCode = response.getStatusCode();
 
-        if (!status_code.toString().startsWith("4")) {
-            const split_url = flag_url.split(".");
-            return [(await response.get_content()), split_url[split_url.length]];
+        if (!statusCode.toString().startsWith("4")) {
+            const splitUrl = flagUrl.split(".");
+            return [(await response.getContent()), splitUrl[splitUrl.length]];
         }
     }
 
@@ -282,48 +282,48 @@ class FlightRadar24API {
      *
      * @param {Flight} flight - A Flight instance.
      */
-    async get_flight_details(flight) {
-        const response = new APIRequest(Core.flight_data_url.replace("{}", flight.id), null, Core.json_headers);
+    async getFlightDetails(flight) {
+        const response = new APIRequest(Core.flightDataUrl.replace("{}", flight.id), null, Core.jsonHeaders);
         await response.receive();
 
-        return (await response.get_content());
+        return (await response.getContent());
     }
 
     /**
-     * Return a list of flights. See more options at set_flight_tracker_config() method.
+     * Return a list of flights. See more options at setFlightTrackerConfig() method.
      *
      * @param {string} airline - The airline ICAO. Ex: "DAL"
      * @param {string} bounds - Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
      * @param {string} registration - Aircraft registration
-     * @param {string} aircraft_type - Aircraft model code. Ex: "B737"
+     * @param {string} aircraftType - Aircraft model code. Ex: "B737"
      * @param {boolean} details -  If true, it returns flights with detailed information
      */
-    async get_flights(airline = null, bounds = null, registration = null, aircraft_type = null, details = false) {
-        const request_params = this.__flight_tracker_config.asdict();
+    async getFlights(airline = null, bounds = null, registration = null, aircraftType = null, details = false) {
+        const requestParams = this.__flightTrackerConfig.asdict();
 
-        if (this.__login_data != null) {
-            request_params["enc"] = this.__login_data["cookies"]["_frPl"];
+        if (this.__loginData != null) {
+            requestParams["enc"] = this.__loginData["cookies"]["_frPl"];
         }
 
         // Insert the method parameters into the dictionary for the request.
         if (airline != null) {
-            request_params["airline"] = airline;
+            requestParams["airline"] = airline;
         }
         if (bounds != null) {
-            request_params["bounds"] = bounds.replace(",", "%2C");
+            requestParams["bounds"] = bounds.replace(",", "%2C");
         }
         if (registration != null) {
-            request_params["reg"] = registration;
+            requestParams["reg"] = registration;
         }
-        if (aircraft_type != null) {
-            request_params["type"] = aircraft_type;
+        if (aircraftType != null) {
+            requestParams["type"] = aircraftType;
         }
 
         // Get all flights from Data Live FlightRadar24.
-        const response = new APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers);
+        const response = new APIRequest(Core.realTimeFlightTrackerDataUrl, requestParams, Core.jsonHeaders);
         await response.receive();
 
-        const content = await response.get_content();
+        const content = await response.getContent();
         const flights = [];
 
         function isNumeric(string) {
@@ -335,21 +335,21 @@ class FlightRadar24API {
             return true;
         }
 
-        for (const flight_id in content) {
-            const flight_info = content[flight_id];
+        for (const flightId in content) {
+            const flightInfo = content[flightId];
 
             // Get flights only.
-            if (!isNumeric(flight_id[0])) {
+            if (!isNumeric(flightId[0])) {
                 continue;
             }
 
-            const flight = new Flight(flight_id, flight_info);
+            const flight = new Flight(flightId, flightInfo);
             flights.push(flight);
 
             // Set flight details.
             if (details) {
-                const flight_details = await this.get_flight_details(flight);
-                flight.set_flight_details(flight_details);
+                const flightDetails = await this.getFlightDetails(flight);
+                flight.setFlightDetails(flightDetails);
             }
         }
 
@@ -357,42 +357,42 @@ class FlightRadar24API {
     }
 
     /**
-     * Return a copy of the current config of the Real Time Flight Tracker, used by get_flights() method.
+     * Return a copy of the current config of the Real Time Flight Tracker, used by getFlights() method.
      *
      * @return {FlightTrackerConfig}
      */
-    get_flight_tracker_config() {
-        return new FlightTrackerConfig(this.__flight_tracker_config.asdict());
+    getFlightTrackerConfig() {
+        return new FlightTrackerConfig(this.__flightTrackerConfig.asdict());
     }
 
     /**
      * Return the user data.
      */
-    get_login_data() {
-        if (!this.is_logged_in()) {
+    getLoginData() {
+        if (!this.isLoggedIn()) {
             throw new LoginError("You must log in to your account.");
         }
-        return {...this.__login_data["userData"]};
+        return {...this.__loginData["userData"]};
     }
 
     /**
      * Return the most tracked data.
      */
-    async get_most_tracked() {
-        const response = new APIRequest(Core.most_tracked_url, null, Core.json_headers);
+    async getMostTracked() {
+        const response = new APIRequest(Core.mostTrackedUrl, null, Core.jsonHeaders);
         await response.receive();
 
-        return await response.get_content();
+        return await response.getContent();
     }
 
     /**
      * Return all major zones on the globe.
      */
-    async get_zones() {
-        const response = new APIRequest(Core.zones_data_url, null, Core.json_headers);
+    async getZones() {
+        const response = new APIRequest(Core.zonesDataUrl, null, Core.jsonHeaders);
         await response.receive();
 
-        const zones = await response.get_content();
+        const zones = await response.getContent();
 
         if (zones.hasOwnProperty("version")) {
             delete zones["version"];
@@ -406,10 +406,10 @@ class FlightRadar24API {
      * @param {string} query
      */
     async search(query) {
-        const response = new APIRequest(Core.search_data_url.replace("{}", query), null, Core.json_headers);
+        const response = new APIRequest(Core.searchDataUrl.replace("{}", query), null, Core.jsonHeaders);
         await response.receive();
 
-        const content = await response.get_content();
+        const content = await response.getContent();
 
         let results = content["results"];
         results = results == null ? [] : results;
@@ -417,24 +417,24 @@ class FlightRadar24API {
         let stats = content["stats"];
         stats = stats == null ? {} : stats;
 
-        let count_dict = stats["count"];
-        count_dict = count_dict == null ? {} : count_dict;
+        let countDict = stats["count"];
+        countDict = countDict == null ? {} : countDict;
 
         let index = 0;
-        let counted_total = 0;
+        let countedTotal = 0;
 
         const data = {};
 
-        for (const name in count_dict) {
-            const count = count_dict[name];
+        for (const name in countDict) {
+            const count = countDict[name];
 
             data[name] = [];
 
-            while (index < (counted_total + count) && (index < results.length)) {
+            while (index < (countedTotal + count) && (index < results.length)) {
                 data[name].push(results[index]);
                 index++;
             }
-            counted_total += count;
+            countedTotal += count;
         }
 
         return data;
@@ -445,8 +445,8 @@ class FlightRadar24API {
      *
      * @return {boolean}
      */
-    is_logged_in() {
-        return this.__login_data != null;
+    isLoggedIn() {
+        return this.__loginData != null;
     }
 
     /**
@@ -463,13 +463,13 @@ class FlightRadar24API {
             "type": "web",
         };
 
-        const response = new APIRequest(Core.user_login_url, null, Core.json_headers, data);
+        const response = new APIRequest(Core.userLoginUrl, null, Core.jsonHeaders, data);
         await response.receive();
 
-        const status_code = response.get_status_code();
-        const content = await response.get_content();
+        const statusCode = response.getStatusCode();
+        const content = await response.getContent();
 
-        if (!status_code.toString().startsWith("2") || !content["success"]) {
+        if (!statusCode.toString().startsWith("2") || !content["success"]) {
             if (typeof(content) == "object") {
                 throw new LoginError(content["message"]);
             } else {
@@ -477,9 +477,9 @@ class FlightRadar24API {
             }
         }
 
-        this.__login_data = {
+        this.__loginData = {
             "userData": content["userData"],
-            "cookies": response.get_cookies(),
+            "cookies": response.getCookies(),
         };
     }
 
@@ -489,37 +489,37 @@ class FlightRadar24API {
      * @return {boolean} - Return a boolean indicating that it successfully logged out of the server.
      */
     async logout() {
-        if (this.__login_data == null) {
+        if (this.__loginData == null) {
             return true;
         }
 
-        const cookies = this.__login_data["cookies"];
-        this.__login_data = null;
+        const cookies = this.__loginData["cookies"];
+        this.__loginData = null;
 
-        const response = new APIRequest(Core.user_login_url, null, Core.json_headers, null, cookies);
+        const response = new APIRequest(Core.userLoginUrl, null, Core.jsonHeaders, null, cookies);
         await response.receive();
 
-        return response.get_status_code().toString().startsWith("2");
+        return response.getStatusCode().toString().startsWith("2");
     }
 
     /**
-     * Set config for the Real Time Flight Tracker, used by get_flights() method.
+     * Set config for the Real Time Flight Tracker, used by getFlights() method.
      *
-     * @param {FlightTrackerConfig} flight_tracker_config - If null, set to default config.
+     * @param {FlightTrackerConfig} flightTrackerConfig - If null, set to default config.
      */
-    async set_flight_tracker_config(flight_tracker_config = null, config = {}) {
-        if (flight_tracker_config != null) {
-            this.__flight_tracker_config = flight_tracker_config;
+    async setFlightTrackerConfig(flightTrackerConfig = null, config = {}) {
+        if (flightTrackerConfig != null) {
+            this.__flightTrackerConfig = flightTrackerConfig;
         }
 
-        const current_config_dict = this.__flight_tracker_config.asdict();
+        const currentConfigDict = this.__flightTrackerConfig.asdict();
 
         for (const key in config) {
             const value = config[key].toString();
-            current_config_dict[key] = value;
+            currentConfigDict[key] = value;
         }
 
-        this.__flight_tracker_config = new FlightTrackerConfig(current_config_dict);
+        this.__flightTrackerConfig = new FlightTrackerConfig(currentConfigDict);
     }
 }
 

@@ -6,11 +6,11 @@ class Airport extends Entity {
      * Airport representation.
      */
 
-    static __default_text = "N/A";
+    static __defaultText = "N/A";
 
     __proxyHandler = {
         get: function(target, name) {
-            return name in target? target[name] : target.__raw_information[name];
+            return name in target? target[name] : target.__rawInformation[name];
         },
     };
 
@@ -24,16 +24,16 @@ class Airport extends Entity {
         super();
 
         if (info && Object.keys(info).length > 0) {
-            this.__set_position(info["lat"], info["lon"]);
+            this.__setPosition(info["lat"], info["lon"]);
             this.__initializeWithBasicInfo(info);
         }
 
         if (details && Object.keys(details).length > 0) {
-            this.__set_position(details["position"]["latitude"], details["position"]["longitude"]);
+            this.__setPosition(details["position"]["latitude"], details["position"]["longitude"]);
             this.__initializeWithDetails(details);
         }
 
-        this.__raw_information = Object.assign(info, details);
+        this.__rawInformation = Object.assign(info, details);
 
         return new Proxy(this, this.__proxyHandler);
     }
@@ -67,17 +67,17 @@ class Airport extends Entity {
         const position = this.__createGetterMethodFor(details["position"]);
 
         this.country = position["country"]["name"];
-        this.country_code = this.__getInfo(position.get("country", {}).get("code"));
+        this.countryCode = this.__getInfo(position.get("country", {}).get("code"));
         this.city = this.__getInfo(position.get("region", {})).get("city");
 
         // Timezone information.
         const timezone = details.get("timezone", {});
 
-        this.timezone_name = this.__getInfo(timezone.get("name"));
-        this.timezone_offset = this.__getInfo(timezone.get("offset"));
-        this.timezone_offsetHours = this.__getInfo(timezone.get("offsetHours"));
-        this.timezone_abbr = this.__getInfo(timezone.get("abbr"));
-        this.timezone_abbr_name = this.__getInfo(timezone.get("abbrName"));
+        this.timezoneName = this.__getInfo(timezone.get("name"));
+        this.timezoneOffset = this.__getInfo(timezone.get("offset"));
+        this.timezoneOffsethours = this.__getInfo(timezone.get("offsetHours"));
+        this.timezoneAbbr = this.__getInfo(timezone.get("abbr"));
+        this.timezoneAbbrName = this.__getInfo(timezone.get("abbrName"));
 
         // Other information.
         this.visible = this.__getInfo(details.get("visible"));

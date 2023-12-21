@@ -1,42 +1,42 @@
 class Core {
     constructor() {
-        this.api_flightradar_base_url = "https://api.flightradar24.com/common/v1";
-        this.cdn_flightradar_base_url = "https://cdn.flightradar24.com";
-        this.flightradar_base_url = "https://www.flightradar24.com";
-        this.data_live_base_url = "https://data-live.flightradar24.com";
-        this.data_cloud_base_url = "https://data-cloud.flightradar24.com";
+        this.apiFlightradarBaseUrl = "https://api.flightradar24.com/common/v1";
+        this.cdnFlightradarBaseUrl = "https://cdn.flightradar24.com";
+        this.flightRadarBaseUrl = "https://www.flightradar24.com";
+        this.dataLiveBaseUrl = "https://data-live.flightradar24.com";
+        this.dataCloudBaseUrl = "https://data-cloud.flightradar24.com";
 
         // User login URL.
-        this.user_login_url = this.flightradar_base_url + "/user/login";
-        this.user_logout_url = this.flightradar_base_url + "/user/logout";
+        this.userLoginUrl = this.flightRadarBaseUrl + "/user/login";
+        this.userLogoutUrl = this.flightRadarBaseUrl + "/user/logout";
 
         // Most tracked data URL
-        this.most_tracked_url = this.flightradar_base_url + "/flights/most-tracked";
+        this.mostTrackedUrl = this.flightRadarBaseUrl + "/flights/most-tracked";
 
         // Search data URL
-        this.search_data_url = this.flightradar_base_url + "/v1/search/web/find?query={}&limit=50";
+        this.searchDataUrl = this.flightRadarBaseUrl + "/v1/search/web/find?query={}&limit=50";
 
         // Flights data URLs.
-        this.real_time_flight_tracker_data_url = this.data_cloud_base_url + "/zones/fcgi/feed.js";
-        this.flight_data_url = this.data_live_base_url + "/clickhandler/?flight={}";
+        this.realTimeFlightTrackerDataUrl = this.dataCloudBaseUrl + "/zones/fcgi/feed.js";
+        this.flightDataUrl = this.dataLiveBaseUrl + "/clickhandler/?flight={}";
 
         // Airports data URLs.
-        this.api_airport_data_url = this.api_flightradar_base_url + "/airport.json";
-        this.airport_data_url = this.flightradar_base_url + "/airports/traffic-stats/?airport={}";
-        this.airports_data_url = this.flightradar_base_url + "/_json/airports.php";
+        this.apiAirportDataUrl = this.apiFlightradarBaseUrl + "/airport.json";
+        this.airportDataUrl = this.flightRadarBaseUrl + "/airports/traffic-stats/?airport={}";
+        this.airportsDataUrl = this.flightRadarBaseUrl + "/_json/airports.php";
 
         // Airlines data URL.
-        this.airlines_data_url = this.flightradar_base_url + "/_json/airlines.php";
+        this.airlinesDataUrl = this.flightRadarBaseUrl + "/_json/airlines.php";
 
         // Zones data URL.
-        this.zones_data_url = this.flightradar_base_url + "/js/zones.js.php";
+        this.zonesDataUrl = this.flightRadarBaseUrl + "/js/zones.js.php";
 
         // Country flag image URL.
-        this.country_flag_url = this.flightradar_base_url + "/static/images/data/flags-small/{}.svg";
+        this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
 
         // Airline logo image URL.
-        this.airline_logo_url = this.cdn_flightradar_base_url + "/assets/airlines/logotypes/{}_{}.png";
-        this.alternative_airline_logo_url = this.flightradar_base_url + "/static/images/data/operators/{}_logo0.png";
+        this.airlineLogoUrl = this.cdnFlightradarBaseUrl + "/assets/airlines/logotypes/{}_{}.png";
+        this.alternativeAirlineLogoUrl = this.flightRadarBaseUrl + "/static/images/data/operators/{}_logo0.png";
 
         this.headers = {
             "accept-encoding": "gzip, br",
@@ -50,9 +50,9 @@ class Core {
             "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
         };
 
-        this.json_headers = {accept: "application/json", ...this.headers};
+        this.jsonHeaders = {accept: "application/json", ...this.headers};
 
-        this.image_headers = {accept: "image/gif, image/jpg, image/jpeg, image/png", ...this.headers};
+        this.imageHeaders = {accept: "image/gif, image/jpg, image/jpeg, image/png", ...this.headers};
     }
 }
 
