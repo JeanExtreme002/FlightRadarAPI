@@ -29,7 +29,7 @@ class FlightTrackerConfig {
             if (!target.hasOwnProperty(key)) {
                 throw new Error("Unknown option: '" + key + "'");
             }
-            if ((typeof(value) != "number") && (!target.__isNumeric(value))) {
+            if ((typeof value !== "number") && (!target.__isNumeric(value))) {
                 throw new Error("Value must be a decimal. Got '" + key + "'");
             }
             target[key] = value.toString();
@@ -40,7 +40,7 @@ class FlightTrackerConfig {
         for (const key in data) {
             const value = data[key];
 
-            if (this.hasOwnProperty(key) && (typeof(value) == "number" || this.__isNumeric(value))) {
+            if (this.hasOwnProperty(key) && (typeof value === "number" || this.__isNumeric(value))) {
                 this[key] = value;
             }
         }
@@ -163,7 +163,7 @@ class FlightRadar24API {
 
         const content = await response.getContent();
 
-        if (response.getStatusCode() == 400 && typeof(content) == "object" && content["errors"]) {
+        if (response.getStatusCode() === 400 && typeof content === "object" && content["errors"]) {
             throw Error(content["errors"]["errors"]["parameters"]["limit"]["notBetween"]);
         }
         return content["result"]["response"];
@@ -470,7 +470,7 @@ class FlightRadar24API {
         const content = await response.getContent();
 
         if (!statusCode.toString().startsWith("2") || !content["success"]) {
-            if (typeof(content) == "object") {
+            if (typeof content === "object") {
                 throw new LoginError(content["message"]);
             } else {
                 throw new LoginError("Your email or password is incorrect");

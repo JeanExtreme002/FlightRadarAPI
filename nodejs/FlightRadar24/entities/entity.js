@@ -22,7 +22,7 @@ class Entity {
                 value = this[x];
             }
 
-            if (recursive && (value != null && typeof(value) === "object")) {
+            if (recursive && (value != null && typeof value === "object")) {
                 value.get = getter;
             }
             return value;
