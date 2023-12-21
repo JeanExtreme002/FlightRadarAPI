@@ -87,9 +87,11 @@ def test_get_flights_by_airline(airlines = ["SWA", "GLO", "AZU", "UAL", "THY"], 
 
 
 @repeat_test(**repeat_test_config)
-def test_get_flights_by_bounds(zones = ["northamerica", "southamerica"], expect = 30):
-    for zone in zones:
-        zone = fr_api.get_zones()[zone]
+def test_get_flights_by_bounds(target_zones = ["northamerica", "southamerica"], expect = 30):
+    zones = fr_api.get_zones()
+    
+    for zone in target_zones:
+        zone = zones[zone]
         bounds = fr_api.get_bounds(zone)
 
         flights = fr_api.get_flights(bounds = bounds)
