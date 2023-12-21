@@ -64,7 +64,7 @@ The `get_bounds_by_point(...)` method has parameters `latitude` and `longitude` 
 // Your point is 52°34'04.7"N 13°16'57.5"E from Google Maps and radius 2km
 let bounds = fr_api.get_bounds_by_point(52.567967, 13.282644, 2000);
 
-let flights = fr_api.get_flights(null, bounds);
+let flights = await fr_api.get_flights(null, bounds);
 ```
 
 ## Filtering flights and airports:
