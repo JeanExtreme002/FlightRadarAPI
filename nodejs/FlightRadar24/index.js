@@ -10,17 +10,19 @@
  * https://www.flightradar24.com/terms-and-conditions
  */
 
+const {CloudflareError, LoginError} = require("./errors");
 const {FlightRadar24API, FlightTrackerConfig} = require("./api");
 const Airport = require("./entities/airport");
 const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
 
 const author = "Jean Loui Bernard Silva de Jesus";
-const version = "1.3.15";
+const version = "1.3.16";
 
 module.exports = {
     FlightRadar24API,
     FlightTrackerConfig,
     Airport, Entity, Flight,
+    CloudflareError, LoginError,
     author, version,
 };

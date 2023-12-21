@@ -19,4 +19,4 @@ class CloudflareError extends Error {
     }
 }
 
-module.exports = {LoginError: LoginError, CloudflareError: CloudflareError};
+module.exports = {LoginError, CloudflareError};

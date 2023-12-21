@@ -523,4 +523,4 @@ class FlightRadar24API {
     }
 }
 
-module.exports = {FlightRadar24API: FlightRadar24API, FlightTrackerConfig: FlightTrackerConfig};
+module.exports = {FlightRadar24API, FlightTrackerConfig};
