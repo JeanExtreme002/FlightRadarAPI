@@ -60,7 +60,7 @@ class Flight(Entity):
         You can use the prefix "max_" or "min_" in the parameter
         to compare numeric data with ">" or "<".
 
-        Example: check_info(min_altitude = 6700, max_altitude = 13000, icao = "THY")
+        Example: check_info(min_altitude = 6700, max_altitude = 13000, airline_icao = "THY")
         """
 
         comparison_functions = {"max": max, "min": min}

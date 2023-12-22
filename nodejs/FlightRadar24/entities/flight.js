@@ -41,10 +41,10 @@ class Flight extends Entity {
     /**
      * Check one or more flight information.
      *
-     * You can use the prefix "max_" or "min_" in the parameter
+     * You can use the prefix "max" or "min" in the parameter
      * to compare numeric data with ">" or "<".
      *
-     * Example: checkInfo({min_altitude: 6700}, {max_altitude: 13000}, {icao: "THY"})
+     * Example: checkInfo({minAltitude: 6700, maxAltitude: 13000, airlineIcao: "THY"})
      * @param {object} info
      * @return {boolean}
      */
@@ -52,13 +52,12 @@ class Flight extends Entity {
         const comparisonFunctions = {"max": Math.max, "min": Math.min};
 
         for (let key in info) {
-            let prefix = key.slice(0, 4);
+            let prefix = key.slice(0, 3);
             const value = info[key];
 
             // Separate the comparison prefix if it exists.
-            if ((prefix === "max_") || (prefix === "min_")) {
-                key = key.split("_", 1)[1];
-                prefix = prefix.slice(0, -1);
+            if ((prefix === "max") || (prefix === "min")) {
+                key = key[3].toLowerCase() + key.slice(4, key.length)
             } else {
                 prefix = null;
             }

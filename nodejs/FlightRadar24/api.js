@@ -121,7 +121,8 @@ class FlightRadar24API {
         statusCode = response.getStatusCode();
 
         if (!statusCode.toString().startsWith("4")) {
-            return [(await response.getContent()), secondLogoUrl.split(".")[-1]];
+            const splitUrl = secondLogoUrl.split(".");
+            return [(await response.getContent()), splitUrl[splitUrl.length - 1]];
         }
     }
 
