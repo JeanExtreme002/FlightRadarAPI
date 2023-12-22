@@ -2,71 +2,9 @@ const Core = require("./core");
 const APIRequest = require("./request");
 const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
+const FlightTrackerConfig = require("./flightTrackerConfig");
 const {LoginError} = require("./errors");
 
-
-class FlightTrackerConfig {
-    /**
-     * Data class with settings of the Real Time Flight Tracker.
-     */
-
-    faa = "1";
-    satellite = "1";
-    mlat = "1";
-    flarm = "1";
-    adsb = "1";
-    gnd = "1";
-    air = "1";
-    vehicles = "1";
-    estimated = "1";
-    maxage = "14400";
-    gliders = "1";
-    stats = "1";
-    limit = "5000";
-
-    __proxyHandler = {
-        set: function(target, key, value) {
-            if (!target.hasOwnProperty(key)) {
-                throw new Error("Unknown option: '" + key + "'");
-            }
-            if ((typeof value !== "number") && (!target.__isNumeric(value))) {
-                throw new Error("Value must be a decimal. Got '" + key + "'");
-            }
-            target[key] = value.toString();
-        },
-    };
-
-    constructor(data) {
-        for (const key in data) {
-            const value = data[key];
-
-            if (this.hasOwnProperty(key) && (typeof value === "number" || this.__isNumeric(value))) {
-                this[key] = value;
-            }
-        }
-        return new Proxy(this, this.__proxyHandler);
-    }
-
-    __isNumeric(string) {
-        for (let index = 0; index < string.length; index++) {
-            if (!"0123456789".includes(string[index])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    asdict() {
-        const dict = {};
-
-        for (const key in this) {
-            if (!key.startsWith("_")) {
-                dict[key] = this[key];
-            }
-        }
-        return dict;
-    }
-}
 
 class FlightRadar24API {
     /**
@@ -300,7 +238,7 @@ class FlightRadar24API {
      * @param {boolean} details -  If true, it returns flights with detailed information
      */
     async getFlights(airline = null, bounds = null, registration = null, aircraftType = null, details = false) {
-        const requestParams = this.__flightTrackerConfig.asdict();
+        const requestParams = {...this.__flightTrackerConfig};
 
         if (this.__loginData != null) {
             requestParams["enc"] = this.__loginData["cookies"]["_frPl"];
@@ -363,7 +301,7 @@ class FlightRadar24API {
      * @return {FlightTrackerConfig}
      */
     getFlightTrackerConfig() {
-        return new FlightTrackerConfig(this.__flightTrackerConfig.asdict());
+        return new FlightTrackerConfig({...this.__flightTrackerConfig});
     }
 
     /**
@@ -506,22 +444,18 @@ class FlightRadar24API {
     /**
      * Set config for the Real Time Flight Tracker, used by getFlights() method.
      *
-     * @param {FlightTrackerConfig} flightTrackerConfig - If null, set to default config.
+     * @param {FlightTrackerConfig} flightTrackerConfig - If null, set to the default config.
      */
     async setFlightTrackerConfig(flightTrackerConfig = null, config = {}) {
         if (flightTrackerConfig != null) {
             this.__flightTrackerConfig = flightTrackerConfig;
         }
 
-        const currentConfigDict = this.__flightTrackerConfig.asdict();
-
         for (const key in config) {
             const value = config[key].toString();
-            currentConfigDict[key] = value;
+            this.__flightTrackerConfig[key] = value;
         }
-
-        this.__flightTrackerConfig = new FlightTrackerConfig(currentConfigDict);
     }
 }
 
-module.exports = {FlightRadar24API, FlightTrackerConfig};
+module.exports = FlightRadar24API;

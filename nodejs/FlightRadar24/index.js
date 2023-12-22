@@ -11,13 +11,14 @@
  */
 
 const {CloudflareError, LoginError} = require("./errors");
-const {FlightRadar24API, FlightTrackerConfig} = require("./api");
+const FlightRadar24API = require("./api");
+const FlightTrackerConfig = require("./flightTrackerConfig");
 const Airport = require("./entities/airport");
 const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
 
 const author = "Jean Loui Bernard Silva de Jesus";
-const version = "1.3.17";
+const version = "1.3.18";
 
 module.exports = {
     FlightRadar24API,
