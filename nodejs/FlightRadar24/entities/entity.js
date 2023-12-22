@@ -58,10 +58,7 @@ class Entity {
         const lat2 = Math.radians(entity.latitude);
         const lon2 = Math.radians(entity.longitude);
 
-        return Math.acos(
-            Math.sin(lat1) * Math.sin(lat2) +
-            Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1),
-        ) * 6371;
+        return Math.acos(Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)) * 6371;
     }
 }
 
