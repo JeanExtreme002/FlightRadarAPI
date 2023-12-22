@@ -37,11 +37,11 @@ class FlightTrackerConfig {
     maxage = "14400";
     gliders = "1";
     stats = "1";
-    limit = "5000"; 
+    limit = "5000";
 
     /**
      * Constructor of FlighTrackerConfig class.
-     * 
+     *
      * @param {object} data
      */
     constructor(data) {
