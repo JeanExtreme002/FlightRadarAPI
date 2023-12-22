@@ -57,7 +57,7 @@ class Flight extends Entity {
 
             // Separate the comparison prefix if it exists.
             if ((prefix === "max") || (prefix === "min")) {
-                key = key[3].toLowerCase() + key.slice(4, key.length)
+                key = key[3].toLowerCase() + key.slice(4, key.length);
             } else {
                 prefix = null;
             }
