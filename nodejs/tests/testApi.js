@@ -34,8 +34,8 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
             for (const iata of expected) {
                 const details = await frApi.getAirportDetails(iata, 1);
-                expect(details).to.have.any.keys(targetKeys);
-                expect(details["airport"]["pluginData"]).to.have.any.keys("details");
+                expect(details).to.include.all.keys(targetKeys);
+                expect(details["airport"]["pluginData"]).to.include.all.keys("details");
             }
         });
     });
@@ -59,7 +59,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
             for (const key in results) {
                 const zone = results[key];
-                expect(zone).to.have.any.keys(targetKeys);
+                expect(zone).to.include.all.keys(targetKeys);
             }
         });
     });
@@ -84,7 +84,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
             for (const flight of someFlights) {
                 const details = await frApi.getFlightDetails(flight);
-                expect(details).to.have.any.keys(targetKeys);
+                expect(details).to.include.all.keys(targetKeys);
             }
         });
     });
@@ -138,17 +138,51 @@ describe("Testing FlightRadarAPI version " + version, function() {
     });
 
     describe("Getting Airline Logo", function() {
-        // TODO: Implement it
+        const targetAirlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]];
+        const expected = targetAirlines.length * 0.8;
+
+        const icao = [];
+
+        for (const airline of targetAirlines) {
+            icao.push(airline[1]);
+        }
+
+        let message = "Expected getting logos from at least " + Math.trunc(expected);
+        message += " of the following airlines: " + icao.join(", ") + ".";
+
+        it(message, async function() {
+            let found = 0;
+
+            for (const airline of targetAirlines) {
+                const result = await frApi.getAirlineLogo(airline[0], airline[1]);
+                found = result != null && result[0].byteLength > 512 ? found + 1 : found;
+            }
+            expect(found).to.be.above(expected - 1);
+        });
     });
 
     describe("Getting Country Flag", function() {
-        // TODO: Implement it
+        const targetCountries = ["United States", "Brazil", "Egypt", "Japan", "South Korea", "Canada"];
+        const expected = targetCountries.length * 0.8;
+
+        let message = "Expected getting flags from at least " + Math.trunc(expected);
+        message += " of the following countries: " + targetCountries.join(", ") + ".";
+
+        it(message, async function() {
+            let found = 0;
+
+            for (const country of targetCountries) {
+                const result = await frApi.getCountryFlag(country);
+                found = result != null && result[0].byteLength > 512 ? found + 1 : found;
+            }
+            expect(found).to.be.above(expected - 1);
+        });
     });
 
     describe("Getting Bounds by Point", function() {
         const expected = "52.58594974202871,52.54997688140807,13.253064418048115,13.3122478541492";
 
-        it("Formula for getting bounds is correct.", async function() {
+        it("Formula for calculating bounds is correct.", async function() {
             const bounds = frApi.getBoundsByPoint(52.567967, 13.282644, 2000);
             expect(bounds).to.be.equal(expected);
         });

@@ -91,15 +91,21 @@ class APIRequest {
      * Return the received content from the request.
      */
     async getContent() {
-        const content = await this.__response.text();
-        this.__content = content;
-
+        if (this.__content !== null) {
+            return this.__content;
+        }
+        
         let contentType = this.getHeaders()["content-type"];
         contentType = contentType == null ? "" : contentType;
 
-        // Return a dictionary if the content type is JSON.
         if (contentType.includes("application/json")) {
-            this.__content = JSON.parse(content);
+            this.__content = await this.__response.json();
+        }
+        else if (contentType.includes("text")) {
+            this.__content = await this.__response.text();
+        }
+        else {
+            this.__content = await this.__response.arrayBuffer();
         }
         return this.__content;
     }

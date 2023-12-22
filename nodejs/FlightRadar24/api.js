@@ -109,7 +109,7 @@ class FlightRadar24API {
 
         if (!statusCode.toString().startsWith("4")) {
             const splitUrl = firstLogoUrl.split(".");
-            return [(await response.getContent()), splitUrl[splitUrl.length]];
+            return [(await response.getContent()), splitUrl[splitUrl.length - 1]];
         }
 
         // Get the image by the second airline logo URL.
@@ -273,7 +273,7 @@ class FlightRadar24API {
 
         if (!statusCode.toString().startsWith("4")) {
             const splitUrl = flagUrl.split(".");
-            return [(await response.getContent()), splitUrl[splitUrl.length]];
+            return [(await response.getContent()), splitUrl[splitUrl.length - 1]];
         }
     }
 
