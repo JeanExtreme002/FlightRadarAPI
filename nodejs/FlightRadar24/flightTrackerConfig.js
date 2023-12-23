@@ -39,6 +39,9 @@ class FlightTrackerConfig {
      */
     constructor(data) {
         for (const key in data) {
+            if (!Object.hasOwn(data, key)) { // guard-for-in
+                continue;
+            }
             const value = data[key];
 
             if (this.hasOwnProperty(key) && (typeof value === "number" || isNumeric(value))) {

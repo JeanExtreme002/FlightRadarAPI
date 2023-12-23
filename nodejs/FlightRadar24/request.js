@@ -33,7 +33,9 @@ class APIRequest {
             url += "?";
 
             for (const key in params) {
-                url += key + "=" + params[key] + "&";
+                if (Object.hasOwn(params, key)) { // guard-for-in
+                    url += key + "=" + params[key] + "&";
+                }
             }
             url = url.slice(0, -1);
         }

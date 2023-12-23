@@ -49,6 +49,10 @@ class Flight extends Entity {
         const comparisonFunctions = {"max": Math.max, "min": Math.min};
 
         for (let key in info) {
+            if (!Object.hasOwn(info, key)) { // guard-for-in
+                continue;
+            }
+
             let prefix = key.slice(0, 3);
             const value = info[key];
 

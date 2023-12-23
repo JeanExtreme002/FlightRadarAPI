@@ -1,4 +1,4 @@
-const {FlightRadar24API, CloudflareError, version} = require("..");
+const {FlightRadar24API, version} = require("..");
 const expect = require("chai").expect;
 
 
@@ -56,8 +56,10 @@ describe("Testing FlightRadarAPI version " + version, function() {
             expect(Object.entries(results).length).to.be.above(expected - 1);
 
             for (const key in results) {
-                const zone = results[key];
-                expect(zone).to.include.all.keys(targetKeys);
+                if (Object.hasOwn(countDict, name)) { // guard-for-in
+                    const zone = results[key];
+                    expect(zone).to.include.all.keys(targetKeys);
+                }
             }
         });
     });
