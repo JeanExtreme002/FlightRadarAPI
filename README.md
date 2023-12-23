@@ -14,7 +14,7 @@ See more information at: https://www.flightradar24.com/terms-and-conditions
 ## Installing FlightRadarAPI
 **For Python with pip:**
 ```
-pip install flightradarapi
+pip install FlightRadarAPI
 ```
 **For NodeJS with npm:**
 ```
