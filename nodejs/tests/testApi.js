@@ -30,8 +30,6 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const targetKeys = ["airport", "airlines", "aircraftImages"];
 
         it("Expected getting details of the following airports: " + expected.join(", ") + ".", async function() {
-            const results = [];
-
             for (const iata of expected) {
                 const details = await frApi.getAirportDetails(iata, 1);
                 expect(details).to.include.all.keys(targetKeys);

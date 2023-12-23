@@ -4,13 +4,13 @@ const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const {LoginError} = require("./errors");
+const {isNumeric} = require("./util");
 
 
 /**
  * Main class of the FlightRadarAPI
  */
 class FlightRadar24API {
-
     /**
      * Constructor of FlightRadar24API class
      */
@@ -21,7 +21,7 @@ class FlightRadar24API {
 
     /**
      * Return a list with all airlines.
-     * 
+     *
      * @return {object}
      */
     async getAirlines() {
@@ -117,7 +117,7 @@ class FlightRadar24API {
 
     /**
      * Return a list with all airports.
-     * 
+     *
      * @return {Array<Airport>}
      */
     async getAirports() {
@@ -204,7 +204,7 @@ class FlightRadar24API {
     /**
      * Download the flag of a country from FlightRadar24 and return it as bytes.
      *
-     * @param {string} - Country name
+     * @param {string} country - Country name
      * @return {[object, string]}
      */
     async getCountryFlag(country) {
@@ -277,15 +277,6 @@ class FlightRadar24API {
         const content = await response.getContent();
         const flights = [];
 
-        function isNumeric(string) {
-            for (let index = 0; index < string.length; index++) {
-                if (!"0123456789".includes(string[index])) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         for (const flightId in content) {
             const flightInfo = content[flightId];
 
@@ -318,7 +309,7 @@ class FlightRadar24API {
 
     /**
      * Return the user data.
-     * 
+     *
      * @return {object}
      */
     getLoginData() {
@@ -330,7 +321,7 @@ class FlightRadar24API {
 
     /**
      * Return the most tracked data.
-     * 
+     *
      * @return {object}
      */
     async getMostTracked() {
@@ -342,7 +333,7 @@ class FlightRadar24API {
 
     /**
      * Return all major zones on the globe.
-     * 
+     *
      * @return {object}
      */
     async getZones() {
@@ -431,7 +422,8 @@ class FlightRadar24API {
         if (!statusCode.toString().startsWith("2") || !content["success"]) {
             if (typeof content === "object") {
                 throw new LoginError(content["message"]);
-            } else {
+            }
+            else {
                 throw new LoginError("Your email or password is incorrect");
             }
         }
@@ -464,7 +456,8 @@ class FlightRadar24API {
     /**
      * Set config for the Real Time Flight Tracker, used by getFlights() method.
      *
-     * @param {FlightTrackerConfig} flightTrackerConfig - If null, set to the default config.
+     * @param {FlightTrackerConfig} [flightTrackerConfig] - If null, set to the default config.
+     * @param {object} [config={}] - Config as an JSON object
      * @return {undefined}
      */
     async setFlightTrackerConfig(flightTrackerConfig = null, config = {}) {

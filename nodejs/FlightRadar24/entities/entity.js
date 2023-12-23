@@ -2,7 +2,6 @@
  * Representation of a real entity, at some location.
  */
 class Entity {
-
     static __defaultText = "N/A";
 
     /**

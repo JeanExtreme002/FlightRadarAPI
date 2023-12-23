@@ -8,7 +8,6 @@ const fetch = (...args) => import("node-fetch").then(({default: fetch}) => fetch
  * Class to make requests to the FlightRadar24.
  */
 class APIRequest {
-
     /**
      * Constructor of the APIRequest class.
      *
@@ -47,7 +46,7 @@ class APIRequest {
 
     /**
      * Send the request and receive a response.
-     * 
+     *
      * @return {this}
      */
     async receive() {
@@ -102,9 +101,11 @@ class APIRequest {
 
         if (contentType.includes("application/json")) {
             this.__content = await this.__response.json();
-        } else if (contentType.includes("text")) {
+        }
+        else if (contentType.includes("text")) {
             this.__content = await this.__response.text();
-        } else {
+        }
+        else {
             this.__content = await this.__response.arrayBuffer();
         }
         return this.__content;

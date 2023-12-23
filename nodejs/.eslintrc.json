@@ -11,6 +11,9 @@
   "rules": {
     "max-len": ["error", {"code": 130}],
     "quotes": ["warn", "double"],
-    "indent": ["warn", 4]
+    "indent": ["warn", 4],
+    "brace-style": ["warn", "stroustrup"],
+    "valid-jsdoc": ["warn"],
+    "require-jsdoc": ["warn"]
   }
 }

@@ -1,21 +1,4 @@
-/**
- * Check if the string is an integer
- * 
- * @param {string} text 
- * @return {boolean}
- */
-function isNumeric(text) {
-    if (text.length === 0) {
-        return false;
-    }
-
-    for (let index = 0; index < text.length; index++) {
-        if (!"0123456789".includes(text[index])) {
-            return false;
-        }
-    }
-    return true;
-}
+const {isNumeric} = require("./util");
 
 
 const proxyHandler = {
@@ -35,7 +18,6 @@ const proxyHandler = {
  * Data class with settings of the Real Time Flight Tracker.
  */
 class FlightTrackerConfig {
-
     faa = "1";
     satellite = "1";
     mlat = "1";

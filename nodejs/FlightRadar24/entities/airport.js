@@ -12,12 +12,11 @@ const proxyHandler = {
  * Airport representation.
  */
 class Airport extends Entity {
-
     /**
      * Constructor of Airport class.
      *
-     * @param {object} info - Basic information about the airport
-     * @param {object} details - Dictionary with more information about the airport
+     * @param {object} [info] - Basic information about the airport
+     * @param {object} [details] - Dictionary with more information about the airport
      */
     constructor(info = {}, details = {}) {
         super();
@@ -39,6 +38,8 @@ class Airport extends Entity {
 
     /**
      * Initialize instance with basic information about the airport.
+     *
+     * @param {object} info
      */
     __initializeWithBasicInfo(info) {
         this.altitude = info["alt"];
@@ -52,6 +53,8 @@ class Airport extends Entity {
 
     /**
      * Initialize instance with detailed information about the airport.
+     *
+     * @param {object} details
      */
     __initializeWithDetails(details) {
         this.altitude = details["position"]["altitude"];
