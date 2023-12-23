@@ -1,7 +1,7 @@
+/**
+ * Representation of a real entity, at some location.
+ */
 class Entity {
-    /**
-     * Representation of a real entity, at some location.
-     */
 
     static __defaultText = "N/A";
 
@@ -11,7 +11,6 @@ class Entity {
      * @param {number} latitude
      * @param {number} longitude
      */
-
     constructor(latitude = null, longitude = null) {
         this.__setPosition(latitude, longitude);
     }

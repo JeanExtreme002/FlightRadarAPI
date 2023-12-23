@@ -4,20 +4,20 @@ const FormData = require("form-data");
 const fetch = (...args) => import("node-fetch").then(({default: fetch}) => fetch(...args));
 
 
+/**
+ * Class to make requests to the FlightRadar24.
+ */
 class APIRequest {
-    /**
-     * Class to make requests to the FlightRadar24.
-     */
 
     /**
      * Constructor of the APIRequest class.
      *
-     * @param {string} url
-     * @param {object} params
-     * @param {object} headers
-     * @param {object} data
-     * @param {object} cookies
-     * @param {object} excludeStatusCodes
+     * @param {string} [url]
+     * @param {object} [params]
+     * @param {object} [headers]
+     * @param {object} [data]
+     * @param {object} [cookies]
+     * @param {object} [excludeStatusCodes=[]]
      */
     constructor(url, params = null, headers = null, data = null, cookies = null, excludeStatusCodes = []) {
         this.requestParams = {
@@ -47,6 +47,8 @@ class APIRequest {
 
     /**
      * Send the request and receive a response.
+     * 
+     * @return {this}
      */
     async receive() {
         const settings = {

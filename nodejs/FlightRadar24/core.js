@@ -1,3 +1,6 @@
+/**
+ * Class which contains all URLs used by the package.
+ */
 class Core {
     constructor() {
         this.apiFlightradarBaseUrl = "https://api.flightradar24.com/common/v1";

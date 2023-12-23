@@ -8,10 +8,10 @@ const proxyHandler = {
 };
 
 
+/**
+ * Airport representation.
+ */
 class Airport extends Entity {
-    /**
-     * Airport representation.
-     */
 
     /**
      * Constructor of Airport class.

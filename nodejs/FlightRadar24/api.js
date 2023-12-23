@@ -6,11 +6,14 @@ const FlightTrackerConfig = require("./flightTrackerConfig");
 const {LoginError} = require("./errors");
 
 
+/**
+ * Main class of the FlightRadarAPI
+ */
 class FlightRadar24API {
-    /**
-     * Main class of the FlightRadarAPI
-     */
 
+    /**
+     * Constructor of FlightRadar24API class
+     */
     constructor() {
         this.__flightTrackerConfig = new FlightTrackerConfig();
         this.__loginData = null;
@@ -18,6 +21,8 @@ class FlightRadar24API {
 
     /**
      * Return a list with all airlines.
+     * 
+     * @return {object}
      */
     async getAirlines() {
         const response = new APIRequest(Core.airlinesDataUrl, null, Core.jsonHeaders);
@@ -29,8 +34,9 @@ class FlightRadar24API {
     /**
      * Download the logo of an airline from FlightRadar24 and return it as bytes.
      *
-     * @param {string} iata
-     * @param {string} icao
+     * @param {string} iata - IATA of the airline
+     * @param {string} icao - ICAO of the airline
+     * @return {[object, string]}
      */
     async getAirlineLogo(iata, icao) {
         iata = iata.toUpperCase();
@@ -81,8 +87,9 @@ class FlightRadar24API {
      * Return the airport details from FlightRadar24.
      *
      * @param {string} code - ICAO or IATA of the airport
-     * @param {number} flightLimit - Limit of flights related to the airport
-     * @param {number} page - Page of result to display
+     * @param {number} [flightLimit=100] - Limit of flights related to the airport
+     * @param {number} [page=1] - Page of result to display
+     * @return {object}
      */
     async getAirportDetails(code, flightLimit = 100, page = 1) {
         const requestParams = {"format": "json"};
@@ -110,6 +117,8 @@ class FlightRadar24API {
 
     /**
      * Return a list with all airports.
+     * 
+     * @return {Array<Airport>}
      */
     async getAirports() {
         const response = new APIRequest(Core.airportsDataUrl, null, Core.jsonHeaders);
@@ -196,6 +205,7 @@ class FlightRadar24API {
      * Download the flag of a country from FlightRadar24 and return it as bytes.
      *
      * @param {string} - Country name
+     * @return {[object, string]}
      */
     async getCountryFlag(country) {
         const flagUrl = Core.countryFlagUrl.replace("{}", country.toLowerCase().replace(" ", "-"));
@@ -220,6 +230,7 @@ class FlightRadar24API {
      * Return the flight details from Data Live FlightRadar24.
      *
      * @param {Flight} flight - A Flight instance.
+     * @return {object}
      */
     async getFlightDetails(flight) {
         const response = new APIRequest(Core.flightDataUrl.replace("{}", flight.id), null, Core.jsonHeaders);
@@ -231,11 +242,12 @@ class FlightRadar24API {
     /**
      * Return a list of flights. See more options at setFlightTrackerConfig() method.
      *
-     * @param {string} airline - The airline ICAO. Ex: "DAL"
-     * @param {string} bounds - Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
-     * @param {string} registration - Aircraft registration
-     * @param {string} aircraftType - Aircraft model code. Ex: "B737"
-     * @param {boolean} details -  If true, it returns flights with detailed information
+     * @param {string} [airline] - The airline ICAO. Ex: "DAL"
+     * @param {string} [bounds] - Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
+     * @param {string} [registration] - Aircraft registration
+     * @param {string} [aircraftType] - Aircraft model code. Ex: "B737"
+     * @param {boolean} [details] -  If true, it returns flights with detailed information
+     * @return {Array<Flight>}
      */
     async getFlights(airline = null, bounds = null, registration = null, aircraftType = null, details = false) {
         const requestParams = {...this.__flightTrackerConfig};
@@ -306,6 +318,8 @@ class FlightRadar24API {
 
     /**
      * Return the user data.
+     * 
+     * @return {object}
      */
     getLoginData() {
         if (!this.isLoggedIn()) {
@@ -316,6 +330,8 @@ class FlightRadar24API {
 
     /**
      * Return the most tracked data.
+     * 
+     * @return {object}
      */
     async getMostTracked() {
         const response = new APIRequest(Core.mostTrackedUrl, null, Core.jsonHeaders);
@@ -326,6 +342,8 @@ class FlightRadar24API {
 
     /**
      * Return all major zones on the globe.
+     * 
+     * @return {object}
      */
     async getZones() {
         const response = new APIRequest(Core.zonesDataUrl, null, Core.jsonHeaders);
@@ -343,6 +361,7 @@ class FlightRadar24API {
      * Return the search result
      *
      * @param {string} query
+     * @return {object}
      */
     async search(query) {
         const response = new APIRequest(Core.searchDataUrl.replace("{}", query), null, Core.jsonHeaders);
@@ -393,6 +412,7 @@ class FlightRadar24API {
      *
      * @param {string} user - Your email.
      * @param {string} password - Your password.
+     * @return {undefined}
      */
     async login(user, password) {
         const data = {
@@ -445,6 +465,7 @@ class FlightRadar24API {
      * Set config for the Real Time Flight Tracker, used by getFlights() method.
      *
      * @param {FlightTrackerConfig} flightTrackerConfig - If null, set to the default config.
+     * @return {undefined}
      */
     async setFlightTrackerConfig(flightTrackerConfig = null, config = {}) {
         if (flightTrackerConfig != null) {

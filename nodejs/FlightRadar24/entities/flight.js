@@ -1,10 +1,9 @@
 const Entity = require("./entity");
 
-
+/**
+ * Flight representation.
+ */
 class Flight extends Entity {
-    /**
-     * Flight representation.
-     */
 
     /**
      * Constructor of Flight class.
@@ -43,6 +42,7 @@ class Flight extends Entity {
      * to compare numeric data with ">" or "<".
      *
      * Example: checkInfo({minAltitude: 6700, maxAltitude: 13000, airlineIcao: "THY"})
+     * 
      * @param {object} info
      * @return {boolean}
      */
@@ -76,6 +76,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted altitude, with the unit of measure.
+     * 
      * @return {string}
      */
     getAltitude() {
@@ -84,6 +85,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted flight level, with the unit of measure.
+     * 
      * @return {string}
      */
     getFlightLevel() {
@@ -95,6 +97,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted ground speed, with the unit of measure.
+     * 
      * @return {string}
      */
     getGroundSpeed() {
@@ -104,6 +107,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted heading, with the unit of measure.
+     * 
      * @return {string}
      */
     getHeading() {
@@ -112,6 +116,7 @@ class Flight extends Entity {
 
     /**
      * Return the formatted vertical speed, with the unit of measure.
+     * 
      * @return {string}
      */
     getVerticalSpeed() {
@@ -120,7 +125,9 @@ class Flight extends Entity {
 
     /**
      * Set flight details to the instance. Use FlightRadar24API.getFlightDetails(...) method to get it.
+     * 
      * @param {object} flightDetails
+     * @return {undefined}
      */
     setFlightDetails(flightDetails) {
         // Get aircraft data.
