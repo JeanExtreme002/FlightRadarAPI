@@ -17,5 +17,4 @@ function isNumeric(text) {
     return true;
 }
 
-
 module.exports = {isNumeric};

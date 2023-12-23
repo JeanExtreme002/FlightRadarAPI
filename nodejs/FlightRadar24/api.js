@@ -3,7 +3,7 @@ const APIRequest = require("./request");
 const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
-const {LoginError} = require("./errors");
+const {AirportNotFoundError, LoginError} = require("./errors");
 const {isNumeric} = require("./util");
 
 
@@ -80,7 +80,12 @@ class FlightRadar24API {
         const response = new APIRequest(Core.airportDataUrl.replace("{}", code), null, Core.jsonHeaders);
         await response.receive();
 
-        return new Airport({}, (await response.getContent())["details"]);
+        const details = (await response.getContent())["details"];
+
+        if (details === undefined) {
+            throw new AirportNotFoundError("Could not find an airport by the code '" + code + "'.");
+        }
+        return new Airport({}, details);
     }
 
     /**

@@ -1,4 +1,4 @@
-class LoginError extends Error {
+class AirportNotFoundError extends Error {
     constructor(message) {
         super(message);
 
@@ -19,4 +19,14 @@ class CloudflareError extends Error {
     }
 }
 
-module.exports = {LoginError, CloudflareError};
+class LoginError extends Error {
+    constructor(message) {
+        super(message);
+
+        this.name = this.constructor.name;
+
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
+
+module.exports = {AirportNotFoundError, CloudflareError, LoginError};
