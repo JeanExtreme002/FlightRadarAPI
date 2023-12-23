@@ -33,7 +33,7 @@ class APIRequest {
             url += "?";
 
             for (const key in params) {
-                if (Object.hasOwn(params, key)) { // guard-for-in
+                if (Object.prototype.hasOwnProperty.call(params, key)) { // guard-for-in
                     url += key + "=" + params[key] + "&";
                 }
             }

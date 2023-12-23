@@ -278,7 +278,7 @@ class FlightRadar24API {
         const flights = [];
 
         for (const flightId in content) {
-            if (!Object.hasOwn(content, flightId)) { // guard-for-in
+            if (!Object.prototype.hasOwnProperty.call(content, flightId)) { // guard-for-in
                 continue;
             }
 
@@ -379,7 +379,7 @@ class FlightRadar24API {
         const data = {};
 
         for (const name in countDict) {
-            if (!Object.hasOwn(countDict, name)) { // guard-for-in
+            if (!Object.prototype.hasOwnProperty.call(countDict, name)) { // guard-for-in
                 continue;
             }
 
@@ -474,7 +474,7 @@ class FlightRadar24API {
         }
 
         for (const key in config) {
-            if (Object.hasOwn(config, key)) { // guard-for-in
+            if (Object.prototype.hasOwnProperty.call(config, key)) { // guard-for-in
                 const value = config[key].toString();
                 this.__flightTrackerConfig[key] = value;
             }

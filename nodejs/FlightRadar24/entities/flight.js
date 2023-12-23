@@ -49,7 +49,7 @@ class Flight extends Entity {
         const comparisonFunctions = {"max": Math.max, "min": Math.min};
 
         for (let key in info) {
-            if (!Object.hasOwn(info, key)) { // guard-for-in
+            if (!Object.prototype.hasOwnProperty.call(info, key)) { // guard-for-in
                 continue;
             }
 
