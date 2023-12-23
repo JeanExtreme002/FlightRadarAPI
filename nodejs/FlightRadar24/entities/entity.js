@@ -7,7 +7,7 @@ class Entity {
 
     /**
      * Constructor of Entity class.
-     * 
+     *
      * @param {number} latitude
      * @param {number} longitude
      */
