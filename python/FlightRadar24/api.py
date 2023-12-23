@@ -8,7 +8,7 @@ import math
 from .core import Core
 from .entities.airport import Airport
 from .entities.flight import Flight
-from .errors import LoginError
+from .errors import AirportNotFoundError, LoginError
 from .request import APIRequest
 
 
@@ -88,7 +88,12 @@ class FlightRadar24API(object):
         :param code: ICAO or IATA of the airport
         """
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
-        return Airport(details=response.get_content()["details"])
+        content = response.get_content()
+        
+        if not content or not isinstance(content, dict) or not content.get("details"):
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.");
+
+        return Airport(details=content["details"])
 
     def get_airport_details(self, code: str, flight_limit: int = 100, page: int = 1) -> Dict:
         """
