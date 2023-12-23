@@ -1,5 +1,6 @@
 const Entity = require("./entity");
 
+
 const proxyHandler = {
     get: function(target, name) {
         return name in target? target[name] : target.__rawInformation[name];
@@ -11,8 +12,6 @@ class Airport extends Entity {
     /**
      * Airport representation.
      */
-
-    static __defaultText = "N/A";
 
     /**
      * Constructor of Airport class.
@@ -55,8 +54,6 @@ class Airport extends Entity {
      * Initialize instance with detailed information about the airport.
      */
     __initializeWithDetails(details) {
-        details = this.__createGetterMethodFor(details);
-
         this.altitude = details["position"]["altitude"];
 
         this.name = details["name"];
@@ -64,24 +61,24 @@ class Airport extends Entity {
         this.iata = details["code"]["iata"];
 
         // Location information.
-        const position = this.__createGetterMethodFor(details["position"]);
+        const position = details["position"];
 
         this.country = position["country"]["name"];
-        this.countryCode = this.__getInfo(position.get("country", {}).get("code"));
-        this.city = this.__getInfo(position.get("region", {})).get("city");
+        this.countryCode = this.__getInfo(position["country"]?.["code"]);
+        this.city = this.__getInfo(position["region"]?.["city"]);
 
         // Timezone information.
-        const timezone = details.get("timezone", {});
+        const timezone = details["timezone"];
 
-        this.timezoneName = this.__getInfo(timezone.get("name"));
-        this.timezoneOffset = this.__getInfo(timezone.get("offset"));
-        this.timezoneOffsethours = this.__getInfo(timezone.get("offsetHours"));
-        this.timezoneAbbr = this.__getInfo(timezone.get("abbr"));
-        this.timezoneAbbrName = this.__getInfo(timezone.get("abbrName"));
+        this.timezoneName = this.__getInfo(timezone?.["name"]);
+        this.timezoneOffset = this.__getInfo(timezone?.["offset"]);
+        this.timezoneOffsethours = this.__getInfo(timezone?.["offsetHours"]);
+        this.timezoneAbbr = this.__getInfo(timezone?.["abbr"]);
+        this.timezoneAbbrName = this.__getInfo(timezone?.["abbrName"]);
 
         // Other information.
-        this.visible = this.__getInfo(details.get("visible"));
-        this.website = this.__getInfo(details.get("website"));
+        this.visible = this.__getInfo(details["visible"]);
+        this.website = this.__getInfo(details["website"]);
     }
 }
 

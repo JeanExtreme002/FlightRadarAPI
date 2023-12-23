@@ -1,10 +1,17 @@
 class Entity {
     /**
      * Representation of a real entity, at some location.
-     *
+     */
+
+    static __defaultText = "N/A";
+
+    /**
+     * Constructor of Entity class.
+     * 
      * @param {number} latitude
      * @param {number} longitude
      */
+
     constructor(latitude = null, longitude = null) {
         this.__setPosition(latitude, longitude);
     }
@@ -14,33 +21,9 @@ class Entity {
         this.longitude = longitude;
     }
 
-    __createGetterMethodFor(target, recursive = true) {
-        function getter(x, defaultValue = null) {
-            let value = defaultValue;
-
-            if (this.hasOwnProperty(x)) {
-                value = this[x];
-            }
-
-            if (recursive && (value != null && typeof value === "object")) {
-                value.get = getter;
-            }
-            return value;
-        }
-
-        target.get = getter;
-        return target;
-    }
-
-    __getDetails(data) {
-        if (data == null) {
-            data = {};
-        }
-        return this.__createGetterMethodFor(data);
-    }
-
-    __getInfo(info) {
-        return (info || info === 0) && (info !== this.__defaultText) ? info : this.__defaultText;
+    __getInfo(info, replaceBy = undefined) {
+        replaceBy = replaceBy === undefined ? this.__defaultText : replaceBy;
+        return (info || info === 0) && (info !== this.__defaultText) ? info : replaceBy;
     }
 
     /**
