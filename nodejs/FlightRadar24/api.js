@@ -78,6 +78,10 @@ class FlightRadar24API {
      * @return {Airport}
      */
     async getAirport(code, details = false) {
+        if (4 < code.length || code.length < 3) {
+            throw new Error("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
+        }
+
         if (details) {
             const airport = new Airport();
 
@@ -107,6 +111,10 @@ class FlightRadar24API {
      * @return {object}
      */
     async getAirportDetails(code, flightLimit = 100, page = 1) {
+        if (4 < code.length || code.length < 3) {
+            throw new Error("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
+        }
+
         const requestParams = {"format": "json"};
 
         if (this.__loginData != null) {
@@ -124,10 +132,31 @@ class FlightRadar24API {
 
         const content = await response.getContent();
 
-        if (response.getStatusCode() === 400 && typeof content === "object" && content["errors"]) {
-            throw Error(content["errors"]["errors"]["parameters"]["limit"]["notBetween"]);
+        if (response.getStatusCode() === 400 && content?.["errors"] !== undefined) {
+            const errors = content["errors"]?.["errors"]?.["parameters"];
+            const limit = errors?.["limit"];
+
+            if (limit !== undefined) {
+                throw new Error(limit["notBetween"]);
+            }
+            throw new AirportNotFoundError("Could not find an airport by the code '" + code + "'.", errors);
         }
-        return content["result"]["response"];
+
+        const result = content["result"]["response"];
+
+        // Check whether it received data of an airport.
+        const data = result?.["airport"]?.["pluginData"];
+        const dataCount = typeof data === "object" ? Object.entries(data).length : 0;
+
+        const runways = data?.["runways"];
+        const runwaysCount = typeof runways === "object" ? Object.entries(runways).length : 0;
+
+        if (data?.["details"] === undefined && runwaysCount == 0 && dataCount <= 3) {
+            throw new AirportNotFoundError("Could not find an airport by the code '" + code + "'.");
+        }
+
+        // Return the airport details.
+        return result;
     }
 
     /**
