@@ -74,18 +74,28 @@ class FlightRadar24API {
      * Return basic information about a specific airport.
      *
      * @param {string} code - ICAO or IATA of the airport
+     * @param {boolean} details - If true, it returns flights with detailed information
      * @return {Airport}
      */
-    async getAirport(code) {
+    async getAirport(code, details = false) {
+        if (details) {
+            const airport = new Airport();
+
+            const airportDetails = await this.getAirportDetails(code);
+            airport.setAirportDetails(airportDetails);
+
+            return airport;
+        }
+
         const response = new APIRequest(Core.airportDataUrl.replace("{}", code), null, Core.jsonHeaders);
         await response.receive();
 
-        const details = (await response.getContent())["details"];
+        const info = (await response.getContent())["details"];
 
-        if (details === undefined) {
+        if (info === undefined) {
             throw new AirportNotFoundError("Could not find an airport by the code '" + code + "'.");
         }
-        return new Airport({}, details);
+        return new Airport({}, info);
     }
 
     /**

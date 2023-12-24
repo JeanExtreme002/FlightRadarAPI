@@ -81,19 +81,28 @@ class FlightRadar24API(object):
         if not str(status_code).startswith("4"):
             return response.get_content(), second_logo_url.split(".")[-1]
 
-    def get_airport(self, code: str) -> Airport:
+    def get_airport(self, code: str, *, details: bool = False) -> Airport:
         """
         Return basic information about a specific airport.
 
         :param code: ICAO or IATA of the airport
+        :param details: If True, it returns an Airport instance with detailed information.
         """
+        if details:
+            airport = Airport()
+
+            airport_details = self.get_airport_details(code)
+            airport.set_airport_details(airport_details)
+
+            return airport
+
         response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
         content = response.get_content()
         
         if not content or not isinstance(content, dict) or not content.get("details"):
             raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.");
 
-        return Airport(details=content["details"])
+        return Airport(info=content["details"])
 
     def get_airport_details(self, code: str, flight_limit: int = 100, page: int = 1) -> Dict:
         """
@@ -131,7 +140,7 @@ class FlightRadar24API(object):
         airports: List[Airport] = list()
 
         for airport_data in response.get_content()["rows"]:
-            airport = Airport(info = airport_data)
+            airport = Airport(basic_info = airport_data)
             airports.append(airport)
 
         return airports

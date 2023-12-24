@@ -62,10 +62,10 @@ flight.setFlightDetails(flightDetails);
 console.log("Flying to", flight.destinationAirportName);
 ```
 
-Or get more information about a specific airport such as: runways, temperature, arrived flights, etc.
+Or get more information about a specific airport such as: runways, weather, arrived flights, etc.
 
 ```javascript
-let airportDetails = await frApi.getAirportDetails(airport.icao);
+let airportDetails = await frApi.getAirportDetails(icao);
 ```
 
 Arrivals and departures can have a limit `flightLimit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
@@ -108,7 +108,7 @@ for more information.
 **Getting airport by ICAO or IATA:**
 
 ```javascript
-let luklaAirport = await frApi.getAirport("VNLK");
+let luklaAirport = await frApi.getAirport("VNLK", true);
 ```
 
 ## Getting the distance between flights and airports:

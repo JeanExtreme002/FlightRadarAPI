@@ -52,9 +52,9 @@ flight.set_flight_details(flight_details)
 print("Flying to", flight.destination_airport_name)
 ```
 
-Or get more information about a specific airport such as: runways, temperature, arrived flights, etc.
+Or get more information about a specific airport such as: runways, weather, arrived flights, etc.
 ```py
-airport_details = fr_api.get_airport_details(airport.icao)
+airport_details = fr_api.get_airport_details(icao)
 ```
 Arrivals and departures can have a limit `flight_limit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
 
@@ -90,7 +90,7 @@ for more information.
 
 **Getting airport by ICAO or IATA:**
 ```py
-lukla_airport = fr_api.get_airport(code = "VNLK")
+lukla_airport = fr_api.get_airport(code = "VNLK", details = True)
 ```
 
 ## Getting the distance between flights and airports:
