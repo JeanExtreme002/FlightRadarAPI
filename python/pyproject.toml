@@ -7,7 +7,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-keywords = ["flightradar24", "api"]
+keywords = ["flightradar24", "api", "radar", "aviation", "flights", "airports", "airlines", "aircraft"]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",

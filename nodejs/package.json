@@ -13,7 +13,13 @@
   },
   "keywords": [
     "flightradar24",
-    "api"
+    "api",
+    "radar", 
+    "aviation", 
+    "flights", 
+    "airports",
+    "airlines",
+    "aircraft"
   ],
   "author": "Jean Loui Bernard Silva de Jesus",
   "license": "MIT",
