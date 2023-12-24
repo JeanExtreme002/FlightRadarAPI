@@ -198,7 +198,7 @@ class Flight extends Entity {
         this.destinationAirportTimezoneAbbrName = this.__getInfo(destAirportTimezone?.["abbrName"]);
         this.destinationAirportTimezoneName = this.__getInfo(destAirportTimezone?.["name"]);
         this.destinationAirportTimezoneOffset = this.__getInfo(destAirportTimezone?.["offset"]);
-        this.destinationAirportTimezoneOffsethours = this.__getInfo(destAirportTimezone?.["offsetHours"]);
+        this.destinationAirportTimezoneOffsetHours = this.__getInfo(destAirportTimezone?.["offsetHours"]);
 
         // Origin airport position.
         this.originAirportAltitude = this.__getInfo(origAirportPosition?.["altitude"]);
@@ -221,7 +221,7 @@ class Flight extends Entity {
         this.originAirportTimezoneAbbrName = this.__getInfo(origAirportTimezone?.["abbrName"]);
         this.originAirportTimezoneName = this.__getInfo(origAirportTimezone?.["name"]);
         this.originAirportTimezoneOffset = this.__getInfo(origAirportTimezone?.["offset"]);
-        this.originAirportTimezoneOffsethours = this.__getInfo(origAirportTimezone?.["offsetHours"]);
+        this.originAirportTimezoneOffsetHours = this.__getInfo(origAirportTimezone?.["offsetHours"]);
 
         // Flight status.
         this.statusIcon = this.__getInfo(status?.["icon"]);

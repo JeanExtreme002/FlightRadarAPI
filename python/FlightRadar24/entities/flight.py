@@ -176,7 +176,7 @@ class Flight(Entity):
         self.destination_airport_timezone_abbr_name = self.__get_info(dest_airport_timezone.get("abbrName"))
         self.destination_airport_timezone_name = self.__get_info(dest_airport_timezone.get("name"))
         self.destination_airport_timezone_offset = self.__get_info(dest_airport_timezone.get("offset"))
-        self.destination_airport_timezone_offsetHours = self.__get_info(dest_airport_timezone.get("offsetHours"))
+        self.destination_airport_timezone_offset_hours = self.__get_info(dest_airport_timezone.get("offsetHours"))
 
         # Origin airport position.
         self.origin_airport_altitude = self.__get_info(orig_airport_position.get("altitude"))
@@ -199,7 +199,7 @@ class Flight(Entity):
         self.origin_airport_timezone_abbr_name = self.__get_info(orig_airport_timezone.get("abbrName"))
         self.origin_airport_timezone_name = self.__get_info(orig_airport_timezone.get("name"))
         self.origin_airport_timezone_offset = self.__get_info(orig_airport_timezone.get("offset"))
-        self.origin_airport_timezone_offsetHours = self.__get_info(orig_airport_timezone.get("offsetHours"))
+        self.origin_airport_timezone_offset_hours = self.__get_info(orig_airport_timezone.get("offsetHours"))
 
         # Flight status.
         self.status_icon = self.__get_info(status.get("icon"))

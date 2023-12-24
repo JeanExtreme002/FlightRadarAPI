@@ -71,7 +71,7 @@ class FlightRadar24API {
     }
 
     /**
-     * Return information about a specific airport.
+     * Return basic information about a specific airport.
      *
      * @param {string} code - ICAO or IATA of the airport
      * @return {Airport}

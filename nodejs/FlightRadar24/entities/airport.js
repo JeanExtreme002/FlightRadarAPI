@@ -75,7 +75,7 @@ class Airport extends Entity {
 
         this.timezoneName = this.__getInfo(timezone?.["name"]);
         this.timezoneOffset = this.__getInfo(timezone?.["offset"]);
-        this.timezoneOffsethours = this.__getInfo(timezone?.["offsetHours"]);
+        this.timezoneOffsetHours = this.__getInfo(timezone?.["offsetHours"]);
         this.timezoneAbbr = this.__getInfo(timezone?.["abbr"]);
         this.timezoneAbbrName = this.__getInfo(timezone?.["abbrName"]);
 

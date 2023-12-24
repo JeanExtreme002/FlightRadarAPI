@@ -83,7 +83,7 @@ class FlightRadar24API(object):
 
     def get_airport(self, code: str) -> Airport:
         """
-        Return information about a specific airport.
+        Return basic information about a specific airport.
 
         :param code: ICAO or IATA of the airport
         """
