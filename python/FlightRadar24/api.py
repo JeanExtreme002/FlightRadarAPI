@@ -88,6 +88,9 @@ class FlightRadar24API(object):
         :param code: ICAO or IATA of the airport
         :param details: If True, it returns an Airport instance with detailed information.
         """
+        if 4 < len(code) or len(code) < 3:
+            raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
+            
         if details:
             airport = Airport()
 
@@ -100,9 +103,9 @@ class FlightRadar24API(object):
         content = response.get_content()
         
         if not content or not isinstance(content, dict) or not content.get("details"):
-            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.");
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.")
 
-        return Airport(info=content["details"])
+        return Airport(info = content["details"])
 
     def get_airport_details(self, code: str, flight_limit: int = 100, page: int = 1) -> Dict:
         """
@@ -112,6 +115,9 @@ class FlightRadar24API(object):
         :param flight_limit: Limit of flights related to the airport
         :param page: Page of result to display
         """
+        if 4 < len(code) or len(code) < 3:
+            raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
+
         request_params = {"format": "json"}
 
         if self.__login_data is not None:
@@ -126,10 +132,24 @@ class FlightRadar24API(object):
         response = APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, exclude_status_codes=[400,])
         content: Dict = response.get_content()
 
-        if response.get_status_code() == 400 and isinstance(content, dict) and content.get("errors"):
-            raise ValueError(content["errors"]["errors"]["parameters"]["limit"]["notBetween"])
+        if response.get_status_code() == 400 and content.get("errors"):
+            errors = content["errors"]["errors"]["parameters"]
 
-        return content["result"]["response"]
+            if errors.get("limit"):
+                raise ValueError(errors["limit"]["notBetween"])
+
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.", errors) 
+        
+        result = content["result"]["response"]
+
+        # Check whether it received data of an airport.
+        data = result.get("airport", dict()).get("pluginData", dict())
+
+        if not "details" in data and len(data.get("runways", [])) == 0 and len(data) <= 3:
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.") 
+        
+        # Return the airport details.
+        return result
 
     def get_airports(self) -> List[Airport]:
         """
