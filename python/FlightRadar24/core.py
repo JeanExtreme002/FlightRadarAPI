@@ -40,6 +40,9 @@ class Core(ABC):
     # Weather data URL.
     volcanic_eruption_data_url = flightradar_base_url + "/weather/volcanic"
 
+    # Bookmarks data URL.
+    bookmarks_data_url = flightradar_base_url + "/webapi/v1/bookmarks"
+
     # Country flag image URL.
     country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.svg"
 

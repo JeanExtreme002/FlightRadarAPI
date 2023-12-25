@@ -165,6 +165,21 @@ class FlightRadar24API(object):
 
         return airports
 
+    def get_bookmarks(self) -> Dict:
+        """
+        Get the bookmarks from the FlightRadar24 account.
+        """
+        if not self.is_logged_in():
+            raise LoginError("You must log in to your account.")
+
+        headers = Core.json_headers.copy()
+        headers["accesstoken"] = self.get_login_data()["accessToken"]
+
+        cookies = self.__login_data["cookies"]
+
+        response = APIRequest(Core.bookmarks_data_url, headers = headers, cookies = cookies)
+        return response.get_content()
+
     def get_bounds(self, zone: Dict[str, float]) -> str:
         """
         Convert coordinate dictionary to a string "y1, y2, x1, x2".

@@ -40,6 +40,9 @@ class Core {
         // Weather data URL.
         this.volcanicEruptionDataUrl = this.flightRadarBaseUrl + "/weather/volcanic";
 
+        // Bookmarks data URL.
+        this.bookmarksDataUrl = this.flightRadarBaseUrl + "/webapi/v1/bookmarks";
+
         // Country flag image URL.
         this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
 

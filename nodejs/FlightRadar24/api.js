@@ -179,6 +179,27 @@ class FlightRadar24API {
     }
 
     /**
+     * Return the bookmarks from the FlightRadar24 account.
+     *
+     * @return {object}
+     */
+    async getBookmarks() {
+        if (!this.isLoggedIn()) {
+            throw new LoginError("You must log in to your account.");
+        }
+
+        const headers = {...Core.jsonHeaders};
+        headers["accesstoken"] = this.getLoginData()["accessToken"];
+
+        const cookies = this.__loginData["cookies"];
+
+        const response = new APIRequest(Core.bookmarksDataUrl, null, headers, null, cookies);
+        await response.receive();
+
+        return await response.getContent();
+    }
+
+    /**
      * Convert coordinate dictionary to a string "y1, y2, x1, x2".
      *
      * @param {object} zone - Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
