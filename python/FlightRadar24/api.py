@@ -151,6 +151,13 @@ class FlightRadar24API(object):
         # Return the airport details.
         return result
 
+    def get_airport_disruptions(self) -> Dict:
+        """
+        Return airport disruptions.
+        """
+        response = APIRequest(Core.airport_disruptions_url, headers = Core.json_headers)
+        return response.get_content()
+
     def get_airports(self) -> List[Airport]:
         """
         Return a list with all airports.
@@ -177,7 +184,7 @@ class FlightRadar24API(object):
 
         cookies = self.__login_data["cookies"]
 
-        response = APIRequest(Core.bookmarks_data_url, headers = headers, cookies = cookies)
+        response = APIRequest(Core.bookmarks_url, headers = headers, cookies = cookies)
         return response.get_content()
 
     def get_bounds(self, zone: Dict[str, float]) -> str:

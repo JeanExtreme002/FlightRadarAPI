@@ -16,9 +16,6 @@ class Core(ABC):
     user_login_url = flightradar_base_url + "/user/login"
     user_logout_url = flightradar_base_url + "/user/logout"
 
-    # Most tracked data URL
-    most_tracked_url = flightradar_base_url + "/flights/most-tracked"
-
     # Search data URL
     search_data_url = flightradar_base_url + "/v1/search/web/find?query={}&limit={}"
 
@@ -40,8 +37,14 @@ class Core(ABC):
     # Weather data URL.
     volcanic_eruption_data_url = flightradar_base_url + "/weather/volcanic"
 
+    # Most tracked data URL
+    most_tracked_url = flightradar_base_url + "/flights/most-tracked"
+
+    # Airport disruptions data URL.
+    airport_disruptions_url = flightradar_base_url + "/webapi/v1/airport-disruptions"
+
     # Bookmarks data URL.
-    bookmarks_data_url = flightradar_base_url + "/webapi/v1/bookmarks"
+    bookmarks_url = flightradar_base_url + "/webapi/v1/bookmarks"
 
     # Country flag image URL.
     country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.svg"
