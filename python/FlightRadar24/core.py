@@ -20,7 +20,7 @@ class Core(ABC):
     most_tracked_url = flightradar_base_url + "/flights/most-tracked"
 
     # Search data URL
-    search_data_url = flightradar_base_url + "/v1/search/web/find?query={}&limit=50"
+    search_data_url = flightradar_base_url + "/v1/search/web/find?query={}&limit={}"
 
     # Flights data URLs.
     real_time_flight_tracker_data_url = data_cloud_base_url + "/zones/fcgi/feed.js"

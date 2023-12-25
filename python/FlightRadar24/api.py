@@ -361,11 +361,11 @@ class FlightRadar24API(object):
 
         return zones
 
-    def search(self, query: str) -> Dict:
+    def search(self, query: str, limit: int = 50) -> Dict:
         """
         Return the search result.
         """
-        response = APIRequest(Core.search_data_url.format(query), headers = Core.json_headers)
+        response = APIRequest(Core.search_data_url.format(query, limit), headers = Core.json_headers)
         results = response.get_content().get("results", [])
         stats = response.get_content().get("stats", {})
 
