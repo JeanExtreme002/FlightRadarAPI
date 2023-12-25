@@ -160,6 +160,18 @@ class FlightRadar24API {
     }
 
     /**
+     * Return airport disruptions.
+     *
+     * @return {object}
+     */
+    async getAirportDisruptions() {
+        const response = new APIRequest(Core.airportDisruptionsUrl, null, Core.jsonHeaders);
+        await response.receive();
+
+        return await response.getContent();
+    }
+
+    /**
      * Return a list with all airports.
      *
      * @return {Array<Airport>}
@@ -193,7 +205,7 @@ class FlightRadar24API {
 
         const cookies = this.__loginData["cookies"];
 
-        const response = new APIRequest(Core.bookmarksDataUrl, null, headers, null, cookies);
+        const response = new APIRequest(Core.bookmarksUrl, null, headers, null, cookies);
         await response.receive();
 
         return await response.getContent();
@@ -406,7 +418,7 @@ class FlightRadar24API {
      * @return {object}
      */
     async getVolcanicEruptions() {
-        const response = new APIRequest(Core.volcanicEruptionDataUrl, null, Core.json_headers);
+        const response = new APIRequest(Core.volcanicEruptionDataUrl, null, Core.jsonHeaders);
         await response.receive();
 
         return await response.getContent();
@@ -433,10 +445,14 @@ class FlightRadar24API {
      * Return the search result
      *
      * @param {string} query
+     * @param {number} limit
      * @return {object}
      */
-    async search(query) {
-        const response = new APIRequest(Core.searchDataUrl.replace("{}", query), null, Core.jsonHeaders);
+    async search(query, limit = 50) {
+        const splitUrl = Core.searchDataUrl.split("{}");
+        const url = splitUrl[0] + query + splitUrl[1] + limit + splitUrl[2];
+
+        const response = new APIRequest(url, null, Core.jsonHeaders);
         await response.receive();
 
         const content = await response.getContent();

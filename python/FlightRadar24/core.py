@@ -37,13 +37,13 @@ class Core(ABC):
     # Weather data URL.
     volcanic_eruption_data_url = flightradar_base_url + "/weather/volcanic"
 
-    # Most tracked data URL
+    # Most tracked URL
     most_tracked_url = flightradar_base_url + "/flights/most-tracked"
 
-    # Airport disruptions data URL.
+    # Airport disruptions URL.
     airport_disruptions_url = flightradar_base_url + "/webapi/v1/airport-disruptions"
 
-    # Bookmarks data URL.
+    # Bookmarks URL.
     bookmarks_url = flightradar_base_url + "/webapi/v1/bookmarks"
 
     # Country flag image URL.

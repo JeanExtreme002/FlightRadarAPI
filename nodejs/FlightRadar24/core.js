@@ -16,11 +16,8 @@ class Core {
         this.userLoginUrl = this.flightRadarBaseUrl + "/user/login";
         this.userLogoutUrl = this.flightRadarBaseUrl + "/user/logout";
 
-        // Most tracked data URL
-        this.mostTrackedUrl = this.flightRadarBaseUrl + "/flights/most-tracked";
-
         // Search data URL
-        this.searchDataUrl = this.flightRadarBaseUrl + "/v1/search/web/find?query={}&limit=50";
+        this.searchDataUrl = this.flightRadarBaseUrl + "/v1/search/web/find?query={}&limit={}";
 
         // Flights data URLs.
         this.realTimeFlightTrackerDataUrl = this.dataCloudBaseUrl + "/zones/fcgi/feed.js";
@@ -40,8 +37,14 @@ class Core {
         // Weather data URL.
         this.volcanicEruptionDataUrl = this.flightRadarBaseUrl + "/weather/volcanic";
 
-        // Bookmarks data URL.
-        this.bookmarksDataUrl = this.flightRadarBaseUrl + "/webapi/v1/bookmarks";
+        // Most tracked data URL
+        this.mostTrackedUrl = this.flightRadarBaseUrl + "/flights/most-tracked";
+
+        // Airport disruptions URL.
+        this.airportDisruptionsUrl = this.flightRadarBaseUrl + "/webapi/v1/airport-disruptions";
+
+        // Bookmarks URL.
+        this.bookmarksUrl = this.flightRadarBaseUrl + "/webapi/v1/bookmarks";
 
         // Country flag image URL.
         this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
