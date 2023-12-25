@@ -37,7 +37,7 @@ class Core {
         // Weather data URL.
         this.volcanicEruptionDataUrl = this.flightRadarBaseUrl + "/weather/volcanic";
 
-        // Most tracked data URL
+        // Most tracked URL
         this.mostTrackedUrl = this.flightRadarBaseUrl + "/flights/most-tracked";
 
         // Airport disruptions URL.
