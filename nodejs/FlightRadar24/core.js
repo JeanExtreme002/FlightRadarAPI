@@ -37,6 +37,9 @@ class Core {
         // Zones data URL.
         this.zonesDataUrl = this.flightRadarBaseUrl + "/js/zones.js.php";
 
+        // Weather data URL.
+        this.volcanicEruptionDataUrl = this.flightRadarBaseUrl + "/weather/volcanic";
+
         // Country flag image URL.
         this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
 

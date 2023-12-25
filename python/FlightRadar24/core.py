@@ -37,6 +37,9 @@ class Core(ABC):
     # Zones data URL.
     zones_data_url = flightradar_base_url + "/js/zones.js.php"
 
+    # Weather data URL.
+    volcanic_eruption_data_url = flightradar_base_url + "/weather/volcanic"
+
     # Country flag image URL.
     country_flag_url = flightradar_base_url + "/static/images/data/flags-small/{}.svg"
 

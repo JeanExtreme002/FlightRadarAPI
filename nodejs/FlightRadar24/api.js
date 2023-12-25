@@ -380,6 +380,18 @@ class FlightRadar24API {
     }
 
     /**
+     * Return boundaries of volcanic eruptions and ash clouds impacting aviation.
+     *
+     * @return {object}
+     */
+    async getVolcanicEruptions() {
+        const response = new APIRequest(Core.volcanicEruptionDataUrl, null, Core.json_headers);
+        await response.receive();
+
+        return await response.getContent();
+    }
+
+    /**
      * Return all major zones on the globe.
      *
      * @return {object}

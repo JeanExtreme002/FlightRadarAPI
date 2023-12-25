@@ -327,6 +327,13 @@ class FlightRadar24API(object):
         response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
         return response.get_content()
 
+    def get_volcanic_eruptions(self) -> Dict:
+        """
+        Return boundaries of volcanic eruptions and ash clouds impacting aviation.
+        """
+        response = APIRequest(Core.volcanic_eruption_data_url, headers = Core.json_headers)
+        return response.get_content()
+
     def get_zones(self) -> Dict[str, Dict]:
         """
         Return all major zones on the globe.
