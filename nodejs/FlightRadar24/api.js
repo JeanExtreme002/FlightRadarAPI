@@ -442,10 +442,10 @@ class FlightRadar24API {
     }
 
     /**
-     * Return the search result
+     * Return the search result.
      *
      * @param {string} query
-     * @param {number} limit
+     * @param {number} [limit=50]
      * @return {object}
      */
     async search(query, limit = 50) {
