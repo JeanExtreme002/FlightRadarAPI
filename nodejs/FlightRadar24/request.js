@@ -117,7 +117,19 @@ class APIRequest {
      * Return the received cookies from the request.
      */
     getCookies() {
-        return this.__response.headers.getSetCookie;
+        const rawCookies = this.__response.headers.raw()["set-cookie"];
+        const cookies = {};
+
+        if (rawCookies == null) {
+            return {};
+        }
+
+        rawCookies.forEach((string) => {
+            const keyAndValue = string.split(";")[0].split("=");
+            cookies[keyAndValue[0]] = keyAndValue[1];
+        });
+
+        return cookies;
     }
 
     /**
