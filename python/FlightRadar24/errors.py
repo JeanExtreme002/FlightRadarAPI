@@ -2,7 +2,7 @@
 
 class AirportNotFoundError(Exception):
     pass
-    
+
 
 class CloudflareError(Exception):
     def __init__(self, message, response):

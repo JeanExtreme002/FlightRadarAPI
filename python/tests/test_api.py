@@ -15,34 +15,34 @@ fr_api = FlightRadar24API()
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airlines(expect = 100):
+def test_get_airlines(expect=100):
     results = fr_api.get_airlines()
     assert len(results) >= expect
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airport(airports = ["ATL", "LAX", "DXB", "DFW"]):
+def test_get_airport(airports=["ATL", "LAX", "DXB", "DFW"]):
     for airport in airports:
         assert fr_api.get_airport(airport).iata == airport
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airport_details(airports = ["ATL", "LAX", "DXB", "DFW"]):
+def test_get_airport_details(airports=["ATL", "LAX", "DXB", "DFW"]):
     data = ["airport", "airlines", "aircraftImages"]
 
     for airport in airports:
-        details = fr_api.get_airport_details(airport, flight_limit = 1)
+        details = fr_api.get_airport_details(airport, flight_limit=1)
         assert all([key in details for key in data]) and details["airport"]["pluginData"]["details"]
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airports(expect = 1000):
+def test_get_airports(expect=1000):
     results = fr_api.get_airports()
     assert len(results) >= expect
 
 
 @repeat_test(**repeat_test_config)
-def test_get_zones(expect = 5):
+def test_get_zones(expect=5):
     results = fr_api.get_zones()
 
     assert len(results) >= expect
@@ -52,7 +52,7 @@ def test_get_zones(expect = 5):
 
 
 @repeat_test(**repeat_test_config)
-def test_get_flights(expect = 100):
+def test_get_flights(expect=100):
     results = fr_api.get_flights()
     assert len(results) >= expect
 
@@ -72,11 +72,11 @@ def test_get_flight_details():
 
 
 @repeat_test(**repeat_test_config)
-def test_get_flights_by_airline(airlines = ["SWA", "GLO", "AZU", "UAL", "THY"], expect = 3):
+def test_get_flights_by_airline(airlines=["SWA", "GLO", "AZU", "UAL", "THY"], expect=3):
     count = 0
 
     for airline in airlines:
-        flights = fr_api.get_flights(airline = airline)
+        flights = fr_api.get_flights(airline=airline)
 
         for flight in flights:
             assert flight.airline_icao == airline
@@ -87,14 +87,14 @@ def test_get_flights_by_airline(airlines = ["SWA", "GLO", "AZU", "UAL", "THY"], 
 
 
 @repeat_test(**repeat_test_config)
-def test_get_flights_by_bounds(target_zones = ["northamerica", "southamerica"], expect = 30):
+def test_get_flights_by_bounds(target_zones=["northamerica", "southamerica"], expect=30):
     zones = fr_api.get_zones()
-    
+
     for zone in target_zones:
         zone = zones[zone]
         bounds = fr_api.get_bounds(zone)
 
-        flights = fr_api.get_flights(bounds = bounds)
+        flights = fr_api.get_flights(bounds=bounds)
 
         for flight in flights:
             assert zone["tl_y"] >= flight.latitude >= zone["br_y"]
@@ -104,7 +104,7 @@ def test_get_flights_by_bounds(target_zones = ["northamerica", "southamerica"], 
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airline_logo(airlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]]):
+def test_get_airline_logo(airlines=[["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]]):
     expected = len(airlines) * 0.8
     found = 0
 
@@ -116,7 +116,7 @@ def test_get_airline_logo(airlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"
 
 
 @repeat_test(**repeat_test_config)
-def test_get_country_flag(countries = ["United States", "Brazil", "Egypt", "Japan", "South Korea", "Canada"]):
+def test_get_country_flag(countries=["United States", "Brazil", "Egypt", "Japan", "South Korea", "Canada"]):
     expected = len(countries) * 0.8
     found = 0
 

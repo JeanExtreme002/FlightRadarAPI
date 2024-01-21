@@ -16,8 +16,8 @@ class Flight(Entity):
         :param info: Dictionary with received data from FlightRadar24
         """
         super().__init__(
-            latitude = self.__get_info(info[1]),
-            longitude = self.__get_info(info[2])
+            latitude=self.__get_info(info[1]),
+            longitude=self.__get_info(info[2])
         )
 
         self.id = flight_id
@@ -34,7 +34,7 @@ class Flight(Entity):
         self.number = self.__get_info(info[13])
         self.airline_iata = self.__get_info(info[13][:2])
         self.on_ground = self.__get_info(info[14])
-        self.vertical_speed =self.__get_info(info[15])
+        self.vertical_speed = self.__get_info(info[15])
         self.callsign = self.__get_info(info[16])
         self.airline_icao = self.__get_info(info[18])
 
@@ -62,9 +62,9 @@ class Flight(Entity):
         comparison_functions = {"max": max, "min": min}
 
         for key, value in info.items():
-            
+
             # Separate the comparison prefix if it exists.
-            prefix, key = key.split("_", maxsplit = 1) if key[:4] == "max_" or key[:4] == "min_" else (None, key)
+            prefix, key = key.split("_", maxsplit=1) if key[:4] == "max_" or key[:4] == "min_" else (None, key)
 
             # Check if the value is greater than or less than the attribute value.
             if prefix and key in self.__dict__:

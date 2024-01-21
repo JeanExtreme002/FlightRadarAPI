@@ -37,8 +37,8 @@ class Airport(Entity):
         Initialize instance with basic information about the airport.
         """
         super().__init__(
-            latitude = basic_info["lat"],
-            longitude = basic_info["lon"]
+            latitude=basic_info["lat"],
+            longitude=basic_info["lon"]
         )
         self.altitude = basic_info["alt"]
 
@@ -53,8 +53,8 @@ class Airport(Entity):
         Initialize instance with extra information about the airport.
         """
         super().__init__(
-            latitude = info["position"]["latitude"],
-            longitude = info["position"]["longitude"]
+            latitude=info["position"]["latitude"],
+            longitude=info["position"]["longitude"]
         )
         self.altitude = info["position"]["altitude"]
 
@@ -154,7 +154,7 @@ class Airport(Entity):
 
         self.average_rating = self.__get_info(ratings.get("avg"))
         self.total_rating = self.__get_info(ratings.get("total"))
-        
+
         # Weather information.
         self.weather = self.__get_info(airport.get("weather"), dict())
 

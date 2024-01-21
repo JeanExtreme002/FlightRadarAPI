@@ -54,7 +54,7 @@ class FlightRadar24API(object):
         """
         Return a list with all airlines.
         """
-        response = APIRequest(Core.airlines_data_url, headers = Core.json_headers)
+        response = APIRequest(Core.airlines_data_url, headers=Core.json_headers)
         return response.get_content()["rows"]
 
     def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
@@ -62,11 +62,11 @@ class FlightRadar24API(object):
         Download the logo of an airline from FlightRadar24 and return it as bytes.
         """
         iata, icao = iata.upper(), icao.upper()
-        
+
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
         # Try to get the image by the first URL option.
-        response = APIRequest(first_logo_url, headers = Core.image_headers, exclude_status_codes=[403,])
+        response = APIRequest(first_logo_url, headers=Core.image_headers, exclude_status_codes=[403,])
         status_code = response.get_status_code()
 
         if not str(status_code).startswith("4"):
@@ -75,7 +75,7 @@ class FlightRadar24API(object):
         # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
 
-        response = APIRequest(second_logo_url, headers = Core.image_headers)
+        response = APIRequest(second_logo_url, headers=Core.image_headers)
         status_code = response.get_status_code()
 
         if not str(status_code).startswith("4"):
@@ -90,7 +90,7 @@ class FlightRadar24API(object):
         """
         if 4 < len(code) or len(code) < 3:
             raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
-            
+
         if details:
             airport = Airport()
 
@@ -99,13 +99,13 @@ class FlightRadar24API(object):
 
             return airport
 
-        response = APIRequest(Core.airport_data_url.format(code), headers = Core.json_headers)
+        response = APIRequest(Core.airport_data_url.format(code), headers=Core.json_headers)
         content = response.get_content()
-        
+
         if not content or not isinstance(content, dict) or not content.get("details"):
             raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.")
 
-        return Airport(info = content["details"])
+        return Airport(info=content["details"])
 
     def get_airport_details(self, code: str, flight_limit: int = 100, page: int = 1) -> Dict:
         """
@@ -138,16 +138,16 @@ class FlightRadar24API(object):
             if errors.get("limit"):
                 raise ValueError(errors["limit"]["notBetween"])
 
-            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.", errors) 
-        
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.", errors)
+
         result = content["result"]["response"]
 
         # Check whether it received data of an airport.
         data = result.get("airport", dict()).get("pluginData", dict())
 
-        if not "details" in data and len(data.get("runways", [])) == 0 and len(data) <= 3:
-            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.") 
-        
+        if "details" not in data and len(data.get("runways", [])) == 0 and len(data) <= 3:
+            raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.")
+
         # Return the airport details.
         return result
 
@@ -155,19 +155,19 @@ class FlightRadar24API(object):
         """
         Return airport disruptions.
         """
-        response = APIRequest(Core.airport_disruptions_url, headers = Core.json_headers)
+        response = APIRequest(Core.airport_disruptions_url, headers=Core.json_headers)
         return response.get_content()
 
     def get_airports(self) -> List[Airport]:
         """
         Return a list with all airports.
         """
-        response = APIRequest(Core.airports_data_url, headers = Core.json_headers)
+        response = APIRequest(Core.airports_data_url, headers=Core.json_headers)
 
         airports: List[Airport] = list()
 
         for airport_data in response.get_content()["rows"]:
-            airport = Airport(basic_info = airport_data)
+            airport = Airport(basic_info=airport_data)
             airports.append(airport)
 
         return airports
@@ -184,7 +184,7 @@ class FlightRadar24API(object):
 
         cookies = self.__login_data["cookies"]
 
-        response = APIRequest(Core.bookmarks_url, headers = headers, cookies = cookies)
+        response = APIRequest(Core.bookmarks_url, headers=headers, cookies=cookies)
         return response.get_content()
 
     def get_bounds(self, zone: Dict[str, float]) -> str:
@@ -257,11 +257,11 @@ class FlightRadar24API(object):
         """
         flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
         headers = Core.image_headers.copy()
-        
+
         if "origin" in headers:
             headers.pop("origin")  # Does not work for this request.
 
-        response = APIRequest(flag_url, headers = headers)
+        response = APIRequest(flag_url, headers=headers)
         status_code = response.get_status_code()
 
         if not str(status_code).startswith("4"):
@@ -273,7 +273,7 @@ class FlightRadar24API(object):
 
         :param flight: A Flight instance
         """
-        response = APIRequest(Core.flight_data_url.format(flight.id), headers = Core.json_headers)
+        response = APIRequest(Core.flight_data_url.format(flight.id), headers=Core.json_headers)
         return response.get_content()
 
     def get_flights(
@@ -346,21 +346,21 @@ class FlightRadar24API(object):
         """
         Return the most tracked data.
         """
-        response = APIRequest(Core.most_tracked_url, headers = Core.json_headers)
+        response = APIRequest(Core.most_tracked_url, headers=Core.json_headers)
         return response.get_content()
 
     def get_volcanic_eruptions(self) -> Dict:
         """
         Return boundaries of volcanic eruptions and ash clouds impacting aviation.
         """
-        response = APIRequest(Core.volcanic_eruption_data_url, headers = Core.json_headers)
+        response = APIRequest(Core.volcanic_eruption_data_url, headers=Core.json_headers)
         return response.get_content()
 
     def get_zones(self) -> Dict[str, Dict]:
         """
         Return all major zones on the globe.
         """
-        response = APIRequest(Core.zones_data_url, headers = Core.json_headers)
+        response = APIRequest(Core.zones_data_url, headers=Core.json_headers)
         zones = response.get_content()
 
         if "version" in zones:
@@ -372,7 +372,7 @@ class FlightRadar24API(object):
         """
         Return the search result.
         """
-        response = APIRequest(Core.search_data_url.format(query, limit), headers = Core.json_headers)
+        response = APIRequest(Core.search_data_url.format(query, limit), headers=Core.json_headers)
         results = response.get_content().get("results", [])
         stats = response.get_content().get("stats", {})
 
@@ -407,7 +407,7 @@ class FlightRadar24API(object):
             "type": "web"
         }
 
-        response = APIRequest(Core.user_login_url, headers = Core.json_headers, data = data)
+        response = APIRequest(Core.user_login_url, headers=Core.json_headers, data=data)
         status_code = response.get_status_code()
         content = response.get_content()
 
@@ -431,7 +431,7 @@ class FlightRadar24API(object):
         cookies = self.__login_data["cookies"]
         self.__login_data = None
 
-        response = APIRequest(Core.user_login_url, headers = Core.json_headers, cookies = cookies)
+        response = APIRequest(Core.user_login_url, headers=Core.json_headers, cookies=cookies)
         return str(response.get_status_code()).startswith("2")
 
     def set_flight_tracker_config(

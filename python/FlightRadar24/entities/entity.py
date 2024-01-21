@@ -8,7 +8,7 @@ class Entity(ABC):
     """
     Representation of a real entity, at some location.
     """
-    
+
     _default_text = "N/A"
 
     def __init__(self, latitude: float, longitude: float):

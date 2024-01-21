@@ -1,0 +1,11 @@
+[flake8]
+
+max-line-length = 130
+ignore = W503, E701, E722
+
+per-file-ignores =
+    # __init__.py files are allowed to have unused imports and lines-too-long
+    */__init__.py:F401
+
+    # Unused imports are allowed in the tests/package.py module and they must come after setting the current working directory.
+    tests/package.py:F401, E402

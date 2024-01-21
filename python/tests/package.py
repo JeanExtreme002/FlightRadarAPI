@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 
 current_dir = os.path.join(os.getcwd(), "python")
 sys.path.append(current_dir)
