@@ -8,7 +8,7 @@ import math
 from .core import Core
 from .entities.airport import Airport
 from .entities.flight import Flight
-from .errors import AirportNotFoundError, LoginError
+from .errors import AirportNotFoundError, LoginError, FileTypeError, FlightIDError
 from .request import APIRequest
 
 
@@ -326,6 +326,29 @@ class FlightRadar24API(object):
                 flight.set_flight_details(flight_details)
 
         return flights
+    
+    def get_history_data(self, flight_id: str, file_type: str, time: int) -> Dict:
+        """
+        Download historical data.
+        """
+
+        if not self.is_logged_in():
+            raise LoginError("You must log in to your account.")
+        
+        if file_type not in ['csv', 'kml']:
+            raise FileTypeError(f"File type '{file_type}' is not supported. Only CSV and KML are supported.")
+
+        response = APIRequest(Core.historical_data_url.format(flight_id, file_type, time), headers=Core.json_headers, cookies=self.__login_data["cookies"], exclude_status_codes=[500,404])
+        
+        status_code = response.get_status_code()
+        
+        if status_code == 500 or status_code == 404:
+            raise FlightIDError("Flight ID is not valid.")
+        
+        response = response.get_content()
+        response = str(response.decode('utf-8'))
+        
+        return response
 
     def get_flight_tracker_config(self) -> FlightTrackerConfig:
         """
