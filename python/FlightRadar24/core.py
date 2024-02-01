@@ -23,6 +23,9 @@ class Core(ABC):
     real_time_flight_tracker_data_url = data_cloud_base_url + "/zones/fcgi/feed.js"
     flight_data_url = data_live_base_url + "/clickhandler/?flight={}"
 
+    # Historical data URL.
+    historical_data_url = flightradar_base_url + "/download/?flight={}&file={}&trailLimit=0&history={}"
+
     # Airports data URLs.
     api_airport_data_url = api_flightradar_base_url + "/airport.json"
     airport_data_url = flightradar_base_url + "/airports/traffic-stats/?airport={}"

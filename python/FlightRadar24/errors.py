@@ -15,3 +15,9 @@ class CloudflareError(Exception):
 
 class LoginError(Exception):
     pass
+
+class FileTypeError(Exception):
+    pass
+
+class FlightIDError(Exception):
+    pass
