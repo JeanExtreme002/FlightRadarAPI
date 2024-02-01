@@ -8,7 +8,7 @@ import math
 from .core import Core
 from .entities.airport import Airport
 from .entities.flight import Flight
-from .errors import AirportNotFoundError, LoginError, FileTypeError, FlightIDError
+from .errors import AirportNotFoundError, LoginError
 from .request import APIRequest
 
 
@@ -347,7 +347,7 @@ class FlightRadar24API(object):
         file_type = file_type.lower()
         
         if file_type not in ["csv", "kml"]:
-            raise FileTypeError(f"File type '{file_type}' is not supported. Only CSV and KML are supported.")
+            raise ValueError(f"File type '{file_type}' is not supported. Only CSV and KML are supported.")
 
         response = APIRequest(
             Core.historical_data_url.format(flight.id, file_type, timestamp), 
