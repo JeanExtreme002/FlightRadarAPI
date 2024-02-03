@@ -42,8 +42,7 @@ class FlightRadar24API {
         iata = iata.toUpperCase();
         icao = icao.toUpperCase();
 
-        let firstLogoUrl = Core.airlineLogoUrl.split("{}");
-        firstLogoUrl = firstLogoUrl[0] + iata + firstLogoUrl[1] + icao + firstLogoUrl[2];
+        const firstLogoUrl = Core.airlineLogoUrl.format(iata, icao);
 
         // Try to get the image by the first URL option.
         let response = new APIRequest(firstLogoUrl, null, Core.imageHeaders, null, null, [403]);
@@ -57,7 +56,7 @@ class FlightRadar24API {
         }
 
         // Get the image by the second airline logo URL.
-        const secondLogoUrl = Core.alternativeAirlineLogoUrl.replace("{}", icao);
+        const secondLogoUrl = Core.alternativeAirlineLogoUrl.format(icao);
 
         response = new APIRequest(secondLogoUrl, null, Core.imageHeaders);
         await response.receive();
@@ -91,7 +90,7 @@ class FlightRadar24API {
             return airport;
         }
 
-        const response = new APIRequest(Core.airportDataUrl.replace("{}", code), null, Core.jsonHeaders);
+        const response = new APIRequest(Core.airportDataUrl.format(code), null, Core.jsonHeaders);
         await response.receive();
 
         const info = (await response.getContent())["details"];
@@ -285,7 +284,7 @@ class FlightRadar24API {
      * @return {[object, string]}
      */
     async getCountryFlag(country) {
-        const flagUrl = Core.countryFlagUrl.replace("{}", country.toLowerCase().replace(" ", "-"));
+        const flagUrl = Core.countryFlagUrl.format(country.toLowerCase().replace(" ", "-"));
         const headers = {...Core.imageHeaders};
 
         if (headers.hasOwnProperty("origin")) {
@@ -306,11 +305,11 @@ class FlightRadar24API {
     /**
      * Return the flight details from Data Live FlightRadar24.
      *
-     * @param {Flight} flight - A Flight instance.
+     * @param {Flight} flight - A Flight instance
      * @return {object}
      */
     async getFlightDetails(flight) {
-        const response = new APIRequest(Core.flightDataUrl.replace("{}", flight.id), null, Core.jsonHeaders);
+        const response = new APIRequest(Core.flightDataUrl.format(flight.id), null, Core.jsonHeaders);
         await response.receive();
 
         return (await response.getContent());
@@ -389,6 +388,38 @@ class FlightRadar24API {
     }
 
     /**
+     * Download historical data of a flight.
+     *
+     * @param {Flight} flight - A Flight instance.
+     * @param {string} fileType - Must be "CSV" or "KML"
+     * @param {number} timestamp - A Unix timestamp
+     */
+    async getHistoryData(flight, fileType, timestamp) {
+        if (!this.isLoggedIn()) {
+            throw new LoginError("You must log in to your account.");
+        }
+
+        fileType = fileType.toLowerCase();
+
+        if (!["csv", "kml"].includes(fileType)) {
+            throw new Error("File type '" + fileType + "' is not supported. Only CSV and KML are supported.");
+        }
+
+        const response = new APIRequest(
+            Core.historicalDataUrl.format(flight.id, fileType, timestamp),
+            null, Core.jsonHeaders, null, self.__loginData["cookies"],
+        );
+        await response.receive();
+
+        const content = await response.getContent();
+
+        const decoder = new TextDecoder("utf-8");
+        const bytes = new Uint8Array(content);
+
+        return decoder.decode(bytes);
+    }
+
+    /**
      * Return the user data.
      *
      * @return {object}
@@ -449,8 +480,7 @@ class FlightRadar24API {
      * @return {object}
      */
     async search(query, limit = 50) {
-        const splitUrl = Core.searchDataUrl.split("{}");
-        const url = splitUrl[0] + query + splitUrl[1] + limit + splitUrl[2];
+        const url = Core.searchDataUrl.format(query, limit);
 
         const response = new APIRequest(url, null, Core.jsonHeaders);
         await response.receive();

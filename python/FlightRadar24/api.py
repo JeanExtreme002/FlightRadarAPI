@@ -335,7 +335,7 @@ class FlightRadar24API(object):
 
     def get_history_data(self, flight: Flight, file_type: str, timestamp: int) -> Dict:
         """
-        Download historical data.
+        Download historical data of a flight.
 
         :param flight: A Flight instance
         :param file_type: Must be "CSV" or "KML"

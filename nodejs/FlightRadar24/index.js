@@ -18,7 +18,7 @@ const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
 
 const author = "Jean Loui Bernard Silva de Jesus";
-const version = "1.3.25";
+const version = "1.3.26";
 
 module.exports = {
     FlightRadar24API,

@@ -1,3 +1,13 @@
+String.prototype.format = function() {
+    const args = arguments;
+    let index = 0;
+
+    return this.replace(/{}/g, function(match, position) {
+        return (typeof args[index] == "undefined") ? match : args[index++];
+    });
+};
+
+
 /**
  * Class which contains all URLs used by the package.
  */
@@ -22,6 +32,9 @@ class Core {
         // Flights data URLs.
         this.realTimeFlightTrackerDataUrl = this.dataCloudBaseUrl + "/zones/fcgi/feed.js";
         this.flightDataUrl = this.dataLiveBaseUrl + "/clickhandler/?flight={}";
+
+        // Historical data URL.
+        this.historicalDataUrl = this.flightradarBaseUrl + "/download/?flight={}&file={}&trailLimit=0&history={}";
 
         // Airports data URLs.
         this.apiAirportDataUrl = this.apiFlightradarBaseUrl + "/airport.json";
