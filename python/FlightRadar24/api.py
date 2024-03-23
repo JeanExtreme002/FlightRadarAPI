@@ -345,18 +345,18 @@ class FlightRadar24API(object):
             raise LoginError("You must log in to your account.")
 
         file_type = file_type.lower()
-        
+
         if file_type not in ["csv", "kml"]:
             raise ValueError(f"File type '{file_type}' is not supported. Only CSV and KML are supported.")
 
         response = APIRequest(
-            Core.historical_data_url.format(flight.id, file_type, timestamp), 
+            Core.historical_data_url.format(flight.id, file_type, timestamp),
             headers=Core.json_headers, cookies=self.__login_data["cookies"],
         )
-        
+
         content = response.get_content()
         return str(content.decode("utf-8"))
-    
+
     def get_login_data(self) -> Dict[Any, Any]:
         """
         Return the user data.
