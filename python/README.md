@@ -9,7 +9,8 @@ See more information at: https://www.flightradar24.com/terms-and-conditions
 [![License](https://img.shields.io/pypi/l/FlightRadarAPI)](https://github.com/JeanExtreme002/FlightRadarAPI)
 [![Python Version](https://img.shields.io/badge/python-3.7+-8A2BE2)](https://pypi.org/project/FlightRadarAPI/)
 [![Npm](https://img.shields.io/npm/v/flightradarapi?logo=npm&color=red)](https://www.npmjs.com/package/flightradarapi)
-[![Downloads](https://static.pepy.tech/personalized-badge/flightradarapi?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pypi.org/project/FlightRadarAPI/)
+[![downloads](https://static.pepy.tech/personalized-badge/flightradarapi?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pypi.org/project/FlightRadarAPI/)
+[![Frequency](https://img.shields.io/pypi/dm/flightradarapi?style=flat&label=frequency)](https://pypi.org/project/FlightRadarAPI/)
 
 ## Installing FlightRadarAPI:
 ```
@@ -107,10 +108,10 @@ print(f"The flight is {distance} km away from the airport.")
 *Note*: This requires a premium subscription and for you to be logged in.
 
 ```py
-history_data = fr_api.get_history_data(flight_id='33ca11c4', file_type='csv', time=1706529600)
+history_data = fr_api.get_history_data(flight, file_type="csv", time=1706529600)
 
- with open('history_data.csv', 'w') as f:
-    f.write(history_data)
+ with open("history_data.csv", "w") as file:
+    file.write(history_data)
 ```
 
 `flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.
