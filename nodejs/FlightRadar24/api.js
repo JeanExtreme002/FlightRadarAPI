@@ -413,7 +413,7 @@ class FlightRadar24API {
 
         const content = await response.getContent();
 
-        const decoder = new TextDecoder("utf-8");
+        const decoder = new TextDecoder("utf-8"); // TODO: Must fix and test it yet.
         const bytes = new Uint8Array(content);
 
         return decoder.decode(bytes);
