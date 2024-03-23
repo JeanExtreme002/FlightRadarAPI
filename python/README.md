@@ -114,8 +114,8 @@ history_data = fr_api.get_history_data(flight, file_type="csv", time=1706529600)
     file.write(history_data)
 ```
 
-`flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.
-`file_type` - Either CSV or KML.
+`flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.<br>
+`file_type` - Either CSV or KML.<br>
 `time` - The STD/scheduled time of deperature in UTC of the flight as a Unix timestamp. Putting an invalid time will return a blank document.
 
 ## Setting and getting Real-time Flight Tracker parameters:
