@@ -124,6 +124,20 @@ let distance = flight.getDistanceFrom(airport);
 console.log("The flight is", distance, "km away from the airport.");
 ```
 
+## Downloading Flight Data
+*Note*: This requires a premium subscription and for you to be logged in.
+
+```javascript
+let history_data = await frApi.getHistoryData(flight, "csv", 1706529600);
+
+const buffer = Buffer.from(arrayBuffer);
+fs.writeFile("history_data.csv", buffer);
+```
+
+`flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.<br>
+`file_type` - Either CSV or KML.<br>
+`time` - The STD/scheduled time of deperature in UTC of the flight as a Unix timestamp. Putting an invalid time will return a blank document.
+
 ## Setting and getting Real-time Flight Tracker parameters:
 
 Set it by using the `setFlightTrackerConfig(...)` method. It receives a `FlightTrackerConfig` dataclass instance, but
