@@ -128,9 +128,9 @@ console.log("The flight is", distance, "km away from the airport.");
 *Note*: This requires a premium subscription and for you to be logged in.
 
 ```javascript
-let history_data = await frApi.getHistoryData(flight, "csv", 1706529600);
+let historyData = await frApi.getHistoryData(flight, "csv", 1706529600);
 
-const buffer = Buffer.from(arrayBuffer);
+const buffer = Buffer.from(historyData);
 fs.writeFile("history_data.csv", buffer);
 ```
 
