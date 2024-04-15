@@ -122,12 +122,16 @@ print(f"The flight is {distance} km away from the airport.")
 
 *Note*: This requires a premium subscription and for you to be logged in.
 
-```python
-history_data = fr_api.get_history_data(flight_id='33ca11c4', file_type='csv', time=1706529600)
+```py
+history_data = fr_api.get_history_data(flight, file_type="csv", time=1706529600)
 
- with open('history_data.csv', 'w') as f:
-    f.write(history_data)
+ with open("history_data.csv", "w") as file:
+    file.write(history_data)
 ```
+
+`flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.<br>
+`file_type` - Either CSV or KML.<br>
+`time` - The STD/scheduled time of deperature in UTC of the flight as a Unix timestamp. Putting an invalid time will return a blank document.
 
 ### Setting and Getting Real-time Flight Tracker Parameters
 
