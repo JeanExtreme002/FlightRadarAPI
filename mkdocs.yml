@@ -8,6 +8,7 @@ nav:
   - Home: index.md
   - Python: python.md
   - Node.js: nodejs.md
+  - Projects Using FlightRadarAPI: projects.md
 
 theme:
   name: material
@@ -15,8 +16,6 @@ theme:
   favicon: assets/favicon.ico
 
   features:
-    - navigation.instant
-    - navigation.instant.progress
     - navigation.instant
     - navigation.instant.progress
     - content.code.copy
