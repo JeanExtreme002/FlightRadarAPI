@@ -15,6 +15,9 @@ theme:
   favicon: assets/favicon.ico
 
   features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.instant
     - navigation.instant.progress
     - content.code.copy
     - content.action.edit
