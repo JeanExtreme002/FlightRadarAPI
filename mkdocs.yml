@@ -1,6 +1,6 @@
 site_name: FlightRadarAPI
 repo_url: https://github.com/JeanExtreme002/FlightRadarAPI
-docs_dir: docs/pages
+docs_dir: docs
 site_description: Documentation for the FlightRadarAPI
 site_author: JeanExtreme002
 
@@ -11,8 +11,8 @@ nav:
 
 theme:
   name: material
-  logo: docs/assets/logo.png
-  favicon: docs/assets/favicon.ico
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
 
   features:
     - navigation.instant.progress
