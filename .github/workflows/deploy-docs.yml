@@ -2,8 +2,11 @@ name: Deploy MkDocs
 on:
   push:
     branches:
-      - master 
       - main
+    paths:
+      - 'mkdocs.yml'
+      - 'docs/**'
+      - '.github/workflows/deploy-docs.yml'
 permissions:
   contents: write
 jobs:
