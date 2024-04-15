@@ -72,8 +72,8 @@ class APIRequest {
 
         if (this.getStatusCode() == 520) {
             throw new CloudflareError(
-                message = "An unexpected error has occurred. Perhaps you are making too many calls?",
-                response = this.__response,
+                "An unexpected error has occurred. Perhaps you are making too many calls?",
+                this.__response,
             );
         }
 

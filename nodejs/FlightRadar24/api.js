@@ -412,11 +412,7 @@ class FlightRadar24API {
         await response.receive();
 
         const content = await response.getContent();
-
-        const decoder = new TextDecoder("utf-8");
-        const bytes = new Uint8Array(content);
-
-        return decoder.decode(bytes);
+        return content;
     }
 
     /**
