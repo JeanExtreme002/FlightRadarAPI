@@ -1,6 +1,6 @@
 ---
 title: Python
-description: API Docuemntation for Python
+description: API Documentation for Python
 ---
 
 ## Installation

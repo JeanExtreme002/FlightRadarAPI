@@ -1,6 +1,6 @@
 ---
 title: Node.js
-description: API Docuemntation for Node.js
+description: API Documentation for Node.js
 ---
 
 ## Installation
