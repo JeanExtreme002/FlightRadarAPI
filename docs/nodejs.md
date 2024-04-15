@@ -67,7 +67,8 @@ Fetch more information about a specific flight or airport using the following me
     let airportDetails = await frApi.getAirportDetails(icao);
     ```
 
-    Note: Arrivals and departures can have a limit `flightLimit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
+    !!! note
+        Arrivals and departures can have a limit `flightLimit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
 
 ## Advanced Usage
 
@@ -119,15 +120,18 @@ let distance = flight.getDistanceFrom(airport);
 console.log("The flight is", distance, "km away from the airport.");
 ```
 
-## Downloading Flight Data
-
-*Note*: This feature requires a premium subscription and for you to be logged in.
+## Downloading Flight Data :material-information-outline:{ title="This requires a premium subscription" }
 
 You can download flight data in either CSV or KML format. The method `getHistoryData(...)` is used for this purpose. It takes three parameters:
 
-- `flight_id`: The ID of the flight. This can be obtained from any other function that returns flight details.
-- `file_type`: The format of the file to download. This can be either "CSV" or "KML".
-- `time`: The scheduled time of departure (STD) of the flight in UTC, as a Unix timestamp. If an invalid time is provided, a blank document will be returned.
+!!! warning inline end
+    If an invalid time is provided, a blank document will be returned. 
+
+| Parameter  | Description |
+| ------------- | ------------- |
+| `flight_id`  | The ID of the flight. This can be obtained from any other function that returns flight details.  |
+| `file_type`  | The format of the file to download. This can be either "CSV" or "KML".  |
+| `time`  | The scheduled time of departure (STD) of the flight in UTC, as a Unix timestamp. |
 
 Here is an example of how to use this method:
 

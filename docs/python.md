@@ -67,7 +67,8 @@ Fetch more information about a specific flight or airport using the following me
     airport_details = fr_api.get_airport_details(icao)
     ```
 
-    Note: Arrivals and departures can have a limit `flight_limit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
+    !!! note
+        Arrivals and departures can have a limit `flightLimit` (max value is 100) to display. When you need to reach more than 100 flights you can use additional parameter `page` to view other pages.
 
 ## Advanced Usage
 
@@ -118,9 +119,8 @@ distance = flight.get_distance_from(airport)
 print(f"The flight is {distance} km away from the airport.")
 ```
 
-### Downloading Flight Data
+### Downloading Flight Data :material-information-outline:{ title="This requires a premium subscription" }
 
-*Note*: This requires a premium subscription and for you to be logged in.
 
 ```py
 history_data = fr_api.get_history_data(flight, file_type="csv", time=1706529600)
@@ -129,9 +129,15 @@ history_data = fr_api.get_history_data(flight, file_type="csv", time=1706529600)
     file.write(history_data)
 ```
 
-`flight_id` - The ID of the flight. Can be gotten from any other function that returns flight details.<br>
-`file_type` - Either CSV or KML.<br>
-`time` - The STD/scheduled time of deperature in UTC of the flight as a Unix timestamp. Putting an invalid time will return a blank document.
+!!! warning inline end
+    If an invalid time is provided, a blank document will be returned. 
+
+| Parameter  | Description |
+| ------------- | ------------- |
+| `flight_id`  | The ID of the flight. This can be obtained from any other function that returns flight details.  |
+| `file_type`  | The format of the file to download. This can be either "CSV" or "KML".  |
+| `time`  | The scheduled time of departure (STD) of the flight in UTC, as a Unix timestamp.  |
+
 
 ### Setting and Getting Real-time Flight Tracker Parameters
 
