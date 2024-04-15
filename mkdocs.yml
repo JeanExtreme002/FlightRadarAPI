@@ -1,0 +1,58 @@
+site_name: FlightRadarAPI
+repo_url: https://github.com/JeanExtreme002/FlightRadarAPI
+docs_dir: docs
+site_description: Documentation for the FlightRadarAPI
+site_author: JeanExtreme002
+
+nav:
+  - Home: index.md
+  - Python: python.md
+  - Node.js: nodejs.md
+  - Projects Using FlightRadarAPI: projects.md
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
+
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.tooltips
+    
+  icon:
+    repo: fontawesome/brands/github
+    annotation: material/arrow-right-circle
+
+  palette:
+    - primary: indigo
+    - accent: yellow
+  
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/JeanExtreme002
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  - abbr
+  - attr_list
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - git-committers:
+      repository: JeanExtreme002/FlightRadarAPI
+      branch: main
+  - search
