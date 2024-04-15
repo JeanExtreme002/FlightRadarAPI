@@ -3,8 +3,6 @@ title: Projects using FlightRadarAPI
 description: Nice projects that use FlightRadarAPI
 ---
 
-## Check out some nice projects that use FlightRadarAPI
-
 <div class="grid cards" align="center" markdown>
 
 -  [__Automatic Calibration in Crowd-sourced Network of Spectrum Sensors__](https://dl.acm.org/doi/10.1145/3626111.3628187)
