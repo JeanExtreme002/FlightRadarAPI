@@ -6,3 +6,4 @@ dist
 venv/
 node_modules/
 .env
+.cache
