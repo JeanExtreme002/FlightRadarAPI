@@ -18,6 +18,9 @@ theme:
     - navigation.instant.progress
     - content.code.copy
     - content.action.edit
+    - search.suggest
+    - search.highlight
+    - search.share
     
   icon:
     repo: fontawesome/brands/github
@@ -46,3 +49,4 @@ plugins:
   - git-committers:
       repository: JeanExtreme002/FlightRadarAPI
       branch: main
+  - search
