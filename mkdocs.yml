@@ -43,4 +43,6 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
-  - git-authors
+  - git-committers:
+      repository: JeanExtreme002/FlightRadarAPI
+      branch: main
