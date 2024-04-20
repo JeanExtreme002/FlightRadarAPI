@@ -39,4 +39,4 @@ description: Nice projects that use FlightRadarAPI
 
 </div>
 
-[Contribute Your Own](https://github.com/JeanExtreme002/FlightRadarAPI/edit/master/docs/projects.md){ .md-button .md-button--primary }
+[Contribute Your Own :writing_hand:](https://github.com/JeanExtreme002/FlightRadarAPI/edit/main/docs/projects.md){ .md-button .md-button--primary }

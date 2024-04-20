@@ -1,6 +1,6 @@
 # FlightRadarAPI Documentation
 
-Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and NodeJS.
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and Node.js.
 
 If you want to use the data collected using this SDK commercially, you need to subscribe to the [Business plan](https://www.flightradar24.com/premium/).</br>
 See more information at: [https://www.flightradar24.com/terms-and-conditions](https://www.flightradar24.com/terms-and-conditions)
@@ -25,11 +25,11 @@ See more information at: [https://www.flightradar24.com/terms-and-conditions](ht
     The code is open source and available for inspection on GitHub.
 
 
--   :material-sticker-check-outline:{ .lg .middle } __Trustworthy Service__
+-   :material-sticker-check-outline:{ .lg .middle } __Python and Node.js__
 
     ---
 
-    All data is parsed from the FlightRadar24, which is a reliable source for real-time flight data.
+    Packages are avaiable for use on both Python and Node.js
 
 </div>
 
@@ -41,16 +41,18 @@ See more information at: [https://www.flightradar24.com/terms-and-conditions](ht
 
 ## Installation
 
-### Python
-To install FlightRadarAPI for Python using pip, run the following command in your terminal:
+=== "Python"
 
-```bash
-pip install FlightRadarAPI
-```
+    To install FlightRadarAPI for Python using [pip](https://pypi.org/project/FlightRadarAPI/), run the following command in your terminal:
 
-### NodeJS
-To install FlightRadarAPI for NodeJS using npm, run the following command in your terminal:
+    ```bash
+    pip install FlightRadarAPI
+    ```
 
-```bash
-npm install flightradarapi
-```
+=== "Node.js"
+
+    To install FlightRadarAPI for Node.js using [npm](https://www.npmjs.com/package/flightradarapi), run the following command in your terminal:
+
+    ```bash
+    npm install flightradarapi
+    ```
