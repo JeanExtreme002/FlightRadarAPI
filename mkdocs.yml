@@ -3,6 +3,7 @@ repo_url: https://github.com/JeanExtreme002/FlightRadarAPI
 docs_dir: docs
 site_description: Documentation for the FlightRadarAPI
 site_author: JeanExtreme002
+edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
@@ -24,6 +25,7 @@ theme:
     - search.highlight
     - search.share
     - content.tooltips
+    - content.tabs.link
     
   icon:
     repo: fontawesome/brands/github
@@ -41,7 +43,6 @@ extra:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - attr_list
   - md_in_html
   - abbr
@@ -50,6 +51,9 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences
 
 plugins:
   - git-committers:
