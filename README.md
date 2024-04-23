@@ -13,7 +13,15 @@ See more information at: https://www.flightradar24.com/terms-and-conditions
 [![Frequency](https://img.shields.io/pypi/dm/flightradarapi?style=flat&label=frequency)](https://pypi.org/project/FlightRadarAPI/)
 
 ## Installing FlightRadarAPI
-Installation information is available on the [documentation](https://JeanExtreme002.github.io/FlightRadarAPI/).
+**For Python with pip:**
+```
+pip install FlightRadarAPI
+```
+
+**For Node.js with npm:**
+```
+npm install flightradarapi
+```
 
 ## Documentation
 Explore the documentation of FlightRadarAPI package, for Python or NodeJS, through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).
