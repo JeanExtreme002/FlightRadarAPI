@@ -34,6 +34,9 @@ tests = [
 
 [project.urls]
 "Homepage" = "https://github.com/JeanExtreme002/FlightRadarAPI"
+"Source Code": "https://github.com/JeanExtreme002/FlightRadarAPI",
+"Documentation" = "https://jeanextreme002.github.io/FlightRadarAPI/"
+"Bug Reports" = "https://github.com/JeanExtreme002/FlightRadarAPI/issues"
 
 [tool.hatch.version]
 path = "FlightRadar24/__init__.py"
