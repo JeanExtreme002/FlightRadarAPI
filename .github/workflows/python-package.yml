@@ -30,7 +30,8 @@ jobs:
         pip install -r python/requirements.txt
     - name: Test with pytest
       run: |
-        pytest python/tests -v -s
+        cd python
+        pytest tests -vv -s
     - name: Install package
       run: |
         pip install FlightRadar24
