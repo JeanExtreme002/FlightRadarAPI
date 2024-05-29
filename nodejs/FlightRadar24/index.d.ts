@@ -4,26 +4,26 @@ export class FlightRadar24API {
   
   constructor();
   
-  async getAirlines(): Promise<object>;
+  getAirlines(): Promise<object>;
   
-  async getAirlineLogo(
+  getAirlineLogo(
     iata: string,
     icao: string,
   ): Promise<[object, string] | undefined>;
   
-  async getAirport(code: string, details?: boolean): Promise<Airport>;
+  getAirport(code: string, details?: boolean): Promise<Airport>;
   
-  async getAirportDetails(
+  getAirportDetails(
     code: string,
     flightLimit?: number,
     page?: number,
   ): Promise<object>;
   
-  async getAirportDisruptions(): Promise<object>;
+  getAirportDisruptions(): Promise<object>;
   
-  async getAirports(): Promise<Airport[]>;
+  getAirports(): Promise<Airport[]>;
   
-  async getBookmarks(): Promise<object>;
+  getBookmarks(): Promise<object>;
   
   getBounds(zone: {
     tl_y: number;
@@ -38,11 +38,11 @@ export class FlightRadar24API {
     radius: number,
   ): string;
   
-  async getCountryFlag(country: string): Promise<[object, string] | undefined>;
+  getCountryFlag(country: string): Promise<[object, string] | undefined>;
   
-  async getFlightDetails(flight: Flight): Promise<object>;
+  getFlightDetails(flight: Flight): Promise<object>;
   
-  async getFlights(
+  getFlights(
     airline?: string | null,
     bounds?: string | null,
     registration?: string | null,
@@ -52,7 +52,7 @@ export class FlightRadar24API {
   
   getFlightTrackerConfig(): FlightTrackerConfig;
   
-  async getHistoryData(
+  getHistoryData(
     flight: Flight,
     fileType: string,
     timestamp: number,
@@ -60,21 +60,21 @@ export class FlightRadar24API {
   
   getLoginData(): object;
   
-  async getMostTracked(): Promise<object>;
+  getMostTracked(): Promise<object>;
   
-  async getVolcanicEruptions(): Promise<object>;
+  getVolcanicEruptions(): Promise<object>;
   
-  async getZones(): Promise<object>;
+  getZones(): Promise<object>;
   
-  async search(query: string, limit?: number): Promise<object>;
+  search(query: string, limit?: number): Promise<object>;
   
   isLoggedIn(): boolean;
   
-  async login(user: string, password: string): Promise<void>;
+  login(user: string, password: string): Promise<void>;
   
-  async logout(): Promise<boolean>;
+  logout(): Promise<boolean>;
   
-  async setFlightTrackerConfig(
+  setFlightTrackerConfig(
     flightTrackerConfig: FlightTrackerConfig | null,
     config?: object,
   ): Promise<void>;
@@ -107,34 +107,13 @@ export class Airport extends Entity {
   iata: string;
   country: string;
   
-  constructor(basicInfo?: AirportData, info?: object) {
-    super();
-
-    if (basicInfo) {
-      this.__initializeWithBasicInfo(basicInfo);
-    }
-    if (info) {
-      this.__initializeWithInfo(info);
-    }
-  }
+  constructor(basicInfo?: object, info?: object);
   
-  private __initializeWithBasicInfo(basicInfo: AirportData): void {
-    this.latitude = basicInfo.latitude;
-    this.longitude = basicInfo.longitude;
-    this.altitude = basicInfo.altitude;
-    this.name = basicInfo.name;
-    this.icao = basicInfo.icao;
-    this.iata = basicInfo.iata;
-    this.country = basicInfo.country;
-  }
+  private __initializeWithBasicInfo(basicInfo: object): void;
   
-  private __initializeWithInfo(info: object): void {
-    // Initialize with info
-  }
+  private __initializeWithInfo(info: object): void;
   
-  setAirportDetails(airportDetails: object): void {
-    // Set airport details
-  }
+  setAirportDetails(airportDetails: object): void;
 }
 
 export class Entity {
