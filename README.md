@@ -1,6 +1,8 @@
 # FlightRadarAPI
 Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and Node.js.
 
+This SDK provides flight and airport data available to the public on the FlightRadar24 website.
+
 See more information at: https://www.flightradar24.com/terms-and-conditions
 
 [![Python Package](https://github.com/JeanExtreme002/FlightRadarAPI/workflows/Python%20Package/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)

@@ -2,9 +2,8 @@
  * Unofficial SDK for FlightRadar24.
  *
  * This SDK provides flight and airport data available to the public
- * on the FlightRadar24 website. If you want to use the data collected
- * using this API commercially, you need to subscribe to the Business plan.
-
+ * on the FlightRadar24 website. 
+ *
  * See more information at:
  * https://www.flightradar24.com/premium/
  * https://www.flightradar24.com/terms-and-conditions
