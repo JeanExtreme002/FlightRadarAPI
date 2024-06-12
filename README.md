@@ -1,7 +1,7 @@
 # FlightRadarAPI
 Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and Node.js.
 
-This SDK provides flight and airport data available to the public on the FlightRadar24 website.
+This SDK should only be used for your own educational purposes. If you are interested in accessing Flightradar24 data commercially, please contact business@fr24.com.
 
 See more information at: https://www.flightradar24.com/terms-and-conditions
 
