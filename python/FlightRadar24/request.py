@@ -27,6 +27,7 @@ class APIRequest(object):
         url: str,
         params: Optional[Dict] = None,
         headers: Optional[Dict] = None,
+        timeout: int = 30,
         data: Optional[Dict] = None,
         cookies: Optional[Dict] = None,
         exclude_status_codes: List[int] = list()
@@ -46,14 +47,16 @@ class APIRequest(object):
         self.request_params = {
             "params": params,
             "headers": headers,
+            "timeout": timeout,
             "data": data,
             "cookies": cookies
         }
 
         request_method = requests.get if data is None else requests.post
 
-        if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
-        self.__response = request_method(url, headers=headers, cookies=cookies, data=data)
+        if params:
+            url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+        self.__response = request_method(url, headers=headers, cookies=cookies, data=data, timeout=timeout)
 
         if self.get_status_code() == 520:
             raise CloudflareError(
