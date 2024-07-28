@@ -354,6 +354,7 @@ class FlightRadar24API(object):
         response = APIRequest(
             Core.historical_data_url.format(flight.id, file_type, timestamp),
             headers=Core.json_headers, cookies=self.__login_data["cookies"],
+            timeout=self.timeout
         )
 
         content = response.get_content()
