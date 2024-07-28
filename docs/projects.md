@@ -5,12 +5,6 @@ description: Nice projects that use FlightRadarAPI
 
 <div class="grid cards" align="center" markdown>
 
-- [__Plane spotting Telegram Bot__](https://github.com/ViLsonCake/avgeek-telegram-bot)
-
-    ___
-
-    By Timofey Dmitrenko, aviation geek and Java Spring Boot programmer
-
 -  [__Automatic Calibration in Crowd-sourced Network of Spectrum Sensors__](https://dl.acm.org/doi/10.1145/3626111.3628187)
 
     ---
@@ -42,6 +36,11 @@ description: Nice projects that use FlightRadarAPI
 
     By Colin Waddell, a Glasgow based programmer, website designer and electronics specialist
 
+- [__Plane spotting Telegram Bot__](https://github.com/ViLsonCake/avgeek-telegram-bot)
+
+    ---
+
+    By Timofey Dmitrenko, aviation geek and Java Spring Boot programmer
 
 </div>
 
