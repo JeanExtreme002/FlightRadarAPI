@@ -37,7 +37,7 @@ class FlightRadar24API(object):
     Main class of the FlightRadarAPI
     """
 
-    def __init__(self, user: Optional[str] = None, password: Optional[str] = None, timeout: int = 30):
+    def __init__(self, user: Optional[str] = None, password: Optional[str] = None, timeout: int = 10):
         """
         Constructor of the FlightRadar24API class.
 
