@@ -54,8 +54,7 @@ class APIRequest(object):
 
         request_method = requests.get if data is None else requests.post
 
-        if params:
-            url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+        if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
         self.__response = request_method(url, headers=headers, cookies=cookies, data=data, timeout=timeout)
 
         if self.get_status_code() == 520:
