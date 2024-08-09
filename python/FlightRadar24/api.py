@@ -47,10 +47,10 @@ class FlightRadar24API(object):
         self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
 
+        self.timeout: int = timeout
+
         if user is not None and password is not None:
             self.login(user, password)
-        
-        self.timeout: int = timeout
 
     def get_airlines(self) -> List[Dict]:
         """
