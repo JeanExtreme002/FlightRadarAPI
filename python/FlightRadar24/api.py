@@ -46,11 +46,12 @@ class FlightRadar24API(object):
         """
         self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
-
         self.timeout: int = timeout
 
         if user is not None and password is not None:
             self.login(user, password)
+
+
 
     def get_airlines(self) -> List[Dict]:
         """
@@ -284,6 +285,8 @@ class FlightRadar24API(object):
         bounds: Optional[str] = None,
         registration: Optional[str] = None,
         aircraft_type: Optional[str] = None,
+        callsigns: Optional[str] = None,
+        categories: Optional[str] = None,
         *,
         details: bool = False
     ) -> List[Flight]:
@@ -294,6 +297,20 @@ class FlightRadar24API(object):
         :param bounds: Coordinates (y1, y2 ,x1, x2). Ex: "75.78,-75.78,-427.56,427.56"
         :param registration: Aircraft registration
         :param aircraft_type: Aircraft model code. Ex: "B737"
+        :param callsigns: Callsigns of the flights
+        :param categories: Categories of the flights
+                                P - PASSENGER - Commercial aircraft that carry passengers as their primary purpose
+                                C - CARGO - Aircraft that carry only cargo
+                                M - MILITARY_AND_GOVERNMENT - Aircraft operated by military or a governmental agency
+                                J - BUSINESS_JETS - Larger private aircraft, such as Gulfstream, Bombardier, and Pilatus
+                                T - GENERAL_AVIATION - Non-commercial transport flights, including private, ambulance, aerial survey, flight training and instrument calibration aircraft
+                                H - HELICOPTERS - Rotary wing aircraft
+                                B - LIGHTER_THAN_AIR - Lighter-than-air aircraft include gas-filled airships of all kinds
+                                G - GLIDERS - Unpowered aircraft
+                                D - DRONES - Uncrewed aircraft, ranging from small consumer drones to larger UAVs
+                                V - GROUND_VEHICLES - Transponder equipped vehicles, such as push-back tugs, fire trucks, and operations vehicles
+                                O - OTHER - Aircraft appearing on Flightradar24 not classified elsewhere (International Space Station, UFOs, Santa, etc)
+                                N - NON_CATEGORIZED - Aircraft not yet placed into a category in the Flightradar24 database
         :param details: If True, it returns flights with detailed information
         """
         request_params = dataclasses.asdict(self.__flight_tracker_config)
@@ -306,6 +323,8 @@ class FlightRadar24API(object):
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
+        if callsigns: request_params["callsign"] = callsigns
+        if categories: request_params["categories"] = categories
 
         # Get all flights from Data Live FlightRadar24.
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
