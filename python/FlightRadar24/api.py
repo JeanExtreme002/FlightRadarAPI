@@ -286,7 +286,7 @@ class FlightRadar24API(object):
         aircraft_type: Optional[str] = None,
         *,
         details: bool = False,
-        id: Optional[str] = None,
+        flight_id: Optional[str] = None,
     ) -> List[Flight]:
         """
         Return a list of flights. See more options at set_flight_tracker_config() method.
@@ -307,7 +307,7 @@ class FlightRadar24API(object):
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
-        if id: request_params["selected"] = id
+        if flight_id: request_params["selected"] = flight_id
 
         # Get all flights from Data Live FlightRadar24.
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
