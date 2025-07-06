@@ -5,6 +5,7 @@ const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const {AirportNotFoundError, LoginError} = require("./errors");
 const {isNumeric} = require("./util");
+const {JSDOM} = require("jsdom");
 
 
 /**
@@ -22,13 +23,90 @@ class FlightRadar24API {
     /**
      * Return a list with all airlines.
      *
-     * @return {object}
+     * @return {Array<object>}
      */
     async getAirlines() {
-        const response = new APIRequest(Core.airlinesDataUrl, null, Core.jsonHeaders);
+        const response = new APIRequest(Core.airlinesDataUrl, null, Core.htmlHeaders);
         await response.receive();
 
-        return (await response.getContent())["rows"];
+        const htmlContent = await response.getContent();
+        const airlinesData = [];
+        
+        // Parse HTML content.
+        const dom = new JSDOM(htmlContent);
+        const document = dom.window.document;
+        
+        const tbody = document.querySelector("tbody");
+
+        if (!tbody) {
+            return [];
+        }
+        
+        // Extract data from HTML content.
+        const trElements = tbody.querySelectorAll("tr");
+        
+        for (const tr of trElements) {
+            const tdNotranslate = tr.querySelector("td.notranslate");
+            
+            if (tdNotranslate) {
+                const aElement = tdNotranslate.querySelector("a[href^='/data/airlines']");
+                
+                if (aElement) {
+                    const tdElements = tr.querySelectorAll("td");
+
+                    // Extract airline name.
+                    const airlineName = aElement.textContent.trim();
+
+                    if (airlineName.length < 2) {
+                        continue;
+                    }
+
+                    // Extract IATA / ICAO codes.
+                    let iata = null;
+                    let icao = null;
+
+                    if (tdElements.length >= 4) {
+                        const codesText = tdElements[3].textContent.trim();
+
+                        if (codesText.includes(" / ")) {
+                            const parts = codesText.split(" / ");
+
+                            if (parts.length === 2) {
+                                iata = parts[0].trim();
+                                icao = parts[1].trim();
+                            }
+                        } else if (codesText.length === 2) {
+                            iata = codesText;
+                        } else if (codesText.length === 3) {
+                            icao = codesText;
+                        }
+                    }
+                    
+                    // Extract number of aircrafts.
+                    let nAircrafts = null;
+
+                    if (tdElements.length >= 5) {
+                        const aircraftsText = tdElements[4].textContent.trim();
+
+                        if (aircraftsText) {
+                            nAircrafts = aircraftsText.split(" ")[0].trim();
+                            nAircrafts = parseInt(nAircrafts);
+                        }
+                    }
+
+                    const airlineData = {
+                        "Name": airlineName,
+                        "ICAO": icao,
+                        "IATA": iata,
+                        "n_aircrafts": nAircrafts
+                    };
+                    
+                    airlinesData.push(airlineData);
+                }
+            }
+        }
+        
+        return airlinesData;
     }
 
     /**
@@ -171,21 +249,112 @@ class FlightRadar24API {
     }
 
     /**
-     * Return a list with all airports.
+     * Return a list with all airports for specified countries.
      *
+     * @param {Array<string>} countries - Array of country names from Countries enum
      * @return {Array<Airport>}
      */
-    async getAirports() {
-        const response = new APIRequest(Core.airportsDataUrl, null, Core.jsonHeaders);
-        await response.receive();
-
-        const content = await response.getContent();
+    async getAirports(countries) {
         const airports = [];
 
-        for (const airportData of content["rows"]) {
-            const airport = new Airport(airportData);
-            airports.push(airport);
+        for (const countryName of countries) {
+            const countryHref = Core.airportsDataUrl + "/" + countryName;
+
+            const response = new APIRequest(countryHref, null, Core.htmlHeaders);
+            await response.receive();
+
+            const htmlContent = await response.getContent();
+
+            // Parse HTML content.
+            const dom = new JSDOM(htmlContent);
+            const document = dom.window.document;
+            
+            const tbody = document.querySelector("tbody");
+
+            if (!tbody) {
+                continue;
+            }
+            
+            // Extract country name from the URL
+            const countryDisplayName = countryHref.split("/").pop().replace(/-/g, " ")
+                .split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+            const trElements = tbody.querySelectorAll("tr");
+            
+            for (const tr of trElements) {
+                const aElements = tr.querySelectorAll("a[data-iata][data-lat][data-lon]");
+                
+                if (aElements.length > 0) {
+                    const aElement = aElements[0];
+                    
+                    let icao = "";
+                    let iata = aElement.getAttribute("data-iata") || "";
+                    const latitude = aElement.getAttribute("data-lat") || "";
+                    const longitude = aElement.getAttribute("data-lon") || "";
+                    
+                    const airportText = aElement.textContent.trim();
+                    let namePart = airportText;
+                    
+                    // Get IATA / ICAO from airport text.
+                    const smallElement = aElement.querySelector("small");
+                    
+                    if (smallElement) {
+                        let codesText = smallElement.textContent.trim();
+                        codesText = codesText.replace(/^\(/, "").replace(/\)$/, "").trim();
+                        
+                        // Remove IATA / ICAO from name part.
+                        namePart = namePart.replace(smallElement.textContent, "").replace(/\(\)/, "").trim();
+                        
+                        // Parse codes (can be "IATA/ICAO", "IATA", or "ICAO")
+                        if (codesText.includes("/")) {
+                            const codes = codesText.split("/");
+                            const code1 = codes[0].trim();
+                            const code2 = codes[1].trim();
+
+                            // Use length to determine IATA vs ICAO
+                            if (code1.length === 3 && code2.length === 4) {
+                                iata = code1;
+                                icao = code2;
+                            } else if (code1.length === 4 && code2.length === 3) {
+                                iata = code2;
+                                icao = code1;
+                            }
+                        } else if (codesText.length === 3) {
+                            iata = codesText;
+                        } else if (codesText.length === 4) {
+                            icao = codesText;
+                        }
+                    }
+                    
+                    // Convert latitude and longitude to float
+                    let latFloat = 0.0;
+                    let lonFloat = 0.0;
+                    
+                    try {
+                        latFloat = latitude ? parseFloat(latitude) : 0.0;
+                        lonFloat = longitude ? parseFloat(longitude) : 0.0;
+                    } catch (error) {
+                        latFloat = 0.0;
+                        lonFloat = 0.0;
+                    }
+                    
+                    // Create Airport instance with basic_info format
+                    const airportData = {
+                        "name": namePart,
+                        "icao": icao,
+                        "iata": iata,
+                        "lat": latFloat,
+                        "lon": lonFloat,
+                        "alt": null,  // Altitude not available in this format
+                        "country": countryDisplayName
+                    };
+                    
+                    const airport = new Airport(airportData);
+                    airports.push(airport);
+                }
+            }
         }
+        
         return airports;
     }
 

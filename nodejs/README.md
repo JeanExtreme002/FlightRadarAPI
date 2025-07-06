@@ -22,7 +22,7 @@ $ npm install flightradarapi
 
 Import the class `FlightRadar24API` and create an instance of it.
 ```javascript
-const { FlightRadar24API } = require("flightradarapi");
+const { FlightRadar24API, Countries } = require("flightradarapi");
 const frApi = new FlightRadar24API();
 ```
 
@@ -31,19 +31,33 @@ const frApi = new FlightRadar24API();
 let flights = await frApi.getFlights(...);  // Returns a list of Flight objects
 ```
 
-**Getting airports list:**
+**Getting airports list (requires country selection):**
 ```javascript
-let airports = await frApi.getAirports(...);  // Returns a list of Airport objects
+// Get airports from specific countries
+let airports = await frApi.getAirports([Countries.BRAZIL, Countries.UNITED_STATES]);  // Returns a list of Airport objects
 ```
 
 **Getting airlines list:**
 ```javascript
-let airlines = await frApi.getAirlines();
+let airlines = await frApi.getAirlines();  // Returns detailed airline information with IATA/ICAO codes
 ```
 
 **Getting zones list:**
 ```javascript
 let zones = await frApi.getZones();
+```
+
+**Using Countries enum:**
+```javascript
+// Available countries in the Countries enum
+const { Countries } = require("flightradarapi");
+
+// Examples of country codes:
+Countries.UNITED_STATES    // "united-states"
+Countries.BRAZIL           // "brazil" 
+Countries.GERMANY          // "germany"
+Countries.FRANCE           // "france"
+// ... and many more
 ```
 
 ## Documentation

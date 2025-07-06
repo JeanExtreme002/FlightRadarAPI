@@ -15,13 +15,15 @@ const FlightTrackerConfig = require("./flightTrackerConfig");
 const Airport = require("./entities/airport");
 const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
+const {Countries} = require("./core");
 
 const author = "Jean Loui Bernard Silva de Jesus";
-const version = "1.3.33";
+const version = "1.4.0";
 
 module.exports = {
     FlightRadar24API,
     FlightTrackerConfig,
+    Countries,
     Airport, Entity, Flight,
     AirportNotFoundError, CloudflareError, LoginError,
     author, version,

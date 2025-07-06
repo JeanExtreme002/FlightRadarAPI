@@ -1,4 +1,4 @@
-const {FlightRadar24API, version} = require("..");
+const {FlightRadar24API, Countries, version} = require("..");
 const expect = require("chai").expect;
 
 
@@ -7,10 +7,21 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
     describe("Getting Airlines", function() {
         const expected = 100;
+        const airlines = ["LAN", "GLO", "DAL", "AZU", "UAE"];
 
         it("Expected at least " + expected + " airlines.", async function() {
             const results = await frApi.getAirlines();
             expect(results.length).to.be.above(expected - 1);
+            
+            const found = [];
+            
+            for (const airline of results) {
+                if (airlines.includes(airline.ICAO) && !found.includes(airline)) {
+                    found.push(airline);
+                }
+            }
+
+            expect(found.length).to.be.equal(airlines.length);
         });
     });
 
@@ -39,10 +50,11 @@ describe("Testing FlightRadarAPI version " + version, function() {
     });
 
     describe("Getting Airports", function() {
-        const expected = 1000;
+        const expected = 1800;
+        const countries = [Countries.BRAZIL, Countries.UNITED_STATES];
 
         it("Expected at least " + expected + " airports.", async function() {
-            const results = await frApi.getAirports();
+            const results = await frApi.getAirports(countries);
             expect(results.length).to.be.above(expected - 1);
         });
     });

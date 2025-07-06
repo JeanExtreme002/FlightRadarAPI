@@ -45,7 +45,7 @@ def test_get_airport_details(airports=["ATL", "LAX", "DXB", "DFW"]):
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airports(expect=100, countries=[Countries.BRAZIL, Countries.UNITED_STATES]):
+def test_get_airports(expect=1800, countries=[Countries.BRAZIL, Countries.UNITED_STATES]):
     results = fr_api.get_airports(countries=countries)
     assert len(results) >= expect
 

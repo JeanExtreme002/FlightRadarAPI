@@ -231,7 +231,7 @@ class FlightRadar24API(object):
 
     def get_airports(self, countries: List[Countries]) -> List[Airport]:
         """
-        Return a list with all airports.
+        Return a list with all airports for specified countries.
         """
         airports = []
 
@@ -253,7 +253,7 @@ class FlightRadar24API(object):
             country_name = country_href.split("/")[-1].replace("-", " ").title()
 
             tr_elements = tbody.find_all("tr")
-            
+
             for tr in tr_elements:
                 a_elements = tr.find_all("a", attrs={"data-iata": True, "data-lat": True, "data-lon": True})
                 
