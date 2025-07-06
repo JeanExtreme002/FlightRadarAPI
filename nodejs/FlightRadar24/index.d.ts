@@ -227,10 +227,8 @@ export class FlightTrackerConfig {
     
     /**
      * Constructor of FlightTrackerConfig class.
-     *
-     * @param {object} [data] - Optional data to initialize the config
      */
-    constructor(data?: object);
+    constructor(data: object);
 }
 
 /**
