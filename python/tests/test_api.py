@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from package import CloudflareError, FlightRadar24API, version
+from package import CloudflareError, Countries, FlightRadar24API, version
 from util import repeat_test
 
 print("Testing FlightRadarAPI version %s." % version)
@@ -15,9 +15,18 @@ fr_api = FlightRadar24API()
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airlines(expect=100):
+def test_get_airlines(expect=100, airlines=["LAN", "GLO", "DAL", "AZU", "UAE"]):
     results = fr_api.get_airlines()
     assert len(results) >= expect
+
+    found = []
+    
+    for airline in results:
+        if airline["ICAO"] in airlines and airline not in found:
+            found.append(airline)
+
+    assert len(found) == len(airlines)
+
 
 
 @repeat_test(**repeat_test_config)
@@ -36,8 +45,8 @@ def test_get_airport_details(airports=["ATL", "LAX", "DXB", "DFW"]):
 
 
 @repeat_test(**repeat_test_config)
-def test_get_airports(expect=1000):
-    results = fr_api.get_airports()
+def test_get_airports(expect=100, countries=[Countries.BRAZIL, Countries.UNITED_STATES]):
+    results = fr_api.get_airports(countries=countries)
     assert len(results) >= expect
 
 

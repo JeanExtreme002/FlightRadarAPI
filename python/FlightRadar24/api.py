@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from typing import Any, Dict, List, Optional, Tuple, Union
+from bs4 import BeautifulSoup
 
 import dataclasses
 import math
 
-from .core import Core
+from .core import Core, Countries
 from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
@@ -56,8 +57,76 @@ class FlightRadar24API(object):
         """
         Return a list with all airlines.
         """
-        response = APIRequest(Core.airlines_data_url, headers=Core.json_headers, timeout=self.timeout)
-        return response.get_content()["rows"]
+        response = APIRequest(Core.airlines_data_url, headers=Core.html_headers, timeout=self.timeout)
+        html_content: bytes = response.get_content()
+        airlines_data = []
+        
+        # Parse HTML content.
+        soup = BeautifulSoup(html_content, "html.parser")
+        
+        tbody = soup.find("tbody")
+
+        if not tbody:
+            return []
+        
+        # Extract data from HTML content.
+        tr_elements = tbody.find_all("tr")
+        
+        for tr in tr_elements:
+            td_notranslate = tr.find("td", class_="notranslate")
+            
+            if td_notranslate:
+                a_element = td_notranslate.find("a", href=lambda href: href and href.startswith("/data/airlines"))
+                
+                if a_element:
+                    td_elements = tr.find_all("td")
+
+                    # Extract airline name.
+                    airline_name = a_element.get_text(strip=True)
+
+                    if len(airline_name) < 2:
+                        continue
+
+                    # Extract IATA / ICAO codes.
+                    iata = None
+                    icao = None
+
+                    if len(td_elements) >= 4:
+                        codes_text = td_elements[3].get_text(strip=True)
+
+                        if " / " in codes_text:
+                            parts = codes_text.split(" / ")
+
+                            if len(parts) == 2:
+                                iata = parts[0].strip()
+                                icao = parts[1].strip()
+
+                        elif len(codes_text) == 2:
+                            iata = codes_text
+
+                        elif len(codes_text) == 3:
+                            icao = codes_text
+                    
+                    # Extract number of aircrafts.
+                    n_aircrafts = None
+
+                    if len(td_elements) >= 5:
+                        aircrafts_text = td_elements[4].get_text(strip=True)
+
+                        if aircrafts_text:
+                            n_aircrafts = aircrafts_text.split(" ", maxsplit=1)[0].strip()
+                            n_aircrafts = int(n_aircrafts)
+
+                    airline_data = {
+                        "Name": airline_name,
+                        "ICAO": icao,
+                        "IATA": iata,
+                        "n_aircrafts": n_aircrafts
+                    }
+                    
+                    airlines_data.append(airline_data)
+        
+        return airlines_data
 
     def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
         """
@@ -160,19 +229,99 @@ class FlightRadar24API(object):
         response = APIRequest(Core.airport_disruptions_url, headers=Core.json_headers, timeout=self.timeout)
         return response.get_content()
 
-    def get_airports(self) -> List[Airport]:
+    def get_airports(self, countries: List[Countries]) -> List[Airport]:
         """
         Return a list with all airports.
         """
-        response = APIRequest(Core.airports_data_url, headers=Core.json_headers, timeout=self.timeout)
+        airports = []
 
-        airports: List[Airport] = list()
+        for country_name in countries:
+            country_href = Core.airports_data_url + "/" + country_name.name
 
-        for airport_data in response.get_content()["rows"]:
-            airport = Airport(basic_info=airport_data)
-            airports.append(airport)
+            response = APIRequest(country_href, headers=Core.html_headers, timeout=self.timeout)
 
+            html_content: bytes = response.get_content()
+
+            soup = BeautifulSoup(html_content, "html.parser")
+            
+            tbody = soup.find("tbody")
+
+            if not tbody:
+                continue
+            
+            # Extract country name from the URL
+            country_name = country_href.split("/")[-1].replace("-", " ").title()
+
+            tr_elements = tbody.find_all("tr")
+            
+            for tr in tr_elements:
+                a_elements = tr.find_all("a", attrs={"data-iata": True, "data-lat": True, "data-lon": True})
+                
+                if a_elements:
+                    a_element = a_elements[0]
+                    
+                    icao = ""
+                    iata = a_element.get("data-iata", "").strip()
+                    latitude = a_element.get("data-lat", "").strip()
+                    longitude = a_element.get("data-lon", "").strip()
+                    
+                    airport_text = a_element.get_text(strip=True)
+                    name_part = airport_text
+                    
+                    # Get IATA / ICAO from airport text.
+                    small_element = a_element.find("small")
+                    
+                    if small_element:
+                        codes_text = small_element.get_text(strip=True)
+                        codes_text = codes_text.lstrip("(")
+                        codes_text = codes_text.rstrip(")")
+                        codes_text = codes_text.strip()
+                        
+                        # Remove IATA / ICAO from name part.
+                        name_part = name_part.replace(codes_text, "")
+                        name_part = name_part.replace("()", "").strip()
+                        
+                        # Parse codes (can be "IATA/ICAO", "IATA", or "ICAO")
+                        if "/" in codes_text:
+                            codes = codes_text.split("/")
+    
+                            code1 = codes[0].strip()
+                            code2 = codes[1].strip()
+
+                            iata = code1 if len(code1) == 3 else code2
+                            icao = code1 if len(code1) == 4 else code2
+
+                        elif len(codes_text) == 3:
+                            iata = codes_text
+                                
+                        elif len(codes_text) == 4:
+                            icao = codes_text
+                    
+                    # Convert latitude and longitude to float
+                    try:
+                        lat_float = float(latitude) if latitude else 0.0
+                        lon_float = float(longitude) if longitude else 0.0
+
+                    except ValueError:
+                        lat_float = 0.0
+                        lon_float = 0.0
+                    
+                    # Create Airport instance with basic_info format
+                    airport_data = {
+                        "name": name_part,
+                        "icao": icao,
+                        "iata": iata,
+                        "lat": lat_float,
+                        "lon": lon_float,
+                        "alt": None,  # Altitude not available in this format
+                        "country": country_name
+                    }
+                    
+                    airport = Airport(basic_info=airport_data)
+                    airports.append(airport)
+        
         return airports
+
 
     def get_bookmarks(self) -> Dict:
         """
