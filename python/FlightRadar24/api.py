@@ -236,7 +236,7 @@ class FlightRadar24API(object):
         airports = []
 
         for country_name in countries:
-            country_href = Core.airports_data_url + "/" + country_name.name
+            country_href = Core.airports_data_url + "/" + country_name.value
 
             response = APIRequest(country_href, headers=Core.html_headers, timeout=self.timeout)
 
