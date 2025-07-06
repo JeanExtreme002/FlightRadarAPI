@@ -232,6 +232,8 @@ class FlightRadar24API(object):
     def get_airports(self, countries: List[Countries]) -> List[Airport]:
         """
         Return a list with all airports for specified countries.
+
+        :param countries: List of country names from Countries enum.
         """
         airports = []
 

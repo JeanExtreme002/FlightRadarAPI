@@ -1,3 +1,15 @@
+// Type definitions for FlightRadar24 API
+
+/**
+ * Zone boundary coordinates
+ */
+export interface Zone {
+    tl_y: number;
+    br_y: number;
+    tl_x: number;
+    br_x: number;
+}
+
 /**
  * Main class of the FlightRadarAPI
  */
@@ -7,8 +19,12 @@ export class FlightRadar24API {
     
     /**
      * Constructor of FlightRadar24API class
+     *
+     * @param {string} [user] - Your email (optional)
+     * @param {string} [password] - Your password (optional)
+     * @param {number} [timeout=10] - Request timeout in seconds
      */
-    constructor();
+    constructor(user?: string, password?: string, timeout?: number);
     
     /**
      * Return a list with all airlines.
@@ -53,9 +69,11 @@ export class FlightRadar24API {
     getAirportDisruptions(): Promise<object>;
     
     /**
-     * Return a list with all airports.
+     * Return a list with all airports for specified countries.
+     *
+     * @param {string[]} countries - Array of country names
      */
-    getAirports(): Promise<Airport[]>;
+    getAirports(countries: string[]): Promise<Airport[]>;
     
     /**
      * Return the bookmarks from the FlightRadar24 account.
@@ -65,14 +83,9 @@ export class FlightRadar24API {
     /**
      * Convert coordinate dictionary to a string "y1, y2, x1, x2".
      *
-     * @param {object} zone - Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
+     * @param {Zone} zone - Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
      */
-    getBounds(zone: {
-        tl_y: number;
-        br_y: number;
-        tl_x: number;
-        br_x: number;
-    }): string;
+    getBounds(zone: Zone): string;
     
     /**
      * Convert a point coordinate and a radius to a string "y1, y2, x1, x2".
@@ -132,7 +145,7 @@ export class FlightRadar24API {
      */
     getHistoryData(
         flight: Flight,
-        fileType: string,
+        fileType: "CSV" | "KML",
         timestamp: number,
     ): Promise<any>;
     
@@ -213,11 +226,11 @@ export class FlightTrackerConfig {
     limit: string;
     
     /**
-     * Constructor of FlighTrackerConfig class.
+     * Constructor of FlightTrackerConfig class.
      *
-     * @param {object} data
+     * @param {object} [data] - Optional data to initialize the config
      */
-    constructor(data: object);
+    constructor(data?: object);
 }
 
 /**
@@ -257,7 +270,7 @@ export class Entity {
 export class Airport extends Entity {
     latitude: number;
     longitude: number;
-    altitude: number;
+    altitude: number | null;
     name: string;
     icao: string;
     iata: string;
