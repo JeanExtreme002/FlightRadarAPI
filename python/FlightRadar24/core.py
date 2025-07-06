@@ -2,6 +2,7 @@
 
 from abc import ABC
 from enum import Enum
+from .zones import static_zones
 
 
 class Core(ABC):
@@ -56,6 +57,8 @@ class Core(ABC):
     # Airline logo image URL.
     airline_logo_url = cdn_flightradar_base_url + "/assets/airlines/logotypes/{}_{}.png"
     alternative_airline_logo_url = flightradar_base_url + "/static/images/data/operators/{}_logo0.png"
+
+    static_zones = static_zones
 
     headers = {
         "accept-encoding": "gzip, br",

@@ -626,10 +626,12 @@ class FlightRadar24API {
      * @return {object}
      */
     async getZones() {
-        const response = new APIRequest(Core.zonesDataUrl, null, Core.jsonHeaders);
-        await response.receive();
+        // [Deprecated Code]
+        // const response = new APIRequest(Core.zonesDataUrl, null, Core.jsonHeaders);
+        // await response.receive();
 
-        const zones = await response.getContent();
+        // const zones = await response.getContent();
+        const zones = Core.staticZones;
 
         if (zones.hasOwnProperty("version")) {
             delete zones["version"];

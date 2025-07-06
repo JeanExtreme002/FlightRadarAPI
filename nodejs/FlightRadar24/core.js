@@ -1,3 +1,5 @@
+const {staticZones} = require("./zones");
+
 String.prototype.format = function() {
     const args = arguments;
     let index = 0;
@@ -65,6 +67,8 @@ class Core {
         // Airline logo image URL.
         this.airlineLogoUrl = this.cdnFlightradarBaseUrl + "/assets/airlines/logotypes/{}_{}.png";
         this.alternativeAirlineLogoUrl = this.flightRadarBaseUrl + "/static/images/data/operators/{}_logo0.png";
+
+        this.staticZones = staticZones;
 
         this.headers = {
             "accept-encoding": "gzip, br",

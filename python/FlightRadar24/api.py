@@ -536,8 +536,10 @@ class FlightRadar24API(object):
         """
         Return all major zones on the globe.
         """
-        response = APIRequest(Core.zones_data_url, headers=Core.json_headers, timeout=self.timeout)
-        zones = response.get_content()
+        # [Deprecated Code]
+        # response = APIRequest(Core.zones_data_url, headers=Core.json_headers, timeout=self.timeout)
+        # zones = response.get_content()
+        zones = Core.static_zones
 
         if "version" in zones:
             zones.pop("version")
