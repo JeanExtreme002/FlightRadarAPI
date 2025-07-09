@@ -5,6 +5,8 @@ from .entity import Entity
 
 
 class Flight(Entity):
+    _helo_models = ["A002", "A109", "A119", "A129", "A139", "A149", "A169", "A189", "ALH", "ALO2", "ALO3", "AS32", "AS3B", "AS50", "AS55", "AS65", "B06", "B06T", "B105", "B212", "B222", "B230", "B407", "B412", "B427", "B429", "B430", "B47G", "B47J", "BK17", "BSTP", "EC20", "EC25", "EC30", "EC35", "EC45", "EC55", "EC75", "EH10", "EXPL", "FREL", "GAZL", "H2", "H269", "H47", "H500", "H53", "H53S", "H60", "H64", "HUCO", "KA32", "KA50", "KA52", "KMAX", "LAMA", "LYNX", "MI26", "MI38", "MI8", "NH90", "OH1", "PUMA", "R22", "R44", "R66", "RVAL", "S61", "S61R", "S76", "S92", "SUCO", "TIGR", "UH1", "UH1Y", "V22", "B505", "G2CA", "GYRO", "H160", "CDUS", "MM24"]
+    
     """
     Flight representation.
     """
@@ -146,6 +148,7 @@ class Flight(Entity):
         self.aircraft_history = history.get("aircraft", list())
         self.aircraft_images = aircraft.get("images", list())
         self.aircraft_model = self.__get_info(self.__get_info(aircraft.get("model"), dict()).get("text"))
+        self.aircraft_is_helo = self._helo_models.count(self.aircraft_model) > 0
 
         # Airline information.
         self.airline_name = self.__get_info(airline.get("name"))
