@@ -95,7 +95,7 @@ class APIRequest(object):
         content = self.__response.content
 
         content_encoding = self.__response.headers.get("Content-Encoding", "")
-        content_type = self.__response.headers["Content-Type"]
+        content_type = self.__response.headers.get("Content-Type", "")
 
         # Try to decode the content.
         try: content = self.__content_encodings[content_encoding](content)
