@@ -316,7 +316,8 @@ class FlightRadar24API(object):
         raw["trail"] = trail
 
         # Normalise aircraft.hex (was a top-level field, now nested under identification)
-        aircraft = raw.setdefault("aircraft", {})
+        aircraft = raw.get("aircraft") or {}
+        raw["aircraft"] = aircraft
         if "hex" not in aircraft:
             aircraft["hex"] = (aircraft.get("identification") or {}).get("modes", "N/A")
 
