@@ -27,6 +27,7 @@ class Core(ABC):
 
     # Historical data URL.
     historical_data_url = flightradar_base_url + "/download/?flight={}&file={}&trailLimit=0&history={}"
+    api_playback_data_url = api_flightradar_base_url + "/flight-playback.json?flightId={}&timestamp={}"
 
     # Airports data URLs.
     api_airport_data_url = api_flightradar_base_url + "/airport.json"
@@ -69,7 +70,7 @@ class Core(ABC):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
     json_headers = headers.copy()

@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 
 import dataclasses
 import math
+import time
 
 from .core import Core, Countries
 from .entities.airport import Airport
@@ -422,11 +423,64 @@ class FlightRadar24API(object):
 
     def get_flight_details(self, flight: Flight) -> Dict[Any, Any]:
         """
+        Return the flight details from FlightRadar24.
+
+        Uses the flight-playback API (the old clickhandler endpoint now only returns
+        a session token). The response is normalised to match the legacy clickhandler
+        schema so all existing callers continue to work without changes:
+          - result.response.data.flight  → top-level dict
+          - track [{timestamp,latitude,longitude,altitude.feet,speed.kts,heading}]
+              → trail [{ts,lat,lng,alt,hd,spd}] newest-first (same as before)
+          - aircraft.identification.modes → aircraft.hex
+
+        :param flight: A Flight instance (only .id is used)
+        """
+        url = Core.api_flightradar_base_url + "/flight-playback.json"
+        # timestamp must be >= the flight's last fix time for the full track to be returned;
+        # passing the current Unix time covers both live and recently-completed flights.
+        response = APIRequest(url, params={"flightId": flight.id, "timestamp": int(time.time())},
+                              headers=Core.json_headers, timeout=self.timeout)
+        content = response.get_content()
+
+        try:
+            raw = content["result"]["response"]["data"]["flight"]
+        except (KeyError, TypeError):
+            return {}
+
+        # Normalise track → trail, converting new field names to old ones.
+        # track is chronological (oldest-first); reverse so callers get newest-first
+        # as they did with the old clickhandler endpoint.
+        track = raw.get("track") or []
+        trail = []
+        for pt in reversed(track):
+            try:
+                trail.append({
+                    "ts":  pt["timestamp"],
+                    "lat": pt["latitude"],
+                    "lng": pt["longitude"],
+                    "alt": pt["altitude"]["feet"],
+                    "hd":  pt["heading"],
+                    "spd": pt["speed"]["kts"],
+                })
+            except (KeyError, TypeError):
+                continue
+        raw["trail"] = trail
+
+        # Normalise aircraft.hex (was a top-level field, now nested under identification)
+        aircraft = raw.get("aircraft") or {}
+        raw["aircraft"] = aircraft
+        if "hex" not in aircraft:
+            aircraft["hex"] = (aircraft.get("identification") or {}).get("modes", "N/A")
+
+        return raw
+
+    def get_flight_playback(self, flight: Flight, ts) -> Dict[Any, Any]:
+        """
         Return the flight details from Data Live FlightRadar24.
 
         :param flight: A Flight instance
         """
-        response = APIRequest(Core.flight_data_url.format(flight.id), headers=Core.json_headers, timeout=self.timeout)
+        response = APIRequest(Core.api_playback_data_url.format(flight.id, ts), headers=Core.json_headers, timeout=self.timeout)
         return response.get_content()
 
     def get_flights(
@@ -436,7 +490,8 @@ class FlightRadar24API(object):
         registration: Optional[str] = None,
         aircraft_type: Optional[str] = None,
         *,
-        details: bool = False
+        details: bool = False,
+        flight_id: Optional[str] = None,
     ) -> List[Flight]:
         """
         Return a list of flights. See more options at set_flight_tracker_config() method.
@@ -457,6 +512,7 @@ class FlightRadar24API(object):
         if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
+        if flight_id: request_params["selected"] = flight_id
 
         # Get all flights from Data Live FlightRadar24.
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
