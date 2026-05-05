@@ -6,10 +6,22 @@ import brotli
 import json
 import gzip
 
-import requests
+import cloudscraper
 import requests.structures
 
 from .errors import CloudflareError
+
+# Shared session so Cloudflare cookies are reused across requests.
+# FR24-specific headers are set at session level; cloudscraper manages
+# user-agent, accept-encoding, sec-fetch-* to keep the Cloudflare
+# challenge fingerprint consistent.
+_session = cloudscraper.create_scraper(
+    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+)
+_session.headers.update({
+    "origin": "https://www.flightradar24.com",
+    "referer": "https://www.flightradar24.com/",
+})
 
 
 class APIRequest(object):
@@ -52,10 +64,20 @@ class APIRequest(object):
             "cookies": cookies
         }
 
-        request_method = requests.get if data is None else requests.post
+        request_method = _session.get if data is None else _session.post
+
+        # Only pass headers that don't conflict with cloudscraper's own fingerprint.
+        # Cloudflare flags accept:application/json (no text/html) as non-browser.
+        # user-agent, accept, accept-encoding, accept-language, sec-fetch-* are all
+        # managed by the session so the Cloudflare challenge fingerprint stays valid.
+        _SAFE_HEADERS = {"cache-control", "content-type"}
+        per_request_headers = {
+            k: v for k, v in (headers or {}).items()
+            if k.lower() in _SAFE_HEADERS
+        } or None
 
         if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
-        self.__response = request_method(url, headers=headers, cookies=cookies, data=data, timeout=timeout)
+        self.__response = request_method(url, headers=per_request_headers, cookies=cookies, data=data, timeout=timeout)
 
         if self.get_status_code() == 520:
             raise CloudflareError(
