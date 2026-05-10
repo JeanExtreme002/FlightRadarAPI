@@ -11,14 +11,12 @@ keywords = ["flightradar24", "api", "radar", "aviation", "flights", "airports", 
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11"
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
 ]
 exclude = ["tests", ".flake8"]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 dependencies = [
   "Brotli",
   "requests",
