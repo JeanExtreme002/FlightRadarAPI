@@ -10,7 +10,7 @@ from curl_cffi import requests
 
 from .errors import CloudflareError
 
-_IMPERSONATE = "chrome124"
+_IMPERSONATE = "chrome136"
 
 
 class APIRequest(object):
