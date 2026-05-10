@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import brotli
 import json
 import gzip
 
-import requests
-import requests.structures
+from curl_cffi import requests
 
 from .errors import CloudflareError
+
+_IMPERSONATE = "chrome124"
 
 
 class APIRequest(object):
@@ -55,7 +56,10 @@ class APIRequest(object):
         request_method = requests.get if data is None else requests.post
 
         if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
-        self.__response = request_method(url, headers=headers, cookies=cookies, data=data, timeout=timeout)
+        self.__response = request_method(
+            url, headers=headers, cookies=cookies, data=data, timeout=timeout,
+            impersonate=_IMPERSONATE
+        )
 
         if self.get_status_code() == 520:
             raise CloudflareError(
@@ -91,13 +95,13 @@ class APIRequest(object):
         """
         return self.__response.cookies.get_dict()
 
-    def get_headers(self) -> requests.structures.CaseInsensitiveDict:
+    def get_headers(self) -> Any:
         """
         Return the headers of the response.
         """
         return self.__response.headers
 
-    def get_response_object(self) -> requests.models.Response:
+    def get_response_object(self) -> Any:
         """
         Return the received response object.
         """
