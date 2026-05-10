@@ -576,7 +576,7 @@ class FlightRadar24API {
 
         const response = new APIRequest(
             Core.historicalDataUrl.format(flight.id, fileType, timestamp),
-            null, Core.jsonHeaders, null, self.__loginData["cookies"],
+            null, Core.jsonHeaders, null, this.__loginData["cookies"],
         );
         await response.receive();
 

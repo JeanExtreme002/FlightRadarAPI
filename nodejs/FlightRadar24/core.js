@@ -18,8 +18,8 @@ class Core {
      * Constructor of the Core class
      */
     constructor() {
-        this.apiFlightradarBaseUrl = "https://api.flightradar24.com/common/v1";
-        this.cdnFlightradarBaseUrl = "https://cdn.flightradar24.com";
+        this.apiFlightRadarBaseUrl = "https://api.flightradar24.com/common/v1";
+        this.cdnFlightRadarBaseUrl = "https://cdn.flightradar24.com";
         this.flightRadarBaseUrl = "https://www.flightradar24.com";
         this.dataLiveBaseUrl = "https://data-live.flightradar24.com";
         this.dataCloudBaseUrl = "https://data-cloud.flightradar24.com";
@@ -36,10 +36,10 @@ class Core {
         this.flightDataUrl = this.dataLiveBaseUrl + "/clickhandler/?flight={}";
 
         // Historical data URL.
-        this.historicalDataUrl = this.flightradarBaseUrl + "/download/?flight={}&file={}&trailLimit=0&history={}";
+        this.historicalDataUrl = this.flightRadarBaseUrl + "/download/?flight={}&file={}&trailLimit=0&history={}";
 
         // Airports data URLs.
-        this.apiAirportDataUrl = this.apiFlightradarBaseUrl + "/airport.json";
+        this.apiAirportDataUrl = this.apiFlightRadarBaseUrl + "/airport.json";
         this.airportDataUrl = this.flightRadarBaseUrl + "/airports/traffic-stats/?airport={}";
         this.airportsDataUrl = this.flightRadarBaseUrl + "/data/airports";
 
@@ -65,7 +65,7 @@ class Core {
         this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
 
         // Airline logo image URL.
-        this.airlineLogoUrl = this.cdnFlightradarBaseUrl + "/assets/airlines/logotypes/{}_{}.png";
+        this.airlineLogoUrl = this.cdnFlightRadarBaseUrl + "/assets/airlines/logotypes/{}_{}.png";
         this.alternativeAirlineLogoUrl = this.flightRadarBaseUrl + "/static/images/data/operators/{}_logo0.png";
 
         this.staticZones = staticZones;

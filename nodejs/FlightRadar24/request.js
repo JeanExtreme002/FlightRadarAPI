@@ -1,7 +1,6 @@
 const {CloudflareError} = require("./errors");
 
 const {fetch, Agent} = require("undici");
-const FormData = require("form-data");
 
 // Chrome 136 TLS cipher suites to approximate its JA3 fingerprint
 const CHROME_CIPHERS = [
@@ -99,7 +98,7 @@ class APIRequest {
         };
 
         if (settings["method"] == "POST") {
-            const formData = new FormData();
+            const formData = new URLSearchParams();
 
             Object.entries(this.requestParams["data"]).forEach(([key, value]) => {
                 formData.append(key, value);
