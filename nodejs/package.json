@@ -27,6 +27,9 @@
     "url": "https://github.com/JeanExtreme002/FlightRadarAPI/issues"
   },
   "homepage": "https://github.com/JeanExtreme002/FlightRadarAPI#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "form-data": "^4.0.0",
     "jsdom": "^24.0.0",
