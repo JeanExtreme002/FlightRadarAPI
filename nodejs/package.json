@@ -14,9 +14,9 @@
   "keywords": [
     "flightradar24",
     "api",
-    "radar", 
-    "aviation", 
-    "flights", 
+    "radar",
+    "aviation",
+    "flights",
     "airports",
     "airlines",
     "aircraft"
@@ -30,7 +30,7 @@
   "dependencies": {
     "form-data": "^4.0.0",
     "jsdom": "^24.0.0",
-    "node-fetch": "^3.3.2"
+    "undici": "^6.13.0"
   },
   "devDependencies": {
     "chai": "^4.3.10",
