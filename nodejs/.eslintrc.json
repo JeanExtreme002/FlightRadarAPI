@@ -9,7 +9,7 @@
     "ecmaVersion": "latest"
   },
   "rules": {
-    "max-len": ["error", {"code": 130}],
+    "max-len": ["error", {"code": 130, "ignoreStrings": true, "ignoreTemplateLiterals": true}],
     "quotes": ["warn", "double"],
     "indent": ["warn", 4],
     "brace-style": ["warn", "stroustrup"],

@@ -1,10 +1,12 @@
 {
   "name": "flightradarapi",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "SDK for FlightRadar24",
   "main": "./FlightRadar24/index.js",
+  "types": "./FlightRadar24/index.d.ts",
   "scripts": {
     "test": "mocha tests --timeout 10000",
+    "test:types": "tsd",
     "lint": "eslint ."
   },
   "repository": {
@@ -38,6 +40,10 @@
     "chai": "^4.3.10",
     "eslint": "^8.56.0",
     "eslint-config-google": "^0.14.0",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "tsd": "^0.31.0"
+  },
+  "tsd": {
+    "directory": "tests"
   }
 }

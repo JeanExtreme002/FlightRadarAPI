@@ -1,7 +1,31 @@
 # -*- coding: utf-8 -*-
 
+from enum import IntEnum
 from typing import Any, Dict, List, Optional
+
 from .entity import Entity
+
+
+class _Field(IntEnum):
+    ICAO24BIT = 0
+    LATITUDE = 1
+    LONGITUDE = 2
+    HEADING = 3
+    ALTITUDE = 4
+    GROUND_SPEED = 5
+    SQUAWK = 6
+    # index 7: unused
+    AIRCRAFT_CODE = 8
+    REGISTRATION = 9
+    TIME = 10
+    ORIGIN_IATA = 11
+    DESTINATION_IATA = 12
+    FLIGHT_NUMBER = 13
+    ON_GROUND = 14
+    VERTICAL_SPEED = 15
+    CALLSIGN = 16
+    # index 17: unused
+    AIRLINE_ICAO = 18
 
 
 class Flight(Entity):
@@ -16,27 +40,27 @@ class Flight(Entity):
         :param info: Dictionary with received data from FlightRadar24
         """
         super().__init__(
-            latitude=self.__get_info(info[1]),
-            longitude=self.__get_info(info[2])
+            latitude=self.__get_info(info[_Field.LATITUDE]),
+            longitude=self.__get_info(info[_Field.LONGITUDE]),
         )
 
         self.id = flight_id
-        self.icao_24bit = self.__get_info(info[0])
-        self.heading = self.__get_info(info[3])
-        self.altitude = self.__get_info(info[4])
-        self.ground_speed = self.__get_info(info[5])
-        self.squawk = self.__get_info(info[6])
-        self.aircraft_code = self.__get_info(info[8])
-        self.registration = self.__get_info(info[9])
-        self.time = self.__get_info(info[10])
-        self.origin_airport_iata = self.__get_info(info[11])
-        self.destination_airport_iata = self.__get_info(info[12])
-        self.number = self.__get_info(info[13])
-        self.airline_iata = self.__get_info(info[13][:2])
-        self.on_ground = self.__get_info(info[14])
-        self.vertical_speed = self.__get_info(info[15])
-        self.callsign = self.__get_info(info[16])
-        self.airline_icao = self.__get_info(info[18])
+        self.icao_24bit = self.__get_info(info[_Field.ICAO24BIT])
+        self.heading = self.__get_info(info[_Field.HEADING])
+        self.altitude = self.__get_info(info[_Field.ALTITUDE])
+        self.ground_speed = self.__get_info(info[_Field.GROUND_SPEED])
+        self.squawk = self.__get_info(info[_Field.SQUAWK])
+        self.aircraft_code = self.__get_info(info[_Field.AIRCRAFT_CODE])
+        self.registration = self.__get_info(info[_Field.REGISTRATION])
+        self.time = self.__get_info(info[_Field.TIME])
+        self.origin_airport_iata = self.__get_info(info[_Field.ORIGIN_IATA])
+        self.destination_airport_iata = self.__get_info(info[_Field.DESTINATION_IATA])
+        self.number = self.__get_info(info[_Field.FLIGHT_NUMBER])
+        self.airline_iata = self.__get_info(info[_Field.FLIGHT_NUMBER][:2] if info[_Field.FLIGHT_NUMBER] else None)
+        self.on_ground = self.__get_info(info[_Field.ON_GROUND])
+        self.vertical_speed = self.__get_info(info[_Field.VERTICAL_SPEED])
+        self.callsign = self.__get_info(info[_Field.CALLSIGN])
+        self.airline_icao = self.__get_info(info[_Field.AIRLINE_ICAO])
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -68,10 +92,12 @@ class Flight(Entity):
 
             # Check if the value is greater than or less than the attribute value.
             if prefix and key in self.__dict__:
-                if comparison_functions[prefix](value, self.__dict__[key]) != value: return False
+                if comparison_functions[prefix](value, self.__dict__[key]) != value:
+                    return False
 
             # Check if the value is equal.
-            elif key in self.__dict__ and value != self.__dict__[key]: return False
+            elif key in self.__dict__ and value != self.__dict__[key]:
+                return False
 
         return True
 
@@ -79,73 +105,73 @@ class Flight(Entity):
         """
         Return the formatted altitude, with the unit of measure.
         """
-        return "{} ft".format(self.altitude)
+        return f"{self.altitude} ft"
 
     def get_flight_level(self) -> str:
         """
         Return the formatted flight level, with the unit of measure.
         """
-        return str(self.altitude)[:3] + " FL" if self.altitude >= 10000 else self.get_altitude()
+        return f"{str(self.altitude)[:3]} FL" if self.altitude >= 10000 else self.get_altitude()
 
     def get_ground_speed(self) -> str:
         """
         Return the formatted ground speed, with the unit of measure.
         """
-        return "{} kt".format(self.ground_speed) + ("s" if self.ground_speed > 1 else "")
+        return f"{self.ground_speed} kt{'s' if self.ground_speed > 1 else ''}"
 
     def get_heading(self) -> str:
         """
         Return the formatted heading, with the unit of measure.
         """
-        return str(self.heading) + "°"
+        return f"{self.heading}°"
 
     def get_vertical_speed(self) -> str:
         """
         Return the formatted vertical speed, with the unit of measure.
         """
-        return "{} fpm".format(self.vertical_speed)
+        return f"{self.vertical_speed} fpm"
 
     def set_flight_details(self, flight_details: Dict) -> None:
         """
         Set flight details to the instance. Use FlightRadar24API.get_flight_details(...) method to get it.
         """
         # Get aircraft data.
-        aircraft = self.__get_info(flight_details.get("aircraft"), dict())
+        aircraft = self.__get_info(flight_details.get("aircraft"), {})
 
         # Get airline data.
-        airline = self.__get_info(flight_details.get("airline"), dict())
+        airline = self.__get_info(flight_details.get("airline"), {})
 
         # Get airport data.
-        airport = self.__get_info(flight_details.get("airport"), dict())
+        airport = self.__get_info(flight_details.get("airport"), {})
 
         # Get destination data.
-        dest_airport = self.__get_info(airport.get("destination"), dict())
-        dest_airport_code = self.__get_info(dest_airport.get("code"), dict())
-        dest_airport_info = self.__get_info(dest_airport.get("info"), dict())
-        dest_airport_position = self.__get_info(dest_airport.get("position"), dict())
-        dest_airport_country = self.__get_info(dest_airport_position.get("country"), dict())
-        dest_airport_timezone = self.__get_info(dest_airport.get("timezone"), dict())
+        dest_airport = self.__get_info(airport.get("destination"), {})
+        dest_airport_code = self.__get_info(dest_airport.get("code"), {})
+        dest_airport_info = self.__get_info(dest_airport.get("info"), {})
+        dest_airport_position = self.__get_info(dest_airport.get("position"), {})
+        dest_airport_country = self.__get_info(dest_airport_position.get("country"), {})
+        dest_airport_timezone = self.__get_info(dest_airport.get("timezone"), {})
 
         # Get origin data.
-        orig_airport = self.__get_info(airport.get("origin"), dict())
-        orig_airport_code = self.__get_info(orig_airport.get("code"), dict())
-        orig_airport_info = self.__get_info(orig_airport.get("info"), dict())
-        orig_airport_position = self.__get_info(orig_airport.get("position"), dict())
-        orig_airport_country = self.__get_info(orig_airport_position.get("country"), dict())
-        orig_airport_timezone = self.__get_info(orig_airport.get("timezone"), dict())
+        orig_airport = self.__get_info(airport.get("origin"), {})
+        orig_airport_code = self.__get_info(orig_airport.get("code"), {})
+        orig_airport_info = self.__get_info(orig_airport.get("info"), {})
+        orig_airport_position = self.__get_info(orig_airport.get("position"), {})
+        orig_airport_country = self.__get_info(orig_airport_position.get("country"), {})
+        orig_airport_timezone = self.__get_info(orig_airport.get("timezone"), {})
 
         # Get flight history.
-        history = self.__get_info(flight_details.get("flightHistory"), dict())
+        history = self.__get_info(flight_details.get("flightHistory"), {})
 
         # Get flight status.
-        status = self.__get_info(flight_details.get("status"), dict())
+        status = self.__get_info(flight_details.get("status"), {})
 
         # Aircraft information.
         self.aircraft_age = self.__get_info(aircraft.get("age"))
         self.aircraft_country_id = self.__get_info(aircraft.get("countryId"))
-        self.aircraft_history = history.get("aircraft", list())
-        self.aircraft_images = aircraft.get("images", list())
-        self.aircraft_model = self.__get_info(self.__get_info(aircraft.get("model"), dict()).get("text"))
+        self.aircraft_history = history.get("aircraft", [])
+        self.aircraft_images = aircraft.get("images", [])
+        self.aircraft_model = self.__get_info(self.__get_info(aircraft.get("model"), {}).get("text"))
 
         # Airline information.
         self.airline_name = self.__get_info(airline.get("name"))
@@ -202,7 +228,7 @@ class Flight(Entity):
         self.status_text = self.__get_info(status.get("text"))
 
         # Time details.
-        self.time_details = self.__get_info(flight_details.get("time"), dict())
+        self.time_details = self.__get_info(flight_details.get("time"), {})
 
         # Flight trail.
-        self.trail = flight_details.get("trail", list())
+        self.trail = flight_details.get("trail", [])

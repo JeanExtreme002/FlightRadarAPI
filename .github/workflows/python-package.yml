@@ -1,35 +1,50 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Python Package
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'python/**'
+      - '.github/workflows/python-package.yml'
   pull_request:
+    paths:
+      - 'python/**'
+      - '.github/workflows/python-package.yml'
   schedule:
-    - cron:  '0 0 */7 * *'
+    - cron: '0 0 */7 * *'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r python/requirements.txt
-    - name: Test with pytest
-      run: |
-        cd python
-        pytest tests -vv -s
-    - name: Install package
-      run: |
-        pip install FlightRadar24
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./python[tests]"
+          pip install flake8 mypy build
+      - name: Lint
+        run: cd python && python -m flake8 FlightRadar24 tests
+      - name: Type check
+        run: cd python && python -m mypy FlightRadar24 --ignore-missing-imports
+      - name: Test with pytest
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: cd python && pytest tests -vv -s
+      - name: Build and verify install
+        run: |
+          python -m build ./python
+          pip install python/dist/*.whl --force-reinstall
+          python -c "from FlightRadar24 import FlightRadar24API; api = FlightRadar24API(); print('Install OK')"

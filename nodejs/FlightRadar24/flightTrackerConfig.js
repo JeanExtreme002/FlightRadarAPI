@@ -3,13 +3,14 @@ const {isNumeric} = require("./util");
 
 const proxyHandler = {
     set: function(target, key, value) {
-        if (!target.hasOwnProperty(key)) {
+        if (!Object.prototype.hasOwnProperty.call(target, key)) {
             throw new Error("Unknown option: '" + key + "'");
         }
         if ((typeof value !== "number") && (!isNumeric(value))) {
-            throw new Error("Value must be a decimal. Got '" + key + "'");
+            throw new Error("Value must be a number. Got '" + value + "' for key '" + key + "'");
         }
         target[key] = value.toString();
+        return true;
     },
 };
 
@@ -33,18 +34,18 @@ class FlightTrackerConfig {
     limit = "5000";
 
     /**
-     * Constructor of FlighTrackerConfig class.
+     * Constructor of FlightTrackerConfig class.
      *
-     * @param {object} data
+     * @param {object} [data={}]
      */
-    constructor(data) {
+    constructor(data = {}) {
         for (const key in data) {
             if (!Object.prototype.hasOwnProperty.call(data, key)) { // guard-for-in
                 continue;
             }
             const value = data[key];
 
-            if (this.hasOwnProperty(key) && (typeof value === "number" || isNumeric(value))) {
+            if (Object.prototype.hasOwnProperty.call(this, key) && (typeof value === "number" || isNumeric(value))) {
                 this[key] = value;
             }
         }

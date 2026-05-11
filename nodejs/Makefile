@@ -49,6 +49,13 @@ test:
 	npm test
 	@echo "$(GREEN)Tests completed!$(NC)"
 
+# Check TypeScript type definitions
+.PHONY: test-types
+test-types:
+	@echo "$(GREEN)Checking type definitions...$(NC)"
+	npm run test:types
+	@echo "$(GREEN)Type definitions OK!$(NC)"
+
 # Run linter
 .PHONY: lint
 lint:
@@ -76,7 +83,7 @@ clean:
 
 # Build package (prepare for publishing)
 .PHONY: build
-build: install lint test
+build: install lint test test-types
 	@echo "$(GREEN)Building package...$(NC)"
 	npm pack
 	@echo "$(GREEN)Package built successfully!$(NC)"
@@ -151,7 +158,7 @@ security-fix:
 
 # Full build pipeline
 .PHONY: all
-all: install lint test validate
+all: install lint test test-types validate
 	@echo "$(GREEN)Full build pipeline completed successfully!$(NC)"
 
 # Development workflow targets
@@ -169,7 +176,7 @@ pre-publish: all security
 
 # CI/CD targets
 .PHONY: ci
-ci: install lint test validate
+ci: install lint test test-types validate
 	@echo "$(GREEN)CI pipeline completed!$(NC)"
 
 # Show package info

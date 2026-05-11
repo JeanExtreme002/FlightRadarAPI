@@ -1,5 +1,4 @@
 const {CloudflareError} = require("./errors");
-
 const {fetch, Agent} = require("undici");
 
 // Chrome 136 TLS cipher suites to approximate its JA3 fingerprint
@@ -42,160 +41,102 @@ const chromeAgent = new Agent({
     },
 });
 
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
- * Class to make requests to the FlightRadar24.
+ * Make an HTTP request to the FlightRadar24 API.
+ *
+ * @param {string} url
+ * @param {object} [options={}]
+ * @param {object} [options.params] - Query string parameters appended to the URL
+ * @param {object} [options.headers] - Request headers
+ * @param {object} [options.data] - POST body fields (presence triggers POST method)
+ * @param {object} [options.cookies] - Cookies to include in the request
+ * @param {Array<number>} [options.allowedErrorCodes=[]] - Status codes that should not throw
+ * @param {number} [options.timeout=30000] - Request timeout in milliseconds
+ * @return {Promise<{content: *, statusCode: number, cookies: object}>}
  */
-class APIRequest {
-    /**
-     * Constructor of the APIRequest class.
-     *
-     * @param {string} [url]
-     * @param {object} [params]
-     * @param {object} [headers]
-     * @param {object} [data]
-     * @param {object} [cookies]
-     * @param {object} [excludeStatusCodes=[]]
-     */
-    constructor(url, params = null, headers = null, data = null, cookies = null, excludeStatusCodes = []) {
-        this.requestParams = {
-            "params": params,
-            "headers": headers,
-            "data": data,
-            "cookies": cookies,
-        };
-
-        this.requestMethod = data == null ? "GET" : "POST";
-        this.__excludeStatusCodes = excludeStatusCodes;
-
-        if (params != null && Object.keys(params).length > 0) {
-            url += "?";
-
-            for (const key in params) {
-                if (Object.prototype.hasOwnProperty.call(params, key)) { // guard-for-in
-                    url += key + "=" + params[key] + "&";
-                }
-            }
-            url = url.slice(0, -1);
-        }
-
-        this.url = url;
-
-        this.__response = {};
-        this.__content = null;
+async function request(url, {
+    params = null,
+    headers = null,
+    data = null,
+    cookies = null,
+    allowedErrorCodes = [],
+    timeout = DEFAULT_TIMEOUT_MS,
+} = {}) {
+    if (params !== null && Object.keys(params).length > 0) {
+        url += "?" + new URLSearchParams(params).toString();
     }
 
-    /**
-     * Send the request and receive a response.
-     *
-     * @return {this}
-     */
-    async receive() {
-        const settings = {
-            method: this.requestMethod,
-            headers: this.requestParams["headers"],
-            dispatcher: chromeAgent,
-        };
+    const requestHeaders = Object.assign({}, headers);
 
-        if (settings["method"] == "POST") {
-            const formData = new URLSearchParams();
-
-            Object.entries(this.requestParams["data"]).forEach(([key, value]) => {
-                formData.append(key, value);
-            });
-
-            settings["body"] = formData;
-        }
-
-        this.__response = await fetch(this.url, settings);
-
-        if (this.getStatusCode() == 520) {
-            throw new CloudflareError(
-                "An unexpected error has occurred. Perhaps you are making too many calls?",
-                this.__response,
-            );
-        }
-
-        if (!this.__excludeStatusCodes.includes(this.getStatusCode())) {
-            if (![200, 201, 202].includes(this.getStatusCode())) {
-                throw new Error(
-                    "Received status code '" +
-                    this.getStatusCode() + ": " +
-                    this.__response.statusText + "' for the URL " +
-                    this.url,
-                );
-            }
-        }
-        return this;
+    if (cookies !== null && Object.keys(cookies).length > 0) {
+        requestHeaders["Cookie"] = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join("; ");
     }
 
-    /**
-     * Return the received content from the request.
-     */
-    async getContent() {
-        if (this.__content !== null) {
-            return this.__content;
-        }
+    const method = data === null ? "GET" : "POST";
+    const settings = {method, headers: requestHeaders, dispatcher: chromeAgent};
 
-        let contentType = this.getHeaders()["content-type"];
-        contentType = contentType == null ? "" : contentType;
-
-        if (contentType.includes("application/json")) {
-            this.__content = await this.__response.json();
-        }
-        else if (contentType.includes("text")) {
-            this.__content = await this.__response.text();
-        }
-        else {
-            this.__content = await this.__response.arrayBuffer();
-        }
-        return this.__content;
+    if (method === "POST") {
+        const formData = new URLSearchParams();
+        Object.entries(data).forEach(([key, value]) => formData.append(key, value));
+        settings.body = formData;
     }
 
-    /**
-     * Return the received cookies from the request.
-     */
-    getCookies() {
-        const rawCookies = this.__response.headers.getSetCookie();
-        const cookies = {};
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    settings.signal = controller.signal;
 
-        if (rawCookies == null || rawCookies.length === 0) {
-            return {};
+    let response;
+    try {
+        response = await fetch(url, settings);
+    }
+    catch (err) {
+        if (err.name === "AbortError") {
+            throw new Error(`Request timed out after ${timeout}ms for URL ${url}`);
         }
+        throw err;
+    }
+    finally {
+        clearTimeout(timer);
+    }
+    const statusCode = response.status;
 
+    if (statusCode === 520) {
+        throw new CloudflareError(
+            "An unexpected error has occurred. Perhaps you are making too many calls?",
+            response,
+        );
+    }
+
+    if (!allowedErrorCodes.includes(statusCode) && (statusCode < 200 || statusCode >= 300)) {
+        throw new Error(`Received status code '${statusCode}: ${response.statusText}' for the URL ${url}`);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    let content;
+
+    if (contentType.includes("application/json")) {
+        content = await response.json();
+    }
+    else if (contentType.includes("text")) {
+        content = await response.text();
+    }
+    else {
+        content = await response.arrayBuffer();
+    }
+
+    const rawCookies = response.headers.getSetCookie();
+    const responseCookies = {};
+
+    if (rawCookies?.length > 0) {
         rawCookies.forEach((string) => {
             const keyAndValue = string.split(";")[0].split("=");
-            cookies[keyAndValue[0]] = keyAndValue[1];
+            responseCookies[keyAndValue[0]] = keyAndValue[1];
         });
-
-        return cookies;
     }
 
-    /**
-     * Return the headers of the response.
-     */
-    getHeaders() {
-        const headersAsDict = {};
-
-        this.__response.headers.forEach((value, key) => {
-            headersAsDict[key] = value;
-        });
-        return headersAsDict;
-    }
-
-    /**
-     * Return the received response object.
-     */
-    getResponseObject() {
-        return this.__response;
-    }
-
-    /**
-     * Return the status code of the response.
-     */
-    getStatusCode() {
-        return this.__response.status;
-    }
+    return {content, statusCode, cookies: responseCookies};
 }
 
-module.exports = APIRequest;
+module.exports = {request};

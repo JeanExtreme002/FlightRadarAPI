@@ -1,4 +1,0 @@
-Brotli
-pytest
-curl_cffi
-beautifulsoup4

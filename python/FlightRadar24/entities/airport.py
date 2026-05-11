@@ -8,7 +8,7 @@ class Airport(Entity):
     """
     Airport representation.
     """
-    def __init__(self, basic_info: Dict = dict(), info: Dict = dict()):
+    def __init__(self, basic_info: Optional[Dict] = None, info: Optional[Dict] = None):
         """
         Constructor of the Airport class.
 
@@ -18,8 +18,12 @@ class Airport(Entity):
         :param basic_info: Basic information about the airport received from FlightRadar24
         :param info: Dictionary with more information about the airport received from FlightRadar24
         """
-        if basic_info: self.__initialize_with_basic_info(basic_info)
-        if info: self.__initialize_with_info(info)
+        super().__init__(latitude=None, longitude=None)
+
+        if basic_info is not None:
+            self.__initialize_with_basic_info(basic_info)
+        if info is not None:
+            self.__initialize_with_info(info)
 
     def __repr__(self) -> str:
         template = "<({}) {} - Altitude: {} - Latitude: {} - Longitude: {}>"
@@ -36,10 +40,7 @@ class Airport(Entity):
         """
         Initialize instance with basic information about the airport.
         """
-        super().__init__(
-            latitude=basic_info["lat"],
-            longitude=basic_info["lon"]
-        )
+        self._set_position(basic_info["lat"], basic_info["lon"])
         self.altitude = basic_info["alt"]
 
         self.name = basic_info["name"]
@@ -52,10 +53,7 @@ class Airport(Entity):
         """
         Initialize instance with extra information about the airport.
         """
-        super().__init__(
-            latitude=info["position"]["latitude"],
-            longitude=info["position"]["longitude"]
-        )
+        self._set_position(info["position"]["latitude"], info["position"]["longitude"])
         self.altitude = info["position"]["altitude"]
 
         self.name = info["name"]
@@ -66,11 +64,11 @@ class Airport(Entity):
         position = info["position"]
 
         self.country = position["country"]["name"]
-        self.country_code = self.__get_info(position.get("country", dict()).get("code"))
-        self.city = self.__get_info(position.get("region", dict())).get("city")
+        self.country_code = self.__get_info(position.get("country", {}).get("code"))
+        self.city = self.__get_info((position.get("region") or {}).get("city"))
 
         # Timezone information.
-        timezone = info.get("timezone", dict())
+        timezone = info.get("timezone", {})
 
         self.timezone_name = self.__get_info(timezone.get("name"))
         self.timezone_offset = self.__get_info(timezone.get("offset"))
@@ -87,34 +85,34 @@ class Airport(Entity):
         Set airport details to the instance. Use FlightRadar24API.get_airport_details(...) method to get it.
         """
         # Get airport data.
-        airport = self.__get_info(airport_details.get("airport"), dict())
-        airport = self.__get_info(airport.get("pluginData"), dict())
+        airport = self.__get_info(airport_details.get("airport"), {})
+        airport = self.__get_info(airport.get("pluginData"), {})
 
         # Get information about the airport.
-        details = self.__get_info(airport.get("details"), dict())
+        details = self.__get_info(airport.get("details"), {})
 
         # Get location information.
-        position = self.__get_info(details.get("position"), dict())
-        code = self.__get_info(details.get("code"), dict())
-        country = self.__get_info(position.get("country"), dict())
-        region = self.__get_info(position.get("region"), dict())
+        position = self.__get_info(details.get("position"), {})
+        code = self.__get_info(details.get("code"), {})
+        country = self.__get_info(position.get("country"), {})
+        region = self.__get_info(position.get("region"), {})
 
         # Get reviews of the airport.
-        flight_diary = self.__get_info(airport.get("flightdiary"), dict())
-        ratings = self.__get_info(flight_diary.get("ratings"), dict())
+        flight_diary = self.__get_info(airport.get("flightdiary"), {})
+        ratings = self.__get_info(flight_diary.get("ratings"), {})
 
         # Get schedule information.
-        schedule = self.__get_info(airport.get("schedule"), dict())
+        schedule = self.__get_info(airport.get("schedule"), {})
 
         # Get timezone information.
-        timezone = self.__get_info(details.get("timezone"), dict())
+        timezone = self.__get_info(details.get("timezone"), {})
 
         # Get aircraft count.
-        aircraft_count = self.__get_info(airport.get("aircraftCount"), dict())
-        aircraft_on_ground = self.__get_info(aircraft_count.get("onGround"), dict())
+        aircraft_count = self.__get_info(airport.get("aircraftCount"), {})
+        aircraft_on_ground = self.__get_info(aircraft_count.get("onGround"), {})
 
         # Get URLs for more information about the airport.
-        urls = self.__get_info(details.get("url"), dict())
+        urls = self.__get_info(details.get("url"), {})
 
         # Basic airport information.
         self.name = self.__get_info(details.get("name"))
@@ -139,7 +137,8 @@ class Airport(Entity):
         if isinstance(self.timezone_offset, int):
             self.timezone_offset_hours = int(self.timezone_offset / 60 / 60)
             self.timezone_offset_hours = f"{self.timezone_offset_hours}:00"
-        else: self.timezone_offset_hours = self.__get_info(None)
+        else:
+            self.timezone_offset_hours = self.__get_info(None)
 
         # Airport reviews.
         self.reviews_url = flight_diary.get("url")
@@ -156,18 +155,18 @@ class Airport(Entity):
         self.total_rating = self.__get_info(ratings.get("total"))
 
         # Weather information.
-        self.weather = self.__get_info(airport.get("weather"), dict())
+        self.weather = self.__get_info(airport.get("weather"), {})
 
         # Runway information.
-        self.runways = airport.get("runways", list())
+        self.runways = airport.get("runways", [])
 
         # Aircraft count information.
         self.aircraft_on_ground = self.__get_info(aircraft_on_ground.get("total"))
         self.aircraft_visible_on_ground = self.__get_info(aircraft_on_ground.get("visible"))
 
         # Schedule information.
-        self.arrivals = self.__get_info(schedule.get("arrivals"), dict())
-        self.departures = self.__get_info(schedule.get("departures"), dict())
+        self.arrivals = self.__get_info(schedule.get("arrivals"), {})
+        self.departures = self.__get_info(schedule.get("departures"), {})
 
         # Link for the homepage and more information
         self.website = self.__get_info(urls.get("homepage"))
@@ -175,4 +174,4 @@ class Airport(Entity):
 
         # Other information.
         self.visible = self.__get_info(details.get("visible"))
-        self.images = self.__get_info(details.get("airportImages"), dict())
+        self.images = self.__get_info(details.get("airportImages"), {})

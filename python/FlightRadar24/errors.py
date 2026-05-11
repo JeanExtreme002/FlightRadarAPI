@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 
-class AirportNotFoundError(Exception):
+
+class FlightRadarError(Exception):
+    """Base class for all FlightRadar24 exceptions."""
     pass
 
 
-class CloudflareError(Exception):
-    def __init__(self, message, response):
-        self.message = message
+class AirportNotFoundError(FlightRadarError):
+    pass
+
+
+class CloudflareError(FlightRadarError):
+    def __init__(self, message: str, response):
+        super().__init__(message)
         self.response = response
 
-    def __str__(self):
-        return self.message
 
-
-class LoginError(Exception):
+class LoginError(FlightRadarError):
     pass

@@ -1,5 +1,29 @@
 const Entity = require("./entity");
 
+// Positional field mapping for the raw array returned by the FlightRadar24 feed.
+// If the upstream API adds or shifts a field, update only this map.
+const FIELDS = Object.freeze({
+    ICAO24BIT: 0,
+    LATITUDE: 1,
+    LONGITUDE: 2,
+    HEADING: 3,
+    ALTITUDE: 4,
+    GROUND_SPEED: 5,
+    SQUAWK: 6,
+    // index 7: unused
+    AIRCRAFT_CODE: 8,
+    REGISTRATION: 9,
+    TIME: 10,
+    ORIGIN_IATA: 11,
+    DESTINATION_IATA: 12,
+    FLIGHT_NUMBER: 13,
+    ON_GROUND: 14,
+    VERTICAL_SPEED: 15,
+    CALLSIGN: 16,
+    // index 17: unused
+    AIRLINE_ICAO: 18,
+});
+
 /**
  * Flight representation.
  */
@@ -8,30 +32,30 @@ class Flight extends Entity {
      * Constructor of Flight class.
      *
      * @param {*} flightId - The flight ID specifically used by FlightRadar24
-     * @param {*} info - Dictionary with received data from FlightRadar24
+     * @param {*} info - Array with received data from FlightRadar24
      */
     constructor(flightId, info) {
         super();
 
-        this.__setPosition(this.__getInfo(info[1]), this.__getInfo(info[2]));
+        this.__setPosition(this.__getInfo(info[FIELDS.LATITUDE]), this.__getInfo(info[FIELDS.LONGITUDE]));
 
         this.id = flightId;
-        this.icao24bit = this.__getInfo(info[0]);
-        this.heading = this.__getInfo(info[3]);
-        this.altitude = this.__getInfo(info[4]);
-        this.groundSpeed = this.__getInfo(info[5]);
-        this.squawk = this.__getInfo(info[6]);
-        this.aircraftCode = this.__getInfo(info[8]);
-        this.registration = this.__getInfo(info[9]);
-        this.time = this.__getInfo(info[10]);
-        this.originAirportIata = this.__getInfo(info[11]);
-        this.destinationAirportIata = this.__getInfo(info[12]);
-        this.number = this.__getInfo(info[13]);
-        this.airlineIata = this.__getInfo(info[13].slice(0, 2));
-        this.onGround = this.__getInfo(info[14]);
-        this.verticalSpeed =this.__getInfo(info[15]);
-        this.callsign = this.__getInfo(info[16]);
-        this.airlineIcao = this.__getInfo(info[18]);
+        this.icao24bit = this.__getInfo(info[FIELDS.ICAO24BIT]);
+        this.heading = this.__getInfo(info[FIELDS.HEADING]);
+        this.altitude = this.__getInfo(info[FIELDS.ALTITUDE]);
+        this.groundSpeed = this.__getInfo(info[FIELDS.GROUND_SPEED]);
+        this.squawk = this.__getInfo(info[FIELDS.SQUAWK]);
+        this.aircraftCode = this.__getInfo(info[FIELDS.AIRCRAFT_CODE]);
+        this.registration = this.__getInfo(info[FIELDS.REGISTRATION]);
+        this.time = this.__getInfo(info[FIELDS.TIME]);
+        this.originAirportIata = this.__getInfo(info[FIELDS.ORIGIN_IATA]);
+        this.destinationAirportIata = this.__getInfo(info[FIELDS.DESTINATION_IATA]);
+        this.number = this.__getInfo(info[FIELDS.FLIGHT_NUMBER]);
+        this.airlineIata = this.__getInfo(info[FIELDS.FLIGHT_NUMBER]?.slice(0, 2));
+        this.onGround = this.__getInfo(info[FIELDS.ON_GROUND]);
+        this.verticalSpeed = this.__getInfo(info[FIELDS.VERTICAL_SPEED]);
+        this.callsign = this.__getInfo(info[FIELDS.CALLSIGN]);
+        this.airlineIcao = this.__getInfo(info[FIELDS.AIRLINE_ICAO]);
     }
 
     /**
@@ -49,14 +73,13 @@ class Flight extends Entity {
         const comparisonFunctions = {"max": Math.max, "min": Math.min};
 
         for (let key in info) {
-            if (!Object.prototype.hasOwnProperty.call(info, key)) { // guard-for-in
+            if (!Object.prototype.hasOwnProperty.call(info, key)) {
                 continue;
             }
 
             let prefix = key.slice(0, 3);
             const value = info[key];
 
-            // Separate the comparison prefix if it exists.
             if ((prefix === "max") || (prefix === "min")) {
                 key = key[3].toLowerCase() + key.slice(4, key.length);
             }
@@ -64,15 +87,12 @@ class Flight extends Entity {
                 prefix = null;
             }
 
-            // Check if the value is greater than or less than the attribute value.
-            if (this.hasOwnProperty(key) && prefix) {
+            if (Object.prototype.hasOwnProperty.call(this, key) && prefix) {
                 if (comparisonFunctions[prefix](value, this[key]) !== value) {
                     return false;
                 }
             }
-
-            // Check if the value is equal.
-            else if (this.hasOwnProperty(key) && value !== this[key]) {
+            else if (Object.prototype.hasOwnProperty.call(this, key) && value !== this[key]) {
                 return false;
             }
         }
@@ -106,8 +126,8 @@ class Flight extends Entity {
      * @return {string}
      */
     getGroundSpeed() {
-        const sufix = this.groundSpeed > 1 ? "s" : "";
-        return this.groundSpeed.toString() + " kt" + sufix;
+        const suffix = this.groundSpeed > 1 ? "s" : "";
+        return this.groundSpeed.toString() + " kt" + suffix;
     }
 
     /**
