@@ -178,21 +178,23 @@ class APIRequest:
         """
         Detect Cloudflare-level blocks.
 
-        FR24 fronts the public site with Cloudflare. The classic signal is HTTP 520,
-        but recent waves of bot-mitigation return 403 with a `cf-mitigated` header
-        (or `Server: cloudflare`) and an HTML challenge body. We treat both as
-        CloudflareError so callers can retry / refresh impersonation.
+        FR24 fronts the public site with Cloudflare, so a `Server: cloudflare`
+        header is present on *every* response — including legitimate 403s from
+        the FR24 origin (e.g. premium-only endpoints accessed by a free
+        account). To avoid false positives we rely on signals that Cloudflare
+        sets only when its own bot-management / challenge actually took
+        action:
+
+        - HTTP 520 (Cloudflare's "unknown error from origin").
+        - HTTP 403 with the `cf-mitigated` header set — Cloudflare adds this
+          specifically when it (not the origin) decided to block the request.
         """
         status = self.get_status_code()
         if status == 520:
             return True
         if status != 403:
             return False
-        headers = self.__response.headers
-        if headers.get("cf-mitigated"):
-            return True
-        server = (headers.get("Server") or headers.get("server") or "").lower()
-        return "cloudflare" in server
+        return bool(self.__response.headers.get("cf-mitigated"))
 
     def get_content(self) -> Union[Dict, bytes]:
         """

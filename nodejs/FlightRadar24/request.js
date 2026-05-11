@@ -122,10 +122,15 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /**
  * Detect Cloudflare-level blocks.
  *
- * FR24 fronts the public site with Cloudflare. The classic signal is HTTP 520,
- * but recent waves of bot-mitigation return 403 with a `cf-mitigated` header
- * (or `Server: cloudflare`) and an HTML challenge body. We treat both as
- * CloudflareError so callers can retry / refresh impersonation.
+ * FR24 fronts the public site with Cloudflare, so a `Server: cloudflare`
+ * header is present on *every* response — including legitimate 403s from
+ * the FR24 origin (e.g. premium-only endpoints accessed by a free account).
+ * To avoid false positives we rely on signals that Cloudflare sets only
+ * when its own bot-management / challenge actually took action:
+ *
+ * - HTTP 520 (Cloudflare's "unknown error from origin").
+ * - HTTP 403 with the `cf-mitigated` header set — Cloudflare adds this
+ *   specifically when it (not the origin) decided to block the request.
  *
  * @param {number} statusCode
  * @param {Headers} headers
@@ -134,9 +139,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 function isCloudflareBlock(statusCode, headers) {
     if (statusCode === 520) return true;
     if (statusCode !== 403) return false;
-    if (headers.get("cf-mitigated")) return true;
-    const server = (headers.get("server") ?? "").toLowerCase();
-    return server.includes("cloudflare");
+    return Boolean(headers.get("cf-mitigated"));
 }
 
 /**
