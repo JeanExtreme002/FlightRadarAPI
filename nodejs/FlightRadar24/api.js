@@ -1,11 +1,11 @@
 const Core = require("./core");
-const {APIClient} = require("./request");
+const { APIClient } = require("./request");
 const Airport = require("./entities/airport");
 const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
-const {AirportNotFoundError, LoginError} = require("./errors");
-const {isNumeric, radians, rad2deg} = require("./util");
-const {parseAirlinesHtml, parseAirportsHtml} = require("./parsers");
+const { AirportNotFoundError, LoginError } = require("./errors");
+const { isNumeric, radians, rad2deg } = require("./util");
+const { parseAirlinesHtml, parseAirportsHtml } = require("./parsers");
 
 
 /**
@@ -24,7 +24,7 @@ async function mapConcurrent(items, concurrency, fn) {
             await fn(items[i++]);
         }
     }
-    await Promise.all(Array.from({length: Math.min(concurrency, items.length)}, worker));
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
 }
 
 /**
@@ -38,7 +38,7 @@ class FlightRadar24API {
      * @param {number} [options.timeout=30000] - Request timeout in milliseconds
      * @param {number} [options.maxWorkers=8] - Maximum concurrent requests when fetching flight details
      */
-    constructor({timeout = 30000, maxWorkers = 8} = {}) {
+    constructor({ timeout = 30000, maxWorkers = 8 } = {}) {
         this.__flightTrackerConfig = new FlightTrackerConfig();
         this.__loginData = null;
         this.__client = new APIClient();
@@ -52,7 +52,8 @@ class FlightRadar24API {
      * @return {Promise<Array<object>>}
      */
     async getAirlines() {
-        const {content} = await this.__client.request(Core.airlinesDataUrl, {headers: Core.htmlHeaders, timeout: this.timeout});
+        const { content } = await this.__client.request(
+            Core.airlinesDataUrl, { headers: Core.htmlHeaders, timeout: this.timeout });
         return parseAirlinesHtml(content);
     }
 
@@ -71,7 +72,7 @@ class FlightRadar24API {
         const notFound = [403, 404];
 
         const firstLogoUrl = Core.airlineLogoUrl(iata, icao);
-        let {content, statusCode} = await this.__client.request(firstLogoUrl, {
+        let { content, statusCode } = await this.__client.request(firstLogoUrl, {
             headers: Core.imageHeaders,
             allowedErrorCodes: notFound,
             timeout: this.timeout,
@@ -82,7 +83,7 @@ class FlightRadar24API {
         }
 
         const secondLogoUrl = Core.alternativeAirlineLogoUrl(icao);
-        ({content, statusCode} = await this.__client.request(secondLogoUrl, {
+        ({ content, statusCode } = await this.__client.request(secondLogoUrl, {
             headers: Core.imageHeaders,
             allowedErrorCodes: notFound,
             timeout: this.timeout,
@@ -113,8 +114,8 @@ class FlightRadar24API {
             return airport;
         }
 
-        const {content} = await this.__client.request(
-            Core.airportDataUrl(code), {headers: Core.jsonHeaders, timeout: this.timeout},
+        const { content } = await this.__client.request(
+            Core.airportDataUrl(code), { headers: Core.jsonHeaders, timeout: this.timeout },
         );
         const info = content["details"];
 
@@ -137,13 +138,13 @@ class FlightRadar24API {
             throw new Error("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
         }
 
-        const params = {"format": "json", "code": code, "limit": flightLimit, "page": page};
+        const params = { "format": "json", "code": code, "limit": flightLimit, "page": page };
 
         if (this.isLoggedIn()) {
             params["token"] = this.__client.getCookie("_frPl");
         }
 
-        const {content, statusCode} = await this.__client.request(Core.apiAirportDataUrl, {
+        const { content, statusCode } = await this.__client.request(Core.apiAirportDataUrl, {
             params,
             headers: Core.jsonHeaders,
             allowedErrorCodes: [400],
@@ -180,8 +181,8 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async getAirportDisruptions() {
-        const {content} = await this.__client.request(
-            Core.airportDisruptionsUrl, {headers: Core.jsonHeaders, timeout: this.timeout},
+        const { content } = await this.__client.request(
+            Core.airportDisruptionsUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
         );
         return content;
     }
@@ -196,7 +197,7 @@ class FlightRadar24API {
         const airports = [];
         await mapConcurrent(countries, this.maxWorkers, async (countryName) => {
             const countryHref = Core.airportsDataUrl + "/" + countryName;
-            const {content} = await this.__client.request(countryHref, {headers: Core.htmlHeaders, timeout: this.timeout});
+            const { content } = await this.__client.request(countryHref, { headers: Core.htmlHeaders, timeout: this.timeout });
             airports.push(...parseAirportsHtml(content, countryHref));
         });
         return airports;
@@ -212,8 +213,8 @@ class FlightRadar24API {
             throw new LoginError("You must log in to your account.");
         }
 
-        const headers = {...Core.jsonHeaders, "accesstoken": this.getLoginData()["accessToken"]};
-        const {content} = await this.__client.request(Core.bookmarksUrl, {
+        const headers = { ...Core.jsonHeaders, "accesstoken": this.getLoginData()["accessToken"] };
+        const { content } = await this.__client.request(Core.bookmarksUrl, {
             headers,
             timeout: this.timeout,
         });
@@ -294,10 +295,10 @@ class FlightRadar24API {
     async getCountryFlag(country) {
         const flagUrl = Core.countryFlagUrl(country.toLowerCase().replaceAll(" ", "-"));
 
-        const headers = {...Core.imageHeaders};
+        const headers = { ...Core.imageHeaders };
         delete headers["origin"];
 
-        const {content, statusCode} = await this.__client.request(flagUrl, {
+        const { content, statusCode } = await this.__client.request(flagUrl, {
             headers,
             allowedErrorCodes: [403, 404],
             timeout: this.timeout,
@@ -317,8 +318,8 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async getFlightDetails(flight) {
-        const {content} = await this.__client.request(
-            Core.flightDataUrl(flight.id), {headers: Core.jsonHeaders, timeout: this.timeout},
+        const { content } = await this.__client.request(
+            Core.flightDataUrl(flight.id), { headers: Core.jsonHeaders, timeout: this.timeout },
         );
         return content;
     }
@@ -334,7 +335,7 @@ class FlightRadar24API {
      * @return {Promise<Array<Flight>>}
      */
     async getFlights(airline = null, bounds = null, registration = null, aircraftType = null, details = false) {
-        const params = {...this.__flightTrackerConfig};
+        const params = { ...this.__flightTrackerConfig };
 
         if (this.isLoggedIn()) {
             params["enc"] = this.__client.getCookie("_frPl");
@@ -344,7 +345,7 @@ class FlightRadar24API {
         if (registration !== null) params["reg"] = registration;
         if (aircraftType !== null) params["type"] = aircraftType;
 
-        const {content} = await this.__client.request(Core.realTimeFlightTrackerDataUrl, {
+        const { content } = await this.__client.request(Core.realTimeFlightTrackerDataUrl, {
             params,
             headers: Core.jsonHeaders,
             timeout: this.timeout,
@@ -377,7 +378,7 @@ class FlightRadar24API {
      * @return {FlightTrackerConfig}
      */
     getFlightTrackerConfig() {
-        return new FlightTrackerConfig({...this.__flightTrackerConfig});
+        return new FlightTrackerConfig({ ...this.__flightTrackerConfig });
     }
 
     /**
@@ -398,8 +399,8 @@ class FlightRadar24API {
             throw new Error("File type '" + fileType + "' is not supported. Only CSV and KML are supported.");
         }
 
-        const headers = {...Core.jsonHeaders, "accesstoken": this.getLoginData()["accessToken"]};
-        const {content} = await this.__client.request(Core.historicalDataUrl(flight.id, fileType, timestamp), {
+        const headers = { ...Core.jsonHeaders, "accesstoken": this.getLoginData()["accessToken"] };
+        const { content } = await this.__client.request(Core.historicalDataUrl(flight.id, fileType, timestamp), {
             headers,
             timeout: this.timeout,
         });
@@ -416,7 +417,7 @@ class FlightRadar24API {
         if (!this.isLoggedIn()) {
             throw new LoginError("You must log in to your account.");
         }
-        return {...this.__loginData["userData"]};
+        return { ...this.__loginData["userData"] };
     }
 
     /**
@@ -425,7 +426,8 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async getMostTracked() {
-        const {content} = await this.__client.request(Core.mostTrackedUrl, {headers: Core.jsonHeaders, timeout: this.timeout});
+        const { content } = await this.__client.request(
+            Core.mostTrackedUrl, { headers: Core.jsonHeaders, timeout: this.timeout });
         return content;
     }
 
@@ -435,8 +437,8 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async getVolcanicEruptions() {
-        const {content} = await this.__client.request(
-            Core.volcanicEruptionDataUrl, {headers: Core.jsonHeaders, timeout: this.timeout},
+        const { content } = await this.__client.request(
+            Core.volcanicEruptionDataUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
         );
         return content;
     }
@@ -447,7 +449,7 @@ class FlightRadar24API {
      * @return {object}
      */
     getZones() {
-        const zones = {...Core.staticZones};
+        const zones = { ...Core.staticZones };
         delete zones.version;
         return zones;
     }
@@ -460,8 +462,8 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async search(query, limit = 50) {
-        const {content} = await this.__client.request(
-            Core.searchDataUrl(query, limit), {headers: Core.jsonHeaders, timeout: this.timeout},
+        const { content } = await this.__client.request(
+            Core.searchDataUrl(query, limit), { headers: Core.jsonHeaders, timeout: this.timeout },
         );
 
         const results = content["results"] ?? [];
@@ -503,9 +505,9 @@ class FlightRadar24API {
         this.__loginData = null;
         this.__client.clearCookies();
 
-        const {content, statusCode} = await this.__client.request(Core.userLoginUrl, {
+        const { content, statusCode } = await this.__client.request(Core.userLoginUrl, {
             headers: Core.jsonHeaders,
-            data: {"email": user, "password": password, "remember": "true", "type": "web"},
+            data: { "email": user, "password": password, "remember": "true", "type": "web" },
             timeout: this.timeout,
         });
 
@@ -515,7 +517,7 @@ class FlightRadar24API {
             );
         }
 
-        this.__loginData = {"userData": content["userData"]};
+        this.__loginData = { "userData": content["userData"] };
     }
 
     /**
@@ -531,8 +533,8 @@ class FlightRadar24API {
         this.__loginData = null;
 
         try {
-            const {statusCode} = await this.__client.request(
-                Core.userLogoutUrl, {headers: Core.jsonHeaders, timeout: this.timeout},
+            const { statusCode } = await this.__client.request(
+                Core.userLogoutUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
             );
             return statusCode >= 200 && statusCode < 300;
         }

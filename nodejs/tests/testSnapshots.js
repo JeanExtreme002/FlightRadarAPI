@@ -1,4 +1,4 @@
-const {FlightRadar24API, Countries} = require("..");
+const { FlightRadar24API, Countries } = require("..");
 const expect = require("chai").expect;
 
 
@@ -102,7 +102,7 @@ const AIRPORT_DETAILS_SHAPE = {
                 },
                 name: null,
                 position: {
-                    country: {name: null},
+                    country: { name: null },
                     latitude: null,
                     longitude: null,
                 },

@@ -1,5 +1,5 @@
-const {CloudflareError} = require("./errors");
-const {fetch, Agent} = require("undici");
+const { CloudflareError } = require("./errors");
+const { fetch, Agent } = require("undici");
 
 // Chrome 136 TLS cipher suites to approximate its JA3 fingerprint
 const CHROME_CIPHERS = [
@@ -75,7 +75,7 @@ async function request(url, {
     }
 
     const method = data === null ? "GET" : "POST";
-    const settings = {method, headers: requestHeaders, dispatcher: chromeAgent};
+    const settings = { method, headers: requestHeaders, dispatcher: chromeAgent };
 
     if (method === "POST") {
         const formData = new URLSearchParams();
@@ -136,7 +136,7 @@ async function request(url, {
         });
     }
 
-    return {content, statusCode, cookies: responseCookies};
+    return { content, statusCode, cookies: responseCookies };
 }
 
 /**
@@ -176,11 +176,11 @@ class Session {
      * @return {Promise<{content: *, statusCode: number, cookies: object}>}
      */
     async request(url, options = {}) {
-        const {cookies: extraCookies, ...rest} = options;
-        const merged = {...this.__cookies, ...(extraCookies ?? {})};
+        const { cookies: extraCookies, ...rest } = options;
+        const merged = { ...this.__cookies, ...(extraCookies ?? {}) };
         const cookies = Object.keys(merged).length > 0 ? merged : null;
 
-        const result = await request(url, {...rest, cookies});
+        const result = await request(url, { ...rest, cookies });
 
         if (result.cookies && Object.keys(result.cookies).length > 0) {
             Object.assign(this.__cookies, result.cookies);
@@ -231,4 +231,4 @@ class APIClient {
     }
 }
 
-module.exports = {request, Session, APIClient};
+module.exports = { request, Session, APIClient };

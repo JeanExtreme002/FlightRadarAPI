@@ -203,4 +203,4 @@ staticZones = {
     },
 };
 
-module.exports = {staticZones};
+module.exports = { staticZones };

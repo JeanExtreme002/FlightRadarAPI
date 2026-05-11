@@ -14,6 +14,7 @@
     "indent": ["warn", 4],
     "brace-style": ["warn", "stroustrup"],
     "valid-jsdoc": ["warn"],
-    "require-jsdoc": ["warn"]
+    "require-jsdoc": ["warn"],
+    "object-curly-spacing": ["warn", "always"]
   }
 }

@@ -1,4 +1,4 @@
-const {radians} = require("../util");
+const { radians } = require("../util");
 
 const DEFAULT_TEXT = "N/A";
 

@@ -1,4 +1,4 @@
-const {staticZones} = require("./zones");
+const { staticZones } = require("./zones");
 
 const FR24_BASE = "https://www.flightradar24.com";
 const API_FR24_BASE = "https://api.flightradar24.com/common/v1";
@@ -68,8 +68,8 @@ const Core = {
     staticZones,
 
     headers: baseHeaders,
-    jsonHeaders: {accept: "application/json", ...baseHeaders},
-    imageHeaders: {accept: "image/gif, image/jpg, image/jpeg, image/png", ...baseHeaders},
+    jsonHeaders: { accept: "application/json", ...baseHeaders },
+    imageHeaders: { accept: "image/gif, image/jpg, image/jpeg, image/png", ...baseHeaders },
     htmlHeaders: {
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "accept-encoding": "gzip, deflate, br",
