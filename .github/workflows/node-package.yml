@@ -43,5 +43,4 @@ jobs:
         with:
           timeout_minutes: 10
           max_attempts: 3
-          working_directory: ./nodejs
-          command: npm test
+          command: cd nodejs && npm test
