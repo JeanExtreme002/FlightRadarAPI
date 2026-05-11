@@ -61,7 +61,7 @@ class Core:
 
     headers = {
         "accept-encoding": "gzip, br",
-        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "accept-language": "en-US,en;q=0.9",
         "cache-control": "max-age=0",
         "origin": "https://www.flightradar24.com",
         "referer": "https://www.flightradar24.com/",
@@ -90,7 +90,7 @@ class Core:
             "application/signed-exchange;v=b3;q=0.7"
         ),
         "accept-encoding": "gzip, deflate, br",
-        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "accept-language": "en-US,en;q=0.9",
         "cache-control": "max-age=0",
         "referer": "https://www.flightradar24.com/",
         "sec-ch-ua": '"Google Chrome";v="136", "Chromium";v="136", "Not-A.Brand";v="24"',

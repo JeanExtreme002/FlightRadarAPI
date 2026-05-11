@@ -29,6 +29,38 @@ class Airport extends Entity {
     }
 
     /**
+     * Build an Airport from the listing payload (lat/lon/name/iata/icao/country).
+     *
+     * @param {object} basicInfo
+     * @return {Airport}
+     */
+    static fromBasicInfo(basicInfo) {
+        return new Airport(basicInfo);
+    }
+
+    /**
+     * Build an Airport from the airport.json `details` block.
+     *
+     * @param {object} info
+     * @return {Airport}
+     */
+    static fromInfo(info) {
+        return new Airport({}, info);
+    }
+
+    /**
+     * Build an Airport from a full `getAirportDetails` response.
+     *
+     * @param {object} airportDetails
+     * @return {Airport}
+     */
+    static fromDetails(airportDetails) {
+        const airport = new Airport();
+        airport.setAirportDetails(airportDetails);
+        return airport;
+    }
+
+    /**
      * Initialize instance with basic information about the airport.
      *
      * @param {object} basicInfo

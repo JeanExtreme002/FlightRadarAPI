@@ -17,6 +17,11 @@ repeat_test_config = {
 
 fr_api = FlightRadar24API()
 
+# Live tests in this module hit production FR24. They are tagged as `integration`
+# so PR runs can opt out via `-m 'not integration'`. The weekly cron job runs the
+# full suite to catch upstream changes.
+pytestmark = pytest.mark.integration
+
 
 @repeat_test(**repeat_test_config)
 def test_get_airlines(expect=100, airlines=["LAN", "GLO", "DAL", "AZU", "UAE"]):

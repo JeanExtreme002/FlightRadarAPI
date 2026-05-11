@@ -16,6 +16,7 @@ const Airport = require("./entities/airport");
 const Entity = require("./entities/entity");
 const Flight = require("./entities/flight");
 const { Countries } = require("./core");
+const { RetryPolicy, APIClient } = require("./request");
 
 const { version, author } = require("../package.json");
 
@@ -25,5 +26,6 @@ module.exports = {
     Countries,
     Airport, Entity, Flight,
     FlightRadarError, AirportNotFoundError, CloudflareError, LoginError,
+    RetryPolicy, APIClient,
     author, version,
 };

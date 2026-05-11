@@ -11,13 +11,58 @@ export interface Zone {
 }
 
 /**
+ * Options for TLS impersonation. Currently maps Chrome major versions to
+ * the ciphers/sigalgs/curves the runtime should use.
+ */
+export interface ImpersonateOptions {
+    /** Chrome major version label, e.g. "chrome136". Defaults to the latest supported. */
+    profile?: string;
+}
+
+/**
+ * Central HTTP client. Internal class exposed for advanced use cases (custom retries,
+ * cookie inspection). Most users should rely on FlightRadar24API directly.
+ */
+export class APIClient {
+    constructor(options?: { impersonate?: ImpersonateOptions; retry?: RetryPolicy });
+    request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
+    getCookie(name: string): string | undefined;
+    clearCookies(): void;
+}
+
+/**
+ * Retry policy for transient errors (CloudflareError + AbortError / network errors).
+ */
+export class RetryPolicy {
+    maxAttempts: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
+    jitterMs: number;
+    constructor(options?: {
+        maxAttempts?: number;
+        baseDelayMs?: number;
+        maxDelayMs?: number;
+        jitterMs?: number;
+    });
+    sleepFor(attemptIndex: number): number;
+}
+
+/**
  * Main class of the FlightRadarAPI
  */
 export class FlightRadar24API {
     private __flightTrackerConfig: FlightTrackerConfig;
-    private __loginData: {userData: any; cookies: any;} | null;
-    
-    constructor(options?: {timeout?: number; maxWorkers?: number});
+    private __loginData: {userData: any} | null;
+    private __client: APIClient;
+    timeout: number;
+    maxWorkers: number;
+
+    constructor(options?: {
+        timeout?: number;
+        maxWorkers?: number;
+        impersonate?: ImpersonateOptions;
+        retry?: RetryPolicy;
+    });
 
     /**
      * Return a list with all airlines.
@@ -196,7 +241,7 @@ export class FlightRadar24API {
      */
     setFlightTrackerConfig(
         flightTrackerConfig: FlightTrackerConfig | null,
-        config?: object,
+        config?: Partial<Record<keyof FlightTrackerConfig, string | number>>,
     ): void;
 }
 
@@ -300,7 +345,14 @@ export class Airport extends Entity {
      * @param {object} [info] - Dictionary with more information about the airport received from FlightRadar24
      */
     constructor(basicInfo?: object, info?: object);
-    
+
+    /** Build an Airport from the listing payload. */
+    static fromBasicInfo(basicInfo: object): Airport;
+    /** Build an Airport from the airport.json `details` block. */
+    static fromInfo(info: object): Airport;
+    /** Build an Airport from a full `getAirportDetails` response. */
+    static fromDetails(airportDetails: object): Airport;
+
     /**
      * Initialize instance with basic information about the airport.
      *

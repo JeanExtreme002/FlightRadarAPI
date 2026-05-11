@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from FlightRadar24.errors import CloudflareError
 from package import Countries, FlightRadar24API
 from util import repeat_test
+
+# Every test in this module hits production FR24; tag the file so PRs can run
+# `pytest -m 'not integration'` and gate on the offline parser suite only.
+pytestmark = pytest.mark.integration
 
 repeat_test_config = {
     "attempts": 2,

@@ -2,6 +2,8 @@
 
 import gzip
 import json
+import random
+import time
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
@@ -11,7 +13,56 @@ from curl_cffi.requests import Session
 
 from .errors import CloudflareError
 
-_IMPERSONATE = "chrome136"
+DEFAULT_IMPERSONATE = "chrome136"
+
+
+class RetryPolicy:
+    """
+    Retry policy for transient errors (CloudflareError + curl_cffi network errors).
+
+    :param max_attempts: total number of attempts including the first one (>= 1).
+    :param base_delay: seconds for the first backoff sleep.
+    :param max_delay: cap for the exponential backoff.
+    :param jitter: random factor [0, jitter) added to each sleep.
+    """
+
+    def __init__(
+        self,
+        max_attempts: int = 1,
+        base_delay: float = 1.0,
+        max_delay: float = 30.0,
+        jitter: float = 0.5,
+    ):
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be >= 1")
+        self.max_attempts = max_attempts
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+        self.jitter = jitter
+
+    def sleep_for(self, attempt_index: int) -> float:
+        """Return the backoff (in seconds) for the given 0-based attempt index."""
+        delay = min(self.base_delay * (2 ** attempt_index), self.max_delay)
+        return delay + random.uniform(0, self.jitter)
+
+
+def _run_with_retry(fn, retry: Optional[RetryPolicy]):
+    """Execute ``fn()`` with retry on CloudflareError / transient network errors."""
+    if retry is None or retry.max_attempts <= 1:
+        return fn()
+
+    last_error: Optional[Exception] = None
+    for attempt in range(retry.max_attempts):
+        try:
+            return fn()
+        except CloudflareError as err:
+            last_error = err
+        except requests.errors.RequestsError as err:  # type: ignore[attr-defined]
+            last_error = err
+        if attempt < retry.max_attempts - 1:
+            time.sleep(retry.sleep_for(attempt))
+    assert last_error is not None
+    raise last_error
 
 
 class APIClient:
@@ -20,19 +71,39 @@ class APIClient:
 
     Owns the persistent session (cookie jar, TLS fingerprint, future bypass logic)
     so that the rest of the codebase never has to deal with those concerns directly.
+
+    :param impersonate: curl_cffi browser profile to mimic. Defaults to
+        ``DEFAULT_IMPERSONATE`` (currently ``"chrome136"``). When FR24 updates its
+        Cloudflare bot mitigation, pass a newer profile (e.g. ``"chrome137"``,
+        ``"chrome138"``) without waiting for a library release.
     """
 
-    def __init__(self) -> None:
-        self.__session: Session = Session(impersonate=_IMPERSONATE)  # type: ignore[arg-type]
+    def __init__(
+        self,
+        impersonate: str = DEFAULT_IMPERSONATE,
+        retry: Optional[RetryPolicy] = None,
+    ) -> None:
+        self.__impersonate = impersonate
+        self.__retry = retry
+        self.__session: Session = Session(impersonate=impersonate)  # type: ignore[arg-type]
 
     def request(self, url: str, **kwargs) -> "APIRequest":
         """Make a request through the shared session."""
-        return APIRequest(url, session=self.__session, **kwargs)
+        return _run_with_retry(
+            lambda: APIRequest(url, session=self.__session, **kwargs),
+            self.__retry,
+        )
 
-    @staticmethod
-    def request_standalone(url: str, **kwargs) -> "APIRequest":
-        """Make a stateless request with no shared session (safe to call from threads)."""
-        return APIRequest(url, **kwargs)
+    def request_standalone(self, url: str, **kwargs) -> "APIRequest":
+        """Make a stateless request with no shared session (safe to call from threads).
+
+        The TLS impersonation profile is inherited from this client so that
+        thread-pool fan-outs still mimic the same browser as the session.
+        """
+        return _run_with_retry(
+            lambda: APIRequest(url, impersonate=self.__impersonate, **kwargs),
+            self.__retry,
+        )
 
     def get_cookie(self, name: str) -> Optional[str]:
         """Return the value of a stored cookie by name."""
@@ -62,7 +133,8 @@ class APIRequest:
         headers: Optional[Dict] = None,
         timeout: int = 30,
         data: Optional[Dict] = None,
-        allowed_error_codes: Optional[List[int]] = None
+        allowed_error_codes: Optional[List[int]] = None,
+        impersonate: str = DEFAULT_IMPERSONATE,
     ):
         """
         Constructor of the APIRequest class.
@@ -73,6 +145,7 @@ class APIRequest:
         :param headers: headers for the request
         :param data: data for the request. If "data" is None, request will be a GET. Otherwise, it will be a POST
         :param allowed_error_codes: status codes that should not raise an error
+        :param impersonate: curl_cffi browser profile (only used when no session is provided)
         """
         self.url = url
 
@@ -85,17 +158,41 @@ class APIRequest:
             request_method = requests.get if data is None else requests.post
             self.__response = request_method(
                 url, headers=headers, data=data, timeout=timeout,
-                impersonate=_IMPERSONATE  # type: ignore[arg-type]
+                impersonate=impersonate  # type: ignore[arg-type]
             )
 
-        if self.get_status_code() == 520:
+        # Cloudflare detection only when the caller did not opt-in to this status code.
+        # `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
+        if (self.get_status_code() not in (allowed_error_codes or [])
+                and self.__is_cloudflare_block()):
             raise CloudflareError(
-                message="An unexpected error has occurred. Perhaps you are making too many calls?",
+                message="Blocked by Cloudflare. Perhaps you are making too many calls, "
+                        "or the TLS impersonation needs to be updated.",
                 response=self.__response
             )
 
         if self.get_status_code() not in (allowed_error_codes or []):
             self.__response.raise_for_status()
+
+    def __is_cloudflare_block(self) -> bool:
+        """
+        Detect Cloudflare-level blocks.
+
+        FR24 fronts the public site with Cloudflare. The classic signal is HTTP 520,
+        but recent waves of bot-mitigation return 403 with a `cf-mitigated` header
+        (or `Server: cloudflare`) and an HTML challenge body. We treat both as
+        CloudflareError so callers can retry / refresh impersonation.
+        """
+        status = self.get_status_code()
+        if status == 520:
+            return True
+        if status != 403:
+            return False
+        headers = self.__response.headers
+        if headers.get("cf-mitigated"):
+            return True
+        server = (headers.get("Server") or headers.get("server") or "").lower()
+        return "cloudflare" in server
 
     def get_content(self) -> Union[Dict, bytes]:
         """

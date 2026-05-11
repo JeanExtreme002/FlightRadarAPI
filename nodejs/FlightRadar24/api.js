@@ -37,11 +37,14 @@ class FlightRadar24API {
      * @param {object} [options={}]
      * @param {number} [options.timeout=30000] - Request timeout in milliseconds
      * @param {number} [options.maxWorkers=8] - Maximum concurrent requests when fetching flight details
+     * @param {object} [options.impersonate] - TLS impersonation profile override
+     *     (`{ciphers, sigalgs, ecdhCurve}`). Use when FR24 updates its Cloudflare
+     *     bot mitigation faster than this library releases.
      */
-    constructor({ timeout = 30000, maxWorkers = 8 } = {}) {
+    constructor({ timeout = 30000, maxWorkers = 8, impersonate = null, retry = null } = {}) {
         this.__flightTrackerConfig = new FlightTrackerConfig();
         this.__loginData = null;
-        this.__client = new APIClient();
+        this.__client = new APIClient({ impersonate, retry });
         this.timeout = timeout;
         this.maxWorkers = maxWorkers;
     }

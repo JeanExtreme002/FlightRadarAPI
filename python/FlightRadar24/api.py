@@ -12,7 +12,7 @@ from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
 from .flight_tracker_config import FlightTrackerConfig
 from .parsers import parse_airlines_html, parse_airports_html
-from .request import APIClient
+from .request import APIClient, RetryPolicy
 
 
 class FlightRadar24API:
@@ -20,7 +20,15 @@ class FlightRadar24API:
     Main class of the FlightRadarAPI
     """
 
-    def __init__(self, user: Optional[str] = None, password: Optional[str] = None, timeout: int = 30, max_workers: int = 8):
+    def __init__(
+        self,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        timeout: int = 30,
+        max_workers: int = 8,
+        impersonate: Optional[str] = None,
+        retry: Optional[RetryPolicy] = None,
+    ):
         """
         Constructor of the FlightRadar24API class.
 
@@ -28,10 +36,18 @@ class FlightRadar24API:
         :param password: Your password
         :param timeout: Request timeout in seconds
         :param max_workers: Maximum threads used when fetching flight details concurrently
+        :param impersonate: TLS impersonation profile (curl_cffi). Override when FR24
+            updates its Cloudflare bot mitigation faster than this library releases.
+            See ``FlightRadar24.request.DEFAULT_IMPERSONATE`` for the current default.
+        :param retry: Optional :class:`RetryPolicy` applied to transient failures
+            (``CloudflareError`` and curl_cffi network errors). Defaults to no retry.
         """
         self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
-        self.__client = APIClient()
+        client_kwargs: Dict[str, Any] = {"retry": retry}
+        if impersonate:
+            client_kwargs["impersonate"] = impersonate
+        self.__client = APIClient(**client_kwargs)
 
         self.timeout: int = timeout
         self.max_workers: int = max_workers
@@ -172,7 +188,7 @@ class FlightRadar24API:
         """
         def _fetch(country):
             href = Core.airports_data_url + "/" + country.value
-            response = APIClient.request_standalone(href, headers=Core.html_headers, timeout=self.timeout)
+            response = self.__client.request_standalone(href, headers=Core.html_headers, timeout=self.timeout)
             return parse_airports_html(response.get_bytes_content(), href)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -283,7 +299,7 @@ class FlightRadar24API:
 
         :param flight: A Flight instance
         """
-        response = APIClient.request_standalone(
+        response = self.__client.request_standalone(
             Core.flight_data_url.format(flight.id), headers=Core.json_headers, timeout=self.timeout,
         )
         return response.get_json_content()
