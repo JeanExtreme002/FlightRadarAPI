@@ -43,7 +43,7 @@ class FlightRadar24API:
         Return a list with all airlines.
         """
         response = APIRequest(Core.airlines_data_url, headers=Core.html_headers, timeout=self.timeout)
-        return parse_airlines_html(response.get_content())
+        return parse_airlines_html(response.get_bytes_content())
 
     def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
         """
@@ -58,7 +58,7 @@ class FlightRadar24API:
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
-            return response.get_content(), first_logo_url.split(".")[-1]
+            return response.get_bytes_content(), first_logo_url.split(".")[-1]
 
         # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
@@ -67,7 +67,7 @@ class FlightRadar24API:
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
-            return response.get_content(), second_logo_url.split(".")[-1]
+            return response.get_bytes_content(), second_logo_url.split(".")[-1]
 
         return None
 
@@ -87,9 +87,9 @@ class FlightRadar24API:
             return airport
 
         response = APIRequest(Core.airport_data_url.format(code), headers=Core.json_headers, timeout=self.timeout)
-        content = response.get_content()
+        content = response.get_json_content()
 
-        if not content or not isinstance(content, dict) or not content.get("details"):
+        if not content or not content.get("details"):
             raise AirportNotFoundError(f"Could not find an airport by the code '{code}'.")
 
         return Airport(info=content["details"])
@@ -105,7 +105,7 @@ class FlightRadar24API:
         if not (3 <= len(code) <= 4):
             raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
 
-        request_params = {"format": "json"}
+        request_params: Dict[str, Any] = {"format": "json"}
 
         if self.__login_data is not None:
             request_params["token"] = self.__login_data["cookies"]["_frPl"]
@@ -116,8 +116,14 @@ class FlightRadar24API:
         request_params["page"] = page
 
         # Request details from the FlightRadar24.
-        response = APIRequest(Core.api_airport_data_url, params=request_params, headers=Core.json_headers, allowed_error_codes=[400], timeout=self.timeout)
-        content: Dict = response.get_content()
+        response = APIRequest(
+            Core.api_airport_data_url,
+            params=request_params,
+            headers=Core.json_headers,
+            allowed_error_codes=[400],
+            timeout=self.timeout,
+        )
+        content = response.get_json_content()
 
         if response.get_status_code() == 400 and content.get("errors"):
             errors = content["errors"]["errors"]["parameters"]
@@ -143,7 +149,7 @@ class FlightRadar24API:
         Return airport disruptions.
         """
         response = APIRequest(Core.airport_disruptions_url, headers=Core.json_headers, timeout=self.timeout)
-        return response.get_content()
+        return response.get_json_content()
 
     def get_airports(self, countries: List[Countries]) -> List[Airport]:
         """
@@ -154,7 +160,7 @@ class FlightRadar24API:
         def _fetch(country):
             href = Core.airports_data_url + "/" + country.value
             response = APIRequest(href, headers=Core.html_headers, timeout=self.timeout)
-            return parse_airports_html(response.get_content(), href)
+            return parse_airports_html(response.get_bytes_content(), href)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = executor.map(_fetch, countries)
@@ -168,12 +174,12 @@ class FlightRadar24API:
         if not self.is_logged_in():
             raise LoginError("You must log in to your account.")
 
+        assert self.__login_data is not None
         headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
-
         cookies = self.__login_data["cookies"]
 
         response = APIRequest(Core.bookmarks_url, headers=headers, cookies=cookies, timeout=self.timeout)
-        return response.get_content()
+        return response.get_json_content()
 
     def get_bounds(self, zone: Dict[str, float]) -> str:
         """
@@ -252,7 +258,7 @@ class FlightRadar24API:
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
-            return response.get_content(), flag_url.split(".")[-1]
+            return response.get_bytes_content(), flag_url.split(".")[-1]
 
         return None
 
@@ -263,7 +269,7 @@ class FlightRadar24API:
         :param flight: A Flight instance
         """
         response = APIRequest(Core.flight_data_url.format(flight.id), headers=Core.json_headers, timeout=self.timeout)
-        return response.get_content()
+        return response.get_json_content()
 
     def get_flights(
         self,
@@ -295,8 +301,13 @@ class FlightRadar24API:
         if aircraft_type is not None: request_params["type"] = aircraft_type
 
         # Get all flights from Data Live FlightRadar24.
-        response = APIRequest(Core.real_time_flight_tracker_data_url, params=request_params, headers=Core.json_headers, timeout=self.timeout)
-        content = response.get_content()
+        response = APIRequest(
+            Core.real_time_flight_tracker_data_url,
+            params=request_params,
+            headers=Core.json_headers,
+            timeout=self.timeout,
+        )
+        content = response.get_json_content()
 
         flights: List[Flight] = list()
 
@@ -333,6 +344,7 @@ class FlightRadar24API:
         if not self.is_logged_in():
             raise LoginError("You must log in to your account.")
 
+        assert self.__login_data is not None
         file_type = file_type.lower()
 
         if file_type not in ["csv", "kml"]:
@@ -346,8 +358,7 @@ class FlightRadar24API:
             timeout=self.timeout
         )
 
-        content = response.get_content()
-        return content.decode("utf-8")
+        return response.get_bytes_content().decode("utf-8")
 
     def get_login_data(self) -> Dict[Any, Any]:
         """
@@ -356,6 +367,7 @@ class FlightRadar24API:
         if not self.is_logged_in():
             raise LoginError("You must log in to your account.")
 
+        assert self.__login_data is not None
         return self.__login_data["userData"].copy()
 
     def get_most_tracked(self) -> Dict:
@@ -363,16 +375,16 @@ class FlightRadar24API:
         Return the most tracked data.
         """
         response = APIRequest(Core.most_tracked_url, headers=Core.json_headers, timeout=self.timeout)
-        return response.get_content()
+        return response.get_json_content()
 
     def get_volcanic_eruptions(self) -> Dict:
         """
         Return boundaries of volcanic eruptions and ash clouds impacting aviation.
         """
         response = APIRequest(Core.volcanic_eruption_data_url, headers=Core.json_headers, timeout=self.timeout)
-        return response.get_content()
+        return response.get_json_content()
 
-    def get_zones(self) -> Dict[str, Dict]:
+    def get_zones(self) -> Dict[str, Any]:
         """
         Return all major zones on the globe.
         """
@@ -385,12 +397,12 @@ class FlightRadar24API:
         Return the search result.
         """
         response = APIRequest(Core.search_data_url.format(quote(query), limit), headers=Core.json_headers, timeout=self.timeout)
-        content = response.get_content()
+        content = response.get_json_content()
         results = content.get("results", [])
         stats = content.get("stats", {})
 
         i = 0
-        data = {}
+        data: Dict[str, Any] = {}
         for name, count in stats.get("count", {}).items():
             data[name] = results[i:i + count]
             i += count
@@ -418,13 +430,10 @@ class FlightRadar24API:
 
         response = APIRequest(Core.user_login_url, headers=Core.json_headers, data=data, timeout=self.timeout)
         status_code = response.get_status_code()
-        content = response.get_content()
+        content = response.get_json_content()
 
         if not (200 <= status_code < 300) or not content.get("success"):
-            if isinstance(content, dict):
-                raise LoginError(content["message"])
-            else:
-                raise LoginError("Your email or password is incorrect")
+            raise LoginError(content.get("message", "Your email or password is incorrect"))
 
         self.__login_data = {
             "userData": content["userData"],

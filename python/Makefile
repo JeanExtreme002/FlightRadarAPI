@@ -1,7 +1,7 @@
 # Makefile for FlightRadarAPI Python package
 
 # Variables
-PACKAGE_NAME = FlightRadarAPI
+PACKAGE_NAME = FlightRadar24
 PYTHON = python3
 PIP = pip3
 BUILD_DIR = build

@@ -2,8 +2,8 @@
 
 import pytest
 
-from FlightRadar24 import Flight
-from FlightRadar24.errors import CloudflareError
+from FlightRadar24 import Entity, Flight
+from FlightRadar24.errors import CloudflareError, LoginError
 from package import Countries, FlightRadar24API, version
 from util import repeat_test
 
@@ -130,32 +130,6 @@ def test_get_country_flag(countries=["United States", "Brazil", "Egypt", "Japan"
     assert found >= expected
 
 
-@repeat_test(**repeat_test_config)
-def test_get_most_tracked():
-    result = fr_api.get_most_tracked()
-    assert isinstance(result, dict)
-
-
-@repeat_test(**repeat_test_config)
-def test_get_airport_disruptions():
-    result = fr_api.get_airport_disruptions()
-    assert isinstance(result, dict)
-
-
-@repeat_test(**repeat_test_config)
-def test_get_volcanic_eruptions():
-    result = fr_api.get_volcanic_eruptions()
-    assert isinstance(result, dict)
-
-
-@repeat_test(**repeat_test_config)
-def test_search():
-    result = fr_api.search("Guarulhos")
-    assert isinstance(result, dict)
-    for value in result.values():
-        assert isinstance(value, list)
-
-
 def test_get_bounds():
     zone = {"tl_y": 75.78, "br_y": -75.78, "tl_x": -427.56, "br_x": 427.56}
     assert fr_api.get_bounds(zone) == "75.78,-75.78,-427.56,427.56"
@@ -215,3 +189,70 @@ def test_check_info_string_mismatch():
 
 def test_check_info_combined():
     assert _check_info_flight.check_info(min_altitude=30000, max_altitude=40000, airline_icao="GLO")
+
+
+# --- Entity.get_distance_from ---
+
+def test_entity_distance_sao_paulo_to_rio():
+    gru = Entity(-23.4356, -46.4731)
+    gig = Entity(-22.8099, -43.2505)
+    assert 336 < gru.get_distance_from(gig) < 337
+
+
+def test_entity_distance_from_self_is_zero():
+    e = Entity(0.0, 0.0)
+    assert e.get_distance_from(e) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_entity_distance_raises_when_no_position():
+    e1 = Entity(None, None)
+    e2 = Entity(-23.0, -46.0)
+    with pytest.raises(ValueError):
+        e1.get_distance_from(e2)
+
+
+# --- FlightTrackerConfig ---
+
+def test_flight_tracker_config_defaults():
+    cfg = fr_api.get_flight_tracker_config()
+    assert cfg.limit == "5000"
+    assert cfg.faa == "1"
+    assert cfg.satellite == "1"
+    assert cfg.maxage == "14400"
+
+
+def test_get_flight_tracker_config_returns_independent_copy():
+    c1 = fr_api.get_flight_tracker_config()
+    c2 = fr_api.get_flight_tracker_config()
+    c1.limit = "999"
+    assert c2.limit != "999"
+
+
+# --- Auth state guards ---
+
+def test_is_logged_in_false_by_default():
+    assert FlightRadar24API().is_logged_in() is False
+
+
+def test_get_login_data_raises_when_not_logged_in():
+    with pytest.raises(LoginError):
+        FlightRadar24API().get_login_data()
+
+
+def test_logout_returns_true_when_not_logged_in():
+    assert FlightRadar24API().logout() is True
+
+
+def test_get_history_data_raises_when_not_logged_in():
+    with pytest.raises(LoginError):
+        FlightRadar24API().get_history_data(_check_info_flight, "CSV", 0)
+
+
+def test_get_history_data_raises_for_invalid_file_type():
+    api = FlightRadar24API()
+    api._FlightRadar24API__login_data = {
+        "userData": {"accessToken": "fake"},
+        "cookies": {"_frPl": "fake"},
+    }
+    with pytest.raises(ValueError):
+        api.get_history_data(_check_info_flight, "PDF", 0)

@@ -51,7 +51,7 @@ class APIRequest:
         if params: url += "?" + urlencode(params)
         self.__response = request_method(
             url, headers=headers, cookies=cookies, data=data, timeout=timeout,
-            impersonate=_IMPERSONATE
+            impersonate=_IMPERSONATE  # type: ignore[arg-type]
         )
 
         if self.get_status_code() == 520:
@@ -84,6 +84,24 @@ class APIRequest:
         if "application/json" in content_type:
             return json.loads(content)
 
+        return content
+
+    def get_json_content(self) -> Dict[str, Any]:
+        """
+        Return the response content as a parsed JSON dictionary.
+        """
+        content = self.get_content()
+        if not isinstance(content, dict):
+            raise ValueError(f"Expected JSON response from {self.url}, got bytes")
+        return content
+
+    def get_bytes_content(self) -> bytes:
+        """
+        Return the response content as raw bytes.
+        """
+        content = self.get_content()
+        if not isinstance(content, bytes):
+            raise ValueError(f"Expected bytes response from {self.url}, got JSON")
         return content
 
     def get_cookies(self) -> Dict:

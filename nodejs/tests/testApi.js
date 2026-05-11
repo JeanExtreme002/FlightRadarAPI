@@ -1,4 +1,4 @@
-const {FlightRadar24API, Flight, Countries, version} = require("..");
+const {FlightRadar24API, Flight, Entity, FlightTrackerConfig, Countries, version} = require("..");
 const expect = require("chai").expect;
 
 
@@ -251,6 +251,99 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
         it("Combined conditions all matching returns true.", function() {
             expect(flight.checkInfo({minAltitude: 30000, maxAltitude: 40000, airlineIcao: "GLO"})).to.be.true;
+        });
+    });
+
+    // --- Entity ---
+
+    describe("Entity.getDistanceFrom()", function() {
+        it("GRU to GIG is between 340 and 380 km.", function() {
+            const gru = new Entity(-23.4356, -46.4731);
+            const gig = new Entity(-22.8099, -43.2505);
+            const dist = gru.getDistanceFrom(gig);
+            expect(dist).to.be.above(336).and.below(337);
+        });
+
+        it("Distance from self is approximately zero.", function() {
+            const e = new Entity(0, 0);
+            expect(e.getDistanceFrom(e)).to.be.closeTo(0, 1e-9);
+        });
+
+        it("Throws when entity has no position.", function() {
+            const e1 = new Entity(null, null);
+            const e2 = new Entity(-23.0, -46.0);
+            expect(() => e1.getDistanceFrom(e2)).to.throw();
+        });
+    });
+
+    // --- FlightTrackerConfig ---
+
+    describe("FlightTrackerConfig defaults", function() {
+        it("Has expected default values.", function() {
+            const config = new FlightTrackerConfig();
+            expect(config.limit).to.equal("5000");
+            expect(config.faa).to.equal("1");
+            expect(config.maxage).to.equal("14400");
+        });
+    });
+
+    describe("getFlightTrackerConfig() — independent copy", function() {
+        it("Mutating the returned copy does not affect internal state.", function() {
+            const c1 = frApi.getFlightTrackerConfig();
+            const c2 = frApi.getFlightTrackerConfig();
+            c1.limit = "999";
+            expect(c2.limit).to.not.equal("999");
+        });
+    });
+
+    // --- Auth state guards (no network) ---
+
+    describe("isLoggedIn() — initial state", function() {
+        it("Returns false before any login.", function() {
+            expect(new FlightRadar24API().isLoggedIn()).to.be.false;
+        });
+    });
+
+    describe("getLoginData() — not logged in", function() {
+        it("Throws when not authenticated.", function() {
+            expect(() => new FlightRadar24API().getLoginData()).to.throw();
+        });
+    });
+
+    describe("logout() — not logged in", function() {
+        it("Returns true when already logged out.", async function() {
+            const result = await new FlightRadar24API().logout();
+            expect(result).to.be.true;
+        });
+    });
+
+    describe("getHistoryData() — not logged in", function() {
+        it("Throws when not authenticated.", async function() {
+            const api = new FlightRadar24API();
+            const flight = new Flight("123", ["ABC", 0, 0, 0, 0, 0, "0", null, "B738", "PR-X", 0, "GRU", "GIG", "G1", 0, 0, "GLO1", null, "GLO"]);
+            try {
+                await api.getHistoryData(flight, "CSV", 0);
+                expect.fail("Expected an error to be thrown.");
+            }
+            catch (err) {
+                expect(err).to.be.instanceof(Error);
+            }
+        });
+    });
+
+    describe("getHistoryData() — invalid file type", function() {
+        it("Throws for unsupported file type.", async function() {
+            const api = new FlightRadar24API();
+            api.__loginData = {userData: {accessToken: "fake"}, cookies: {"_frPl": "fake"}};
+            const flight = new Flight("123", ["ABC", 0, 0, 0, 0, 0, "0", null, "B738", "PR-X", 0, "GRU", "GIG", "G1", 0, 0, "GLO1", null, "GLO"]);
+            try {
+                await api.getHistoryData(flight, "PDF", 0);
+                expect.fail("Expected an error to be thrown.");
+            }
+            catch (err) {
+                expect(err).to.be.instanceof(Error);
+                expect(err.message).to.include("not supported");
+            }
         });
     });
 });

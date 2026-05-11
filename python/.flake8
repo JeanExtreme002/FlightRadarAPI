@@ -9,3 +9,6 @@ per-file-ignores =
 
     # Unused imports are allowed in the tests/package.py module and they must come after setting the current working directory.
     tests/package.py:F401, E402
+
+    # zones.py is a data file with 2-space indentation; E121 (hanging indent) does not apply.
+    FlightRadar24/zones.py:E121

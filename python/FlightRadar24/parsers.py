@@ -86,9 +86,9 @@ def parse_airports_html(html: bytes, country_href: str) -> List[Airport]:
         a_element = a_elements[0]
 
         icao = ""
-        iata = a_element.get("data-iata", "").strip()
-        latitude = a_element.get("data-lat", "").strip()
-        longitude = a_element.get("data-lon", "").strip()
+        iata = str(a_element.get("data-iata", "")).strip()
+        latitude = str(a_element.get("data-lat", "")).strip()
+        longitude = str(a_element.get("data-lon", "")).strip()
         name_part = a_element.get_text(strip=True)
 
         small_element = a_element.find("small")

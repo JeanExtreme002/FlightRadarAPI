@@ -211,3 +211,29 @@ def test_get_country_flag_shape():
         assert isinstance(result, tuple) and len(result) == 2
         assert isinstance(result[0], bytes)
         assert isinstance(result[1], str) and len(result[1]) > 0
+
+
+@repeat_test(**repeat_test_config)
+def test_get_most_tracked_shape():
+    result = fr_api.get_most_tracked()
+    assert isinstance(result, dict) and result is not None
+
+
+@repeat_test(**repeat_test_config)
+def test_get_airport_disruptions_shape():
+    result = fr_api.get_airport_disruptions()
+    assert isinstance(result, dict) and result is not None
+
+
+@repeat_test(**repeat_test_config)
+def test_get_volcanic_eruptions_shape():
+    result = fr_api.get_volcanic_eruptions()
+    assert isinstance(result, dict) and result is not None
+
+
+@repeat_test(**repeat_test_config)
+def test_search_shape():
+    result = fr_api.search("Guarulhos")
+    assert isinstance(result, dict) and result is not None
+    for value in result.values():
+        assert isinstance(value, list)
