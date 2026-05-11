@@ -22,8 +22,6 @@ def repeat_test(attempts: int, after: int, errors: Optional[List[Exception]] = N
     """
     def _repeat_test(test_function: Callable) -> Callable:
         def wrapper(*args, **kwargs):
-            nonlocal attempts, errors
-
             error_list: List[Exception] = list()
 
             for attempt in range(attempts):
@@ -31,11 +29,11 @@ def repeat_test(attempts: int, after: int, errors: Optional[List[Exception]] = N
                     return test_function(*args, **kwargs)
 
                 except Exception as error:
-                    if errors is not None and error not in errors: raise error
+                    if errors is not None and not isinstance(error, tuple(errors)): raise error
                     if after is not None: time.sleep(after)
 
                     error_list.append(error)
 
-            raise raise_multiple(error_list)
+            raise_multiple(error_list)
         return wrapper
     return _repeat_test

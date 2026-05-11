@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from abc import ABC
 from enum import Enum
 from .zones import static_zones
 
 
-class Core(ABC):
+class Core:
 
     # Base URLs.
     api_flightradar_base_url = "https://api.flightradar24.com/common/v1"

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import gzip
+import json
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlencode
 
 import brotli
-import json
-import gzip
-
 from curl_cffi import requests
 
 from .errors import CloudflareError
@@ -13,7 +13,7 @@ from .errors import CloudflareError
 _IMPERSONATE = "chrome136"
 
 
-class APIRequest(object):
+class APIRequest:
     """
     Class to make requests to the FlightRadar24.
     """
@@ -31,7 +31,7 @@ class APIRequest(object):
         timeout: int = 30,
         data: Optional[Dict] = None,
         cookies: Optional[Dict] = None,
-        exclude_status_codes: List[int] = list()
+        exclude_status_codes: Optional[List[int]] = None
     ):
         """
         Constructor of the APIRequest class.
@@ -45,17 +45,9 @@ class APIRequest(object):
         """
         self.url = url
 
-        self.request_params = {
-            "params": params,
-            "headers": headers,
-            "timeout": timeout,
-            "data": data,
-            "cookies": cookies
-        }
-
         request_method = requests.get if data is None else requests.post
 
-        if params: url += "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+        if params: url += "?" + urlencode(params)
         self.__response = request_method(
             url, headers=headers, cookies=cookies, data=data, timeout=timeout,
             impersonate=_IMPERSONATE
@@ -67,7 +59,7 @@ class APIRequest(object):
                 response=self.__response
             )
 
-        if self.get_status_code() not in exclude_status_codes:
+        if self.get_status_code() not in (exclude_status_codes or []):
             self.__response.raise_for_status()
 
     def get_content(self) -> Union[Dict, bytes]:
@@ -77,11 +69,15 @@ class APIRequest(object):
         content = self.__response.content
 
         content_encoding = self.__response.headers.get("Content-Encoding", "")
-        content_type = self.__response.headers["Content-Type"]
+        content_type = self.__response.headers.get("Content-Type", "")
 
-        # Try to decode the content.
-        try: content = self.__content_encodings[content_encoding](content)
-        except Exception: pass
+        # Decompress the content if a known encoding was used; fall back to raw bytes otherwise.
+        # curl_cffi may already decompress content automatically — ignore decompression failures.
+        decode = self.__content_encodings.get(content_encoding, self.__content_encodings[""])
+        try:
+            content = decode(content)
+        except Exception:
+            pass
 
         # Return a dictionary if the content type is JSON.
         if "application/json" in content_type:

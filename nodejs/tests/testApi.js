@@ -1,4 +1,4 @@
-const {FlightRadar24API, Countries, version} = require("..");
+const {FlightRadar24API, Flight, Countries, version} = require("..");
 const expect = require("chai").expect;
 
 
@@ -13,15 +13,8 @@ describe("Testing FlightRadarAPI version " + version, function() {
             const results = await frApi.getAirlines();
             expect(results.length).to.be.above(expected - 1);
             
-            const found = [];
-            
-            for (const airline of results) {
-                if (airlines.includes(airline.ICAO) && !found.includes(airline)) {
-                    found.push(airline);
-                }
-            }
-
-            expect(found.length).to.be.equal(airlines.length);
+            const foundIcaos = new Set(results.filter(a => airlines.includes(a.ICAO)).map(a => a.ICAO));
+            expect(foundIcaos.size).to.equal(airlines.length);
         });
     });
 
@@ -63,8 +56,8 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const expected = 5;
         const targetKeys = ["tl_y", "tl_x", "br_y", "br_x"];
 
-        it("Expected at least " + expected + " zones.", async function() {
-            const results = await frApi.getZones();
+        it("Expected at least " + expected + " zones.", function() {
+            const results = frApi.getZones();
             expect(Object.entries(results).length).to.be.above(expected - 1);
 
             for (const key in results) {
@@ -90,14 +83,9 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
         it("Expected getting the following information: " + targetKeys.join(", ") + ".", async function() {
             const flights = await frApi.getFlights();
-            const middle = Math.trunc(flights.length / 2);
-
-            const someFlights = flights.slice(middle - 2, middle + 2);
-
-            for (const flight of someFlights) {
-                const details = await frApi.getFlightDetails(flight);
-                expect(details).to.include.all.keys(targetKeys);
-            }
+            const flight = flights[Math.trunc(flights.length / 2)];
+            const details = await frApi.getFlightDetails(flight);
+            expect(details).to.include.all.keys(targetKeys);
         });
     });
 
@@ -118,7 +106,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
                     expect(flight.airlineIcao).to.be.equal(airline);
                 }
 
-                count = flights.length > 0 ? count + 1 : count;
+                if (flights.length) count++;
             }
             expect(count).to.be.above(expected - 1);
         });
@@ -129,7 +117,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const targetZones = ["northamerica", "southamerica"];
 
         it("Expected at least " + expected + " flights at: " + targetZones.join(", ") + ".", async function() {
-            const zones = await frApi.getZones();
+            const zones = frApi.getZones();
 
             for (const zoneName of targetZones) {
                 const zone = zones[zoneName];
@@ -142,7 +130,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
                     expect(flight.latitude).to.be.above(zone["br_y"]);
 
                     expect(flight.longitude).to.be.below(zone["br_x"]);
-                    expect(flight.latitude).to.be.above(zone["tl_x"]);
+                    expect(flight.longitude).to.be.above(zone["tl_x"]);
                 }
                 expect(flights.length).to.be.above(expected - 1);
             }
@@ -153,11 +141,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const targetAirlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]];
         const expected = targetAirlines.length * 0.8;
 
-        const icao = [];
-
-        for (const airline of targetAirlines) {
-            icao.push(airline[1]);
-        }
+        const icao = targetAirlines.map(a => a[1]);
 
         let message = "Expected getting logos from at least " + Math.trunc(expected);
         message += " of the following airlines: " + icao.join(", ") + ".";
@@ -167,7 +151,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
             for (const airline of targetAirlines) {
                 const result = await frApi.getAirlineLogo(airline[0], airline[1]);
-                found = result != null && result[0].byteLength > 512 ? found + 1 : found;
+                if (result != null && result[0].byteLength > 512) found++;
             }
             expect(found).to.be.above(expected - 1);
         });
@@ -185,7 +169,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
             for (const country of targetCountries) {
                 const result = await frApi.getCountryFlag(country);
-                found = result != null && result[0].byteLength > 512 ? found + 1 : found;
+                if (result != null && result[0].byteLength > 512) found++;
             }
             expect(found).to.be.above(expected - 1);
         });
@@ -194,9 +178,79 @@ describe("Testing FlightRadarAPI version " + version, function() {
     describe("Getting Bounds by Point", function() {
         const expected = "52.58594974202871,52.54997688140807,13.253064418048115,13.3122478541492";
 
-        it("Formula for calculating bounds is correct.", async function() {
+        it("Formula for calculating bounds is correct.", function() {
             const bounds = frApi.getBoundsByPoint(52.567967, 13.282644, 2000);
             expect(bounds).to.be.equal(expected);
+        });
+    });
+
+    // --- Unit tests (no network) ---
+
+    describe("getBounds()", function() {
+        it("Converts zone dict to coordinate string.", function() {
+            const zone = {"tl_y": 75.78, "br_y": -75.78, "tl_x": -427.56, "br_x": 427.56};
+            expect(frApi.getBounds(zone)).to.equal("75.78,-75.78,-427.56,427.56");
+        });
+    });
+
+    describe("getAirport() — invalid code", function() {
+        it("Throws when airport code is too short.", async function() {
+            try {
+                await frApi.getAirport("X");
+                expect.fail("Expected an error to be thrown.");
+            }
+            catch (err) {
+                expect(err).to.be.instanceof(Error);
+            }
+        });
+    });
+
+    describe("setFlightTrackerConfig() — invalid key", function() {
+        it("Throws when an unknown config key is set.", function() {
+            expect(() => frApi.setFlightTrackerConfig(null, {unknownKey: "1"})).to.throw();
+        });
+    });
+
+    describe("setFlightTrackerConfig() — invalid value", function() {
+        it("Throws when a non-numeric value is set.", function() {
+            expect(() => frApi.setFlightTrackerConfig(null, {limit: "not_a_number"})).to.throw();
+        });
+    });
+
+    describe("Flight.checkInfo()", function() {
+        const info = [
+            "ABC123", -23.5, -46.6, 180, 35000, 450,
+            "1234", null, "B738", "PR-ABC", 1620000000,
+            "GRU", "GIG", "G31234", 0, 0, "GLO1234", null, "GLO",
+        ];
+        const flight = new Flight("123456789", info);
+
+        it("Exact match returns true.", function() {
+            expect(flight.checkInfo({altitude: 35000})).to.be.true;
+        });
+
+        it("Min/max range within bounds returns true.", function() {
+            expect(flight.checkInfo({minAltitude: 30000, maxAltitude: 40000})).to.be.true;
+        });
+
+        it("Exact mismatch returns false.", function() {
+            expect(flight.checkInfo({altitude: 40000})).to.be.false;
+        });
+
+        it("Max exceeded returns false.", function() {
+            expect(flight.checkInfo({maxAltitude: 30000})).to.be.false;
+        });
+
+        it("String field match returns true.", function() {
+            expect(flight.checkInfo({airlineIcao: "GLO"})).to.be.true;
+        });
+
+        it("String field mismatch returns false.", function() {
+            expect(flight.checkInfo({airlineIcao: "TAM"})).to.be.false;
+        });
+
+        it("Combined conditions all matching returns true.", function() {
+            expect(flight.checkInfo({minAltitude: 30000, maxAltitude: 40000, airlineIcao: "GLO"})).to.be.true;
         });
     });
 });

@@ -17,19 +17,12 @@ export class FlightRadar24API {
     private __flightTrackerConfig: FlightTrackerConfig;
     private __loginData: {userData: any; cookies: any;} | null;
     
-    /**
-     * Constructor of FlightRadar24API class
-     *
-     * @param {string} [user] - Your email (optional)
-     * @param {string} [password] - Your password (optional)
-     * @param {number} [timeout=10] - Request timeout in seconds
-     */
-    constructor(user?: string, password?: string, timeout?: number);
+    constructor();
     
     /**
      * Return a list with all airlines.
      */
-    getAirlines(): Promise<object>;
+    getAirlines(): Promise<Array<object>>;
     
     /**
      * Download the logo of an airline from FlightRadar24 and return it as bytes.
@@ -40,7 +33,7 @@ export class FlightRadar24API {
     getAirlineLogo(
         iata: string,
         icao: string,
-    ): Promise<[object, string] | undefined>;
+    ): Promise<[object, string] | null>;
     
     /**
      * Return basic information about a specific airport.
@@ -105,7 +98,7 @@ export class FlightRadar24API {
      *
      * @param {string} country - Country name
      */
-    getCountryFlag(country: string): Promise<[object, string] | undefined>;
+    getCountryFlag(country: string): Promise<[object, string] | null>;
     
     /**
      * Return the flight details from Data Live FlightRadar24.
@@ -167,7 +160,7 @@ export class FlightRadar24API {
     /**
      * Return all major zones on the globe.
      */
-    getZones(): Promise<object>;
+    getZones(): object;
     
     /**
      * Return the search result.
@@ -175,7 +168,7 @@ export class FlightRadar24API {
      * @param {string} query
      * @param {number} [limit=50]
      */
-    search(query: string, limit?: number): Promise<object>;
+    search(query: string, limit?: number): Promise<Record<string, object[]>>;
     
     /**
      * Check if the user is logged into the FlightRadar24 account.
@@ -204,7 +197,7 @@ export class FlightRadar24API {
     setFlightTrackerConfig(
         flightTrackerConfig: FlightTrackerConfig | null,
         config?: object,
-    ): Promise<void>;
+    ): void;
 }
 
 /**
@@ -228,7 +221,7 @@ export class FlightTrackerConfig {
     /**
      * Constructor of FlightTrackerConfig class.
      */
-    constructor(data: object);
+    constructor(data?: object);
 }
 
 /**
@@ -273,6 +266,29 @@ export class Airport extends Entity {
     icao: string;
     iata: string;
     country: string;
+    countryCode?: string;
+    countryId?: string;
+    city?: string | null;
+    timezoneName?: string | null;
+    timezoneOffset?: number | null;
+    timezoneOffsetHours?: string | null;
+    timezoneAbbr?: string | null;
+    timezoneAbbrName?: string | null;
+    visible?: any;
+    website?: string | null;
+    reviewsUrl?: string | null;
+    reviews?: any;
+    evaluation?: any;
+    averageRating?: any;
+    totalRating?: any;
+    weather?: object;
+    runways?: any[];
+    aircraftOnGround?: number | null;
+    aircraftVisibleOnGround?: number | null;
+    arrivals?: object;
+    departures?: object;
+    wikipedia?: string | null;
+    images?: object;
     
     /**
      * Constructor of Airport class.
@@ -330,6 +346,53 @@ export class Flight extends Entity {
     originAirportIata: string;
     onGround: number;
     verticalSpeed: number;
+
+    // Set by setFlightDetails()
+    aircraftAge?: any;
+    aircraftCountryId?: any;
+    aircraftHistory?: any[];
+    aircraftImages?: any[];
+    aircraftModel?: string | null;
+    airlineName?: string | null;
+    airlineShortName?: string | null;
+    destinationAirportAltitude?: number | null;
+    destinationAirportCountryCode?: string | null;
+    destinationAirportCountryName?: string | null;
+    destinationAirportLatitude?: number | null;
+    destinationAirportLongitude?: number | null;
+    destinationAirportIcao?: string | null;
+    destinationAirportBaggage?: string | null;
+    destinationAirportGate?: string | null;
+    destinationAirportName?: string | null;
+    destinationAirportTerminal?: string | null;
+    destinationAirportVisible?: any;
+    destinationAirportWebsite?: string | null;
+    destinationAirportTimezoneAbbr?: string | null;
+    destinationAirportTimezoneAbbrName?: string | null;
+    destinationAirportTimezoneName?: string | null;
+    destinationAirportTimezoneOffset?: number | null;
+    destinationAirportTimezoneOffsetHours?: string | null;
+    originAirportAltitude?: number | null;
+    originAirportCountryCode?: string | null;
+    originAirportCountryName?: string | null;
+    originAirportLatitude?: number | null;
+    originAirportLongitude?: number | null;
+    originAirportIcao?: string | null;
+    originAirportBaggage?: string | null;
+    originAirportGate?: string | null;
+    originAirportName?: string | null;
+    originAirportTerminal?: string | null;
+    originAirportVisible?: any;
+    originAirportWebsite?: string | null;
+    originAirportTimezoneAbbr?: string | null;
+    originAirportTimezoneAbbrName?: string | null;
+    originAirportTimezoneName?: string | null;
+    originAirportTimezoneOffset?: number | null;
+    originAirportTimezoneOffsetHours?: string | null;
+    statusIcon?: string | null;
+    statusText?: string | null;
+    timeDetails?: object;
+    trail?: any[];
     
     /**
      * Constructor of Flight class.
@@ -384,15 +447,20 @@ export class Flight extends Entity {
     setFlightDetails(flightDetails: object): void;
 }
 
-export class AirportNotFoundError extends Error {
+export class FlightRadarError extends Error {
     constructor(message?: string);
 }
 
-export class CloudflareError extends Error {
+export class AirportNotFoundError extends FlightRadarError {
     constructor(message?: string);
 }
 
-export class LoginError extends Error {
+export class CloudflareError extends FlightRadarError {
+    response: any;
+    constructor(message?: string, response?: any);
+}
+
+export class LoginError extends FlightRadarError {
     constructor(message?: string);
 }
 

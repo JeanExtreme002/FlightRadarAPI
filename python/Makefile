@@ -66,15 +66,15 @@ venv-activate:
 .PHONY: install-deps
 install-deps:
 	@echo "$(GREEN)Installing dependencies...$(NC)"
-	$(PIP) install -r requirements.txt
+	$(PIP) install -e .
 	@echo "$(GREEN)Dependencies installed successfully!$(NC)"
 
 # Install development dependencies
 .PHONY: install-dev
 install-dev:
 	@echo "$(GREEN)Installing development dependencies...$(NC)"
-	$(PIP) install -r requirements.txt
-	$(PIP) install pytest pytest-cov flake8 black mypy twine build hatch
+	$(PIP) install -e ".[tests]"
+	$(PIP) install pytest-cov flake8 black mypy twine build hatch
 	@echo "$(GREEN)Development dependencies installed successfully!$(NC)"
 
 # Install package in development mode
@@ -204,7 +204,7 @@ check-deps:
 .PHONY: update-deps
 update-deps:
 	@echo "$(GREEN)Updating dependencies...$(NC)"
-	$(PIP) install --upgrade -r requirements.txt
+	$(PIP) install --upgrade -e ".[tests]"
 	@echo "$(GREEN)Dependencies updated!$(NC)"
 
 # Security audit

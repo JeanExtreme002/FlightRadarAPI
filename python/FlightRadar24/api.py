@@ -1,39 +1,21 @@
 # -*- coding: utf-8 -*-
 
-from typing import Any, Dict, List, Optional, Tuple, Union
-from bs4 import BeautifulSoup
-
 import dataclasses
 import math
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple, Union
+from urllib.parse import quote
 
 from .core import Core, Countries
 from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
+from .flight_tracker_config import FlightTrackerConfig
+from .parsers import parse_airlines_html, parse_airports_html
 from .request import APIRequest
 
 
-@dataclasses.dataclass
-class FlightTrackerConfig(object):
-    """
-    Data class with settings of the Real Time Flight Tracker.
-    """
-    faa: str = "1"
-    satellite: str = "1"
-    mlat: str = "1"
-    flarm: str = "1"
-    adsb: str = "1"
-    gnd: str = "1"
-    air: str = "1"
-    vehicles: str = "1"
-    estimated: str = "1"
-    maxage: str = "14400"
-    gliders: str = "1"
-    stats: str = "1"
-    limit: str = "5000"
-
-
-class FlightRadar24API(object):
+class FlightRadar24API:
     """
     Main class of the FlightRadarAPI
     """
@@ -58,75 +40,7 @@ class FlightRadar24API(object):
         Return a list with all airlines.
         """
         response = APIRequest(Core.airlines_data_url, headers=Core.html_headers, timeout=self.timeout)
-        html_content: bytes = response.get_content()
-        airlines_data = []
-        
-        # Parse HTML content.
-        soup = BeautifulSoup(html_content, "html.parser")
-        
-        tbody = soup.find("tbody")
-
-        if not tbody:
-            return []
-        
-        # Extract data from HTML content.
-        tr_elements = tbody.find_all("tr")
-        
-        for tr in tr_elements:
-            td_notranslate = tr.find("td", class_="notranslate")
-            
-            if td_notranslate:
-                a_element = td_notranslate.find("a", href=lambda href: href and href.startswith("/data/airlines"))
-                
-                if a_element:
-                    td_elements = tr.find_all("td")
-
-                    # Extract airline name.
-                    airline_name = a_element.get_text(strip=True)
-
-                    if len(airline_name) < 2:
-                        continue
-
-                    # Extract IATA / ICAO codes.
-                    iata = None
-                    icao = None
-
-                    if len(td_elements) >= 4:
-                        codes_text = td_elements[3].get_text(strip=True)
-
-                        if " / " in codes_text:
-                            parts = codes_text.split(" / ")
-
-                            if len(parts) == 2:
-                                iata = parts[0].strip()
-                                icao = parts[1].strip()
-
-                        elif len(codes_text) == 2:
-                            iata = codes_text
-
-                        elif len(codes_text) == 3:
-                            icao = codes_text
-                    
-                    # Extract number of aircrafts.
-                    n_aircrafts = None
-
-                    if len(td_elements) >= 5:
-                        aircrafts_text = td_elements[4].get_text(strip=True)
-
-                        if aircrafts_text:
-                            n_aircrafts = aircrafts_text.split(" ", maxsplit=1)[0].strip()
-                            n_aircrafts = int(n_aircrafts)
-
-                    airline_data = {
-                        "Name": airline_name,
-                        "ICAO": icao,
-                        "IATA": iata,
-                        "n_aircrafts": n_aircrafts
-                    }
-                    
-                    airlines_data.append(airline_data)
-        
-        return airlines_data
+        return parse_airlines_html(response.get_content())
 
     def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
         """
@@ -140,16 +54,16 @@ class FlightRadar24API(object):
         response = APIRequest(first_logo_url, headers=Core.image_headers, exclude_status_codes=[403,], timeout=self.timeout)
         status_code = response.get_status_code()
 
-        if not str(status_code).startswith("4"):
+        if not (400 <= status_code < 500):
             return response.get_content(), first_logo_url.split(".")[-1]
 
         # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
 
-        response = APIRequest(second_logo_url, headers=Core.image_headers, timeout=self.timeout)
+        response = APIRequest(second_logo_url, headers=Core.image_headers, exclude_status_codes=[403, 404], timeout=self.timeout)
         status_code = response.get_status_code()
 
-        if not str(status_code).startswith("4"):
+        if not (400 <= status_code < 500):
             return response.get_content(), second_logo_url.split(".")[-1]
 
     def get_airport(self, code: str, *, details: bool = False) -> Airport:
@@ -159,15 +73,12 @@ class FlightRadar24API(object):
         :param code: ICAO or IATA of the airport
         :param details: If True, it returns an Airport instance with detailed information.
         """
-        if 4 < len(code) or len(code) < 3:
+        if not (3 <= len(code) <= 4):
             raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
 
         if details:
             airport = Airport()
-
-            airport_details = self.get_airport_details(code)
-            airport.set_airport_details(airport_details)
-
+            airport.set_airport_details(self.get_airport_details(code))
             return airport
 
         response = APIRequest(Core.airport_data_url.format(code), headers=Core.json_headers, timeout=self.timeout)
@@ -186,7 +97,7 @@ class FlightRadar24API(object):
         :param flight_limit: Limit of flights related to the airport
         :param page: Page of result to display
         """
-        if 4 < len(code) or len(code) < 3:
+        if not (3 <= len(code) <= 4):
             raise ValueError(f"The code '{code}' is invalid. It must be the IATA or ICAO of the airport.")
 
         request_params = {"format": "json"}
@@ -235,95 +146,15 @@ class FlightRadar24API(object):
 
         :param countries: List of country names from Countries enum.
         """
-        airports = []
+        def _fetch(country):
+            href = Core.airports_data_url + "/" + country.value
+            response = APIRequest(href, headers=Core.html_headers, timeout=self.timeout)
+            return parse_airports_html(response.get_content(), href)
 
-        for country_name in countries:
-            country_href = Core.airports_data_url + "/" + country_name.value
+        with ThreadPoolExecutor() as executor:
+            results = executor.map(_fetch, countries)
 
-            response = APIRequest(country_href, headers=Core.html_headers, timeout=self.timeout)
-
-            html_content: bytes = response.get_content()
-
-            soup = BeautifulSoup(html_content, "html.parser")
-            
-            tbody = soup.find("tbody")
-
-            if not tbody:
-                continue
-            
-            # Extract country name from the URL
-            country_name = country_href.split("/")[-1].replace("-", " ").title()
-
-            tr_elements = tbody.find_all("tr")
-
-            for tr in tr_elements:
-                a_elements = tr.find_all("a", attrs={"data-iata": True, "data-lat": True, "data-lon": True})
-                
-                if a_elements:
-                    a_element = a_elements[0]
-                    
-                    icao = ""
-                    iata = a_element.get("data-iata", "").strip()
-                    latitude = a_element.get("data-lat", "").strip()
-                    longitude = a_element.get("data-lon", "").strip()
-                    
-                    airport_text = a_element.get_text(strip=True)
-                    name_part = airport_text
-                    
-                    # Get IATA / ICAO from airport text.
-                    small_element = a_element.find("small")
-                    
-                    if small_element:
-                        codes_text = small_element.get_text(strip=True)
-                        codes_text = codes_text.lstrip("(")
-                        codes_text = codes_text.rstrip(")")
-                        codes_text = codes_text.strip()
-                        
-                        # Remove IATA / ICAO from name part.
-                        name_part = name_part.replace(codes_text, "")
-                        name_part = name_part.replace("()", "").strip()
-                        
-                        # Parse codes (can be "IATA/ICAO", "IATA", or "ICAO")
-                        if "/" in codes_text:
-                            codes = codes_text.split("/")
-    
-                            code1 = codes[0].strip()
-                            code2 = codes[1].strip()
-
-                            iata = code1 if len(code1) == 3 else code2
-                            icao = code1 if len(code1) == 4 else code2
-
-                        elif len(codes_text) == 3:
-                            iata = codes_text
-                                
-                        elif len(codes_text) == 4:
-                            icao = codes_text
-                    
-                    # Convert latitude and longitude to float
-                    try:
-                        lat_float = float(latitude) if latitude else 0.0
-                        lon_float = float(longitude) if longitude else 0.0
-
-                    except ValueError:
-                        lat_float = 0.0
-                        lon_float = 0.0
-                    
-                    # Create Airport instance with basic_info format
-                    airport_data = {
-                        "name": name_part,
-                        "icao": icao,
-                        "iata": iata,
-                        "lat": lat_float,
-                        "lon": lon_float,
-                        "alt": None,  # Altitude not available in this format
-                        "country": country_name
-                    }
-                    
-                    airport = Airport(basic_info=airport_data)
-                    airports.append(airport)
-        
-        return airports
-
+        return [airport for result in results for airport in result]
 
     def get_bookmarks(self) -> Dict:
         """
@@ -332,8 +163,7 @@ class FlightRadar24API(object):
         if not self.is_logged_in():
             raise LoginError("You must log in to your account.")
 
-        headers = Core.json_headers.copy()
-        headers["accesstoken"] = self.get_login_data()["accessToken"]
+        headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
 
         cookies = self.__login_data["cookies"]
 
@@ -346,7 +176,7 @@ class FlightRadar24API(object):
 
         :param zone: Dictionary containing the following keys: tl_y, tl_x, br_y, br_x
         """
-        return "{},{},{},{}".format(zone["tl_y"], zone["br_y"], zone["tl_x"], zone["br_x"])
+        return f"{zone['tl_y']},{zone['br_y']},{zone['tl_x']},{zone['br_x']}"
 
     def get_bounds_by_point(self, latitude: float, longitude: float, radius: float) -> str:
         """
@@ -411,13 +241,12 @@ class FlightRadar24API(object):
         flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
         headers = Core.image_headers.copy()
 
-        if "origin" in headers:
-            headers.pop("origin")  # Does not work for this request.
+        headers.pop("origin", None)  # Does not work for this request.
 
-        response = APIRequest(flag_url, headers=headers, timeout=self.timeout)
+        response = APIRequest(flag_url, headers=headers, exclude_status_codes=[403, 404], timeout=self.timeout)
         status_code = response.get_status_code()
 
-        if not str(status_code).startswith("4"):
+        if not (400 <= status_code < 500):
             return response.get_content(), flag_url.split(".")[-1]
 
     def get_flight_details(self, flight: Flight) -> Dict[Any, Any]:
@@ -454,28 +283,28 @@ class FlightRadar24API(object):
 
         # Insert the method parameters into the dictionary for the request.
         if airline: request_params["airline"] = airline
-        if bounds: request_params["bounds"] = bounds.replace(",", "%2C")
+        if bounds: request_params["bounds"] = bounds
         if registration: request_params["reg"] = registration
         if aircraft_type: request_params["type"] = aircraft_type
 
         # Get all flights from Data Live FlightRadar24.
         response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
-        response = response.get_content()
+        content = response.get_content()
 
         flights: List[Flight] = list()
 
-        for flight_id, flight_info in response.items():
+        for flight_id, flight_info in content.items():
 
             # Get flights only.
             if not flight_id[0].isnumeric():
                 continue
 
-            flight = Flight(flight_id, flight_info)
-            flights.append(flight)
+            flights.append(Flight(flight_id, flight_info))
 
-            # Set flight details.
-            if details:
-                flight_details = self.get_flight_details(flight)
+        if details:
+            with ThreadPoolExecutor() as executor:
+                all_details = list(executor.map(self.get_flight_details, flights))
+            for flight, flight_details in zip(flights, all_details):
                 flight.set_flight_details(flight_details)
 
         return flights
@@ -486,7 +315,7 @@ class FlightRadar24API(object):
         """
         return dataclasses.replace(self.__flight_tracker_config)
 
-    def get_history_data(self, flight: Flight, file_type: str, timestamp: int) -> Dict:
+    def get_history_data(self, flight: Flight, file_type: str, timestamp: int) -> str:
         """
         Download historical data of a flight.
 
@@ -502,14 +331,16 @@ class FlightRadar24API(object):
         if file_type not in ["csv", "kml"]:
             raise ValueError(f"File type '{file_type}' is not supported. Only CSV and KML are supported.")
 
+        headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
+
         response = APIRequest(
             Core.historical_data_url.format(flight.id, file_type, timestamp),
-            headers=Core.json_headers, cookies=self.__login_data["cookies"],
+            headers=headers, cookies=self.__login_data["cookies"],
             timeout=self.timeout
         )
 
         content = response.get_content()
-        return str(content.decode("utf-8"))
+        return content.decode("utf-8")
 
     def get_login_data(self) -> Dict[Any, Any]:
         """
@@ -538,33 +369,24 @@ class FlightRadar24API(object):
         """
         Return all major zones on the globe.
         """
-        # [Deprecated Code]
-        # response = APIRequest(Core.zones_data_url, headers=Core.json_headers, timeout=self.timeout)
-        # zones = response.get_content()
-        zones = Core.static_zones
-
-        if "version" in zones:
-            zones.pop("version")
-
+        zones = Core.static_zones.copy()
+        zones.pop("version", None)
         return zones
 
     def search(self, query: str, limit: int = 50) -> Dict:
         """
         Return the search result.
         """
-        response = APIRequest(Core.search_data_url.format(query, limit), headers=Core.json_headers, timeout=self.timeout)
-        results = response.get_content().get("results", [])
-        stats = response.get_content().get("stats", {})
+        response = APIRequest(Core.search_data_url.format(quote(query), limit), headers=Core.json_headers, timeout=self.timeout)
+        content = response.get_content()
+        results = content.get("results", [])
+        stats = content.get("stats", {})
 
         i = 0
-        counted_total = 0
         data = {}
         for name, count in stats.get("count", {}).items():
-            data[name] = []
-            while i < counted_total + count and i < len(results):
-                data[name].append(results[i])
-                i += 1
-            counted_total += count
+            data[name] = results[i:i + count]
+            i += count
         return data
 
     def is_logged_in(self) -> bool:
@@ -591,9 +413,11 @@ class FlightRadar24API(object):
         status_code = response.get_status_code()
         content = response.get_content()
 
-        if not str(status_code).startswith("2") or not content.get("success"):
-            if isinstance(content, dict): raise LoginError(content["message"])
-            else: raise LoginError("Your email or password is incorrect")
+        if not (200 <= status_code < 300) or not content.get("success"):
+            if isinstance(content, dict):
+                raise LoginError(content["message"])
+            else:
+                raise LoginError("Your email or password is incorrect")
 
         self.__login_data = {
             "userData": content["userData"],
@@ -606,13 +430,14 @@ class FlightRadar24API(object):
 
         Return a boolean indicating that it successfully logged out of the server.
         """
-        if self.__login_data is None: return True
+        if self.__login_data is None:
+            return True
 
         cookies = self.__login_data["cookies"]
         self.__login_data = None
 
-        response = APIRequest(Core.user_login_url, headers=Core.json_headers, cookies=cookies, timeout=self.timeout)
-        return str(response.get_status_code()).startswith("2")
+        response = APIRequest(Core.user_logout_url, headers=Core.json_headers, cookies=cookies, timeout=self.timeout)
+        return 200 <= response.get_status_code() < 300
 
     def set_flight_tracker_config(
         self,
@@ -634,6 +459,6 @@ class FlightRadar24API(object):
                 raise KeyError(f"Unknown option: '{key}'")
 
             if not value.isdecimal():
-                raise TypeError(f"Value must be a decimal. Got '{key}'")
+                raise TypeError(f"Value must be a number. Got '{value}' for key '{key}'")
 
             setattr(self.__flight_tracker_config, key, value)

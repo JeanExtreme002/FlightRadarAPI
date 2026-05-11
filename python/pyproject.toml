@@ -15,12 +15,15 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12"
 ]
-exclude = ["tests", ".flake8"]
 requires-python = ">=3.10"
 dependencies = [
   "Brotli",
-  "requests",
+  "beautifulsoup4",
+  "curl_cffi",
 ]
+
+[tool.hatch.build]
+exclude = ["tests", ".flake8"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["FlightRadar24"]
@@ -38,6 +41,18 @@ tests = [
 
 [tool.hatch.version]
 path = "FlightRadar24/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers --disable-warnings --color=yes"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -1,20 +1,27 @@
 /**
- * Check if the string is an integer
+ * Check if a string represents a non-negative integer.
  *
  * @param {string} text
  * @return {boolean}
  */
 function isNumeric(text) {
-    if (text.length === 0) {
-        return false;
-    }
-
-    for (let index = 0; index < text.length; index++) {
-        if (!"0123456789".includes(text[index])) {
-            return false;
-        }
-    }
-    return true;
+    return text.length > 0 && /^\d+$/.test(text);
 }
 
-module.exports = {isNumeric};
+/**
+ * Convert degrees to radians.
+ *
+ * @param {number} x
+ * @return {number}
+ */
+const radians = (x) => x * (Math.PI / 180);
+
+/**
+ * Convert radians to degrees.
+ *
+ * @param {number} x
+ * @return {number}
+ */
+const rad2deg = (x) => x * (180 / Math.PI);
+
+module.exports = {isNumeric, radians, rad2deg};

@@ -121,8 +121,8 @@ class Airport extends Entity {
 
         // Airport location.
         this.country = this.__getInfo(country?.["name"]);
-        this.country_code = this.__getInfo(country?.["code"]);
-        this.country_id = this.__getInfo(country?.["id"]);
+        this.countryCode = this.__getInfo(country?.["code"]);
+        this.countryId = this.__getInfo(country?.["id"]);
         this.city = this.__getInfo(region?.["city"]);
 
         // Airport timezone.
@@ -132,11 +132,10 @@ class Airport extends Entity {
         this.timezoneOffset = this.__getInfo(timezone?.["offset"]);
 
         if (typeof this.timezoneOffset === "number") {
-            this.timezoneOffsetHours = Math.trunc(this.timezoneOffset / 60 / 60);
-            this.timezoneOffsetHours = this.timezoneOffsetHours + ":00";
+            this.timezoneOffsetHours = Math.trunc(this.timezoneOffset / 60 / 60) + ":00";
         }
         else {
-            this.timezoneOffsetHours = this.__getInfo(None);
+            this.timezoneOffsetHours = this.__getInfo(null);
         }
 
         // Airport reviews.

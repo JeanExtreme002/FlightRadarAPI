@@ -1,117 +1,99 @@
 const {staticZones} = require("./zones");
 
-String.prototype.format = function() {
-    const args = arguments;
-    let index = 0;
+const FR24_BASE = "https://www.flightradar24.com";
+const API_FR24_BASE = "https://api.flightradar24.com/common/v1";
+const CDN_FR24_BASE = "https://cdn.flightradar24.com";
+const DATA_LIVE_BASE = "https://data-live.flightradar24.com";
+const DATA_CLOUD_BASE = "https://data-cloud.flightradar24.com";
 
-    return this.replace(/{}/g, function(match, position) {
-        return (typeof args[index] == "undefined") ? match : args[index++];
-    });
+const baseHeaders = {
+    "accept-encoding": "gzip, br",
+    "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "cache-control": "max-age=0",
+    "origin": FR24_BASE,
+    "referer": `${FR24_BASE}/`,
+    // eslint-disable-next-line quotes
+    "sec-ch-ua": '"Google Chrome";v="136", "Chromium";v="136", "Not-A.Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    // eslint-disable-next-line quotes
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-site",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
 };
 
-
 /**
- * Class which contains all URLs used by the package.
+ * Module containing all URLs, headers, and static data used by the package.
  */
-class Core {
-    /**
-     * Constructor of the Core class
-     */
-    constructor() {
-        this.apiFlightRadarBaseUrl = "https://api.flightradar24.com/common/v1";
-        this.cdnFlightRadarBaseUrl = "https://cdn.flightradar24.com";
-        this.flightRadarBaseUrl = "https://www.flightradar24.com";
-        this.dataLiveBaseUrl = "https://data-live.flightradar24.com";
-        this.dataCloudBaseUrl = "https://data-cloud.flightradar24.com";
+const Core = {
+    apiFlightRadarBaseUrl: API_FR24_BASE,
+    cdnFlightRadarBaseUrl: CDN_FR24_BASE,
+    flightRadarBaseUrl: FR24_BASE,
+    dataLiveBaseUrl: DATA_LIVE_BASE,
+    dataCloudBaseUrl: DATA_CLOUD_BASE,
 
-        // User login URL.
-        this.userLoginUrl = this.flightRadarBaseUrl + "/user/login";
-        this.userLogoutUrl = this.flightRadarBaseUrl + "/user/logout";
+    userLoginUrl: `${FR24_BASE}/user/login`,
+    userLogoutUrl: `${FR24_BASE}/user/logout`,
 
-        // Search data URL
-        this.searchDataUrl = this.flightRadarBaseUrl + "/v1/search/web/find?query={}&limit={}";
+    searchDataUrl: (query, limit) => `${FR24_BASE}/v1/search/web/find?query=${encodeURIComponent(query)}&limit=${limit}`,
 
-        // Flights data URLs.
-        this.realTimeFlightTrackerDataUrl = this.dataCloudBaseUrl + "/zones/fcgi/feed.js";
-        this.flightDataUrl = this.dataLiveBaseUrl + "/clickhandler/?flight={}";
+    realTimeFlightTrackerDataUrl: `${DATA_CLOUD_BASE}/zones/fcgi/feed.js`,
+    flightDataUrl: (id) => `${DATA_LIVE_BASE}/clickhandler/?flight=${id}`,
 
-        // Historical data URL.
-        this.historicalDataUrl = this.flightRadarBaseUrl + "/download/?flight={}&file={}&trailLimit=0&history={}";
+    historicalDataUrl: (id, fileType, timestamp) =>
+        `${FR24_BASE}/download/?flight=${id}&file=${fileType}&trailLimit=0&history=${timestamp}`,
 
-        // Airports data URLs.
-        this.apiAirportDataUrl = this.apiFlightRadarBaseUrl + "/airport.json";
-        this.airportDataUrl = this.flightRadarBaseUrl + "/airports/traffic-stats/?airport={}";
-        this.airportsDataUrl = this.flightRadarBaseUrl + "/data/airports";
+    apiAirportDataUrl: `${API_FR24_BASE}/airport.json`,
+    airportDataUrl: (code) => `${FR24_BASE}/airports/traffic-stats/?airport=${code}`,
+    airportsDataUrl: `${FR24_BASE}/data/airports`,
 
-        // Airlines data URL.
-        this.airlinesDataUrl = this.flightRadarBaseUrl + "/data/airlines";
+    airlinesDataUrl: `${FR24_BASE}/data/airlines`,
 
-        // Zones data URL.
-        this.zonesDataUrl = this.flightRadarBaseUrl + "/js/zones.js.php";
+    zonesDataUrl: `${FR24_BASE}/js/zones.js.php`,
 
-        // Weather data URL.
-        this.volcanicEruptionDataUrl = this.flightRadarBaseUrl + "/weather/volcanic";
+    volcanicEruptionDataUrl: `${FR24_BASE}/weather/volcanic`,
 
-        // Most tracked URL
-        this.mostTrackedUrl = this.flightRadarBaseUrl + "/flights/most-tracked";
+    mostTrackedUrl: `${FR24_BASE}/flights/most-tracked`,
 
-        // Airport disruptions URL.
-        this.airportDisruptionsUrl = this.flightRadarBaseUrl + "/webapi/v1/airport-disruptions";
+    airportDisruptionsUrl: `${FR24_BASE}/webapi/v1/airport-disruptions`,
 
-        // Bookmarks URL.
-        this.bookmarksUrl = this.flightRadarBaseUrl + "/webapi/v1/bookmarks";
+    bookmarksUrl: `${FR24_BASE}/webapi/v1/bookmarks`,
 
-        // Country flag image URL.
-        this.countryFlagUrl = this.flightRadarBaseUrl + "/static/images/data/flags-small/{}.svg";
+    countryFlagUrl: (country) => `${FR24_BASE}/static/images/data/flags-small/${country}.svg`,
 
-        // Airline logo image URL.
-        this.airlineLogoUrl = this.cdnFlightRadarBaseUrl + "/assets/airlines/logotypes/{}_{}.png";
-        this.alternativeAirlineLogoUrl = this.flightRadarBaseUrl + "/static/images/data/operators/{}_logo0.png";
+    airlineLogoUrl: (iata, icao) => `${CDN_FR24_BASE}/assets/airlines/logotypes/${iata}_${icao}.png`,
+    alternativeAirlineLogoUrl: (icao) => `${FR24_BASE}/static/images/data/operators/${icao}_logo0.png`,
 
-        this.staticZones = staticZones;
+    staticZones,
 
-        this.headers = {
-            "accept-encoding": "gzip, br",
-            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            "cache-control": "max-age=0",
-            "origin": "https://www.flightradar24.com",
-            "referer": "https://www.flightradar24.com/",
-            "sec-ch-ua": '"Google Chrome";v="136", "Chromium";v="136", "Not-A.Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        };
-
-        this.jsonHeaders = {accept: "application/json", ...this.headers};
-
-        this.imageHeaders = {accept: "image/gif, image/jpg, image/jpeg, image/png", ...this.headers};
-
-        this.htmlHeaders = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "accept-encoding": "gzip, deflate, br",
-            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            "cache-control": "max-age=0",
-            "referer": "https://www.flightradar24.com/",
-            "sec-ch-ua": '"Google Chrome";v="136", "Chromium";v="136", "Not-A.Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        };
-    }
-}
+    headers: baseHeaders,
+    jsonHeaders: {accept: "application/json", ...baseHeaders},
+    imageHeaders: {accept: "image/gif, image/jpg, image/jpeg, image/png", ...baseHeaders},
+    htmlHeaders: {
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "accept-encoding": "gzip, deflate, br",
+        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "cache-control": "max-age=0",
+        "referer": `${FR24_BASE}/`,
+        // eslint-disable-next-line quotes
+        "sec-ch-ua": '"Google Chrome";v="136", "Chromium";v="136", "Not-A.Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        // eslint-disable-next-line quotes
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "same-origin",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+    },
+};
 
 /**
  * Enum mapping country names to their URL-friendly string representations.
  */
-const Countries = {
+const Countries = Object.freeze({
     AFGHANISTAN: "afghanistan",
     ALBANIA: "albania",
     ALGERIA: "algeria",
@@ -339,8 +321,8 @@ const Countries = {
     WALLIS_AND_FUTUNA: "wallis-and-futuna",
     YEMEN: "yemen",
     ZAMBIA: "zambia",
-    ZIMBABWE: "zimbabwe"
-};
+    ZIMBABWE: "zimbabwe",
+});
 
-module.exports = new Core();
+module.exports = Core;
 module.exports.Countries = Countries;

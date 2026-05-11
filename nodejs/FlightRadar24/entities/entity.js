@@ -1,9 +1,11 @@
+const {radians} = require("../util");
+
+const DEFAULT_TEXT = "N/A";
+
 /**
  * Representation of a real entity, at some location.
  */
 class Entity {
-    static __defaultText = "N/A";
-
     /**
      * Constructor of Entity class.
      *
@@ -14,14 +16,23 @@ class Entity {
         this.__setPosition(latitude, longitude);
     }
 
+    /**
+     * @param {number} latitude
+     * @param {number} longitude
+     */
     __setPosition(latitude, longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
-    __getInfo(info, replaceBy = undefined) {
-        replaceBy = replaceBy === undefined ? this.__defaultText : replaceBy;
-        return (info || info === 0) && (info !== this.__defaultText) ? info : replaceBy;
+    /**
+     * @param {*} info
+     * @param {*} [replaceBy]
+     * @return {*}
+     */
+    __getInfo(info, replaceBy = DEFAULT_TEXT) {
+        if (info === null || info === undefined || info === DEFAULT_TEXT) return replaceBy;
+        return info;
     }
 
     /**
@@ -31,13 +42,15 @@ class Entity {
      * @return {number}
      */
     getDistanceFrom(entity) {
-        Math.radians = (x) => x * (Math.PI / 180);
+        if (this.latitude == null || this.longitude == null ||
+            entity.latitude == null || entity.longitude == null) {
+            throw new Error("Cannot calculate distance: one or both entities have no position.");
+        }
 
-        const lat1 = Math.radians(this.latitude);
-        const lon1 = Math.radians(this.longitude);
-
-        const lat2 = Math.radians(entity.latitude);
-        const lon2 = Math.radians(entity.longitude);
+        const lat1 = radians(this.latitude);
+        const lon1 = radians(this.longitude);
+        const lat2 = radians(entity.latitude);
+        const lon2 = radians(entity.longitude);
 
         return Math.acos(Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)) * 6371;
     }
