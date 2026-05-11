@@ -35,6 +35,8 @@ class RetryPolicy:
     ):
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
+        if base_delay < 0 or max_delay < 0 or jitter < 0:
+            raise ValueError("base_delay, max_delay and jitter must all be >= 0")
         self.max_attempts = max_attempts
         self.base_delay = base_delay
         self.max_delay = max_delay

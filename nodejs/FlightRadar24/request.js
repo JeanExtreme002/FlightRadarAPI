@@ -1,6 +1,17 @@
 const { CloudflareError } = require("./errors");
 const { fetch, Agent } = require("undici");
 
+/** Thrown when a request exceeds its timeout. Surfaced as a distinct class
+ * so the retry layer can identify it after `fetch`'s native AbortError is
+ * translated into a user-friendly message. */
+class TimeoutError extends Error {
+    /** @param {string} message */
+    constructor(message) {
+        super(message);
+        this.name = "TimeoutError";
+    }
+}
+
 // Chrome 136 TLS cipher suites to approximate its JA3 fingerprint.
 // When FR24 updates its Cloudflare bot mitigation, override via
 // `new FlightRadar24API({ impersonate: { ciphers: [...], sigalgs: [...] } })`.
@@ -74,6 +85,9 @@ class RetryPolicy {
      */
     constructor({ maxAttempts = 1, baseDelayMs = 1000, maxDelayMs = 30_000, jitterMs = 500 } = {}) {
         if (maxAttempts < 1) throw new Error("maxAttempts must be >= 1");
+        if (baseDelayMs < 0 || maxDelayMs < 0 || jitterMs < 0) {
+            throw new Error("baseDelayMs, maxDelayMs and jitterMs must all be >= 0");
+        }
         this.maxAttempts = maxAttempts;
         this.baseDelayMs = baseDelayMs;
         this.maxDelayMs = maxDelayMs;
@@ -105,7 +119,8 @@ async function runWithRetry(fn, retry) {
         }
         catch (err) {
             const isCloudflare = err instanceof CloudflareError;
-            const isTransient = err.name === "AbortError" ||
+            const isTransient = err instanceof TimeoutError ||
+                err.name === "AbortError" ||
                 (err.cause && (err.cause.code === "UND_ERR_SOCKET" || err.cause.code === "ECONNRESET"));
             if (!isCloudflare && !isTransient) throw err;
             lastError = err;
@@ -193,7 +208,7 @@ async function request(url, {
     }
     catch (err) {
         if (err.name === "AbortError") {
-            throw new Error(`Request timed out after ${timeout}ms for URL ${url}`);
+            throw new TimeoutError(`Request timed out after ${timeout}ms for URL ${url}`);
         }
         throw err;
     }
