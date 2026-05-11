@@ -53,7 +53,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  * @param {object} [options.data] - POST body fields (presence triggers POST method)
  * @param {object} [options.cookies] - Cookies to include in the request
  * @param {Array<number>} [options.allowedErrorCodes=[]] - Status codes that should not throw
- * @param {number} [options.timeout=15000] - Request timeout in milliseconds
+ * @param {number} [options.timeout=30000] - Request timeout in milliseconds
  * @return {Promise<{content: *, statusCode: number, cookies: object}>}
  */
 async function request(url, {
