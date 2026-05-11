@@ -1,4 +1,4 @@
-const {FlightRadar24API, Flight, Entity, FlightTrackerConfig, Countries, version} = require("..");
+const { FlightRadar24API, Flight, Entity, FlightTrackerConfig, Countries, version } = require("..");
 const expect = require("chai").expect;
 
 
@@ -188,7 +188,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
     describe("getBounds()", function() {
         it("Converts zone dict to coordinate string.", function() {
-            const zone = {"tl_y": 75.78, "br_y": -75.78, "tl_x": -427.56, "br_x": 427.56};
+            const zone = { "tl_y": 75.78, "br_y": -75.78, "tl_x": -427.56, "br_x": 427.56 };
             expect(frApi.getBounds(zone)).to.equal("75.78,-75.78,-427.56,427.56");
         });
     });
@@ -207,13 +207,13 @@ describe("Testing FlightRadarAPI version " + version, function() {
 
     describe("setFlightTrackerConfig() — invalid key", function() {
         it("Throws when an unknown config key is set.", function() {
-            expect(() => frApi.setFlightTrackerConfig(null, {unknownKey: "1"})).to.throw();
+            expect(() => frApi.setFlightTrackerConfig(null, { unknownKey: "1" })).to.throw();
         });
     });
 
     describe("setFlightTrackerConfig() — invalid value", function() {
         it("Throws when a non-numeric value is set.", function() {
-            expect(() => frApi.setFlightTrackerConfig(null, {limit: "not_a_number"})).to.throw();
+            expect(() => frApi.setFlightTrackerConfig(null, { limit: "not_a_number" })).to.throw();
         });
     });
 
@@ -226,31 +226,31 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const flight = new Flight("123456789", info);
 
         it("Exact match returns true.", function() {
-            expect(flight.checkInfo({altitude: 35000})).to.be.true;
+            expect(flight.checkInfo({ altitude: 35000 })).to.be.true;
         });
 
         it("Min/max range within bounds returns true.", function() {
-            expect(flight.checkInfo({minAltitude: 30000, maxAltitude: 40000})).to.be.true;
+            expect(flight.checkInfo({ minAltitude: 30000, maxAltitude: 40000 })).to.be.true;
         });
 
         it("Exact mismatch returns false.", function() {
-            expect(flight.checkInfo({altitude: 40000})).to.be.false;
+            expect(flight.checkInfo({ altitude: 40000 })).to.be.false;
         });
 
         it("Max exceeded returns false.", function() {
-            expect(flight.checkInfo({maxAltitude: 30000})).to.be.false;
+            expect(flight.checkInfo({ maxAltitude: 30000 })).to.be.false;
         });
 
         it("String field match returns true.", function() {
-            expect(flight.checkInfo({airlineIcao: "GLO"})).to.be.true;
+            expect(flight.checkInfo({ airlineIcao: "GLO" })).to.be.true;
         });
 
         it("String field mismatch returns false.", function() {
-            expect(flight.checkInfo({airlineIcao: "TAM"})).to.be.false;
+            expect(flight.checkInfo({ airlineIcao: "TAM" })).to.be.false;
         });
 
         it("Combined conditions all matching returns true.", function() {
-            expect(flight.checkInfo({minAltitude: 30000, maxAltitude: 40000, airlineIcao: "GLO"})).to.be.true;
+            expect(flight.checkInfo({ minAltitude: 30000, maxAltitude: 40000, airlineIcao: "GLO" })).to.be.true;
         });
     });
 
@@ -334,7 +334,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
     describe("getHistoryData() — invalid file type", function() {
         it("Throws for unsupported file type.", async function() {
             const api = new FlightRadar24API();
-            api.__loginData = {userData: {accessToken: "fake"}, cookies: {"_frPl": "fake"}};
+            api.__loginData = { userData: { accessToken: "fake" }, cookies: { "_frPl": "fake" } };
             const flight = new Flight("123", ["ABC", 0, 0, 0, 0, 0, "0", null, "B738", "PR-X", 0, "GRU", "GIG", "G1", 0, 0, "GLO1", null, "GLO"]);
             try {
                 await api.getHistoryData(flight, "PDF", 0);

@@ -24,4 +24,4 @@ const radians = (x) => x * (Math.PI / 180);
  */
 const rad2deg = (x) => x * (180 / Math.PI);
 
-module.exports = {isNumeric, radians, rad2deg};
+module.exports = { isNumeric, radians, rad2deg };

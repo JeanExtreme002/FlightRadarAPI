@@ -1,4 +1,4 @@
-const {isNumeric} = require("./util");
+const { isNumeric } = require("./util");
 
 
 const proxyHandler = {

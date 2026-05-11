@@ -70,7 +70,7 @@ class Flight extends Entity {
      * @return {boolean}
      */
     checkInfo(info) {
-        const comparisonFunctions = {"max": Math.max, "min": Math.min};
+        const comparisonFunctions = { "max": Math.max, "min": Math.min };
 
         for (let key in info) {
             if (!Object.prototype.hasOwnProperty.call(info, key)) {

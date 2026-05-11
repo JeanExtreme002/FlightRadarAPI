@@ -1,4 +1,4 @@
-const {JSDOM} = require("jsdom");
+const { JSDOM } = require("jsdom");
 const Airport = require("./entities/airport");
 
 /**
@@ -69,7 +69,7 @@ function parseAirlinesHtml(html) {
             }
         }
 
-        airlines.push({"Name": airlineName, "ICAO": icao, "IATA": iata, "n_aircrafts": nAircrafts});
+        airlines.push({ "Name": airlineName, "ICAO": icao, "IATA": iata, "n_aircrafts": nAircrafts });
     }
 
     return airlines;
@@ -152,4 +152,4 @@ function parseAirportsHtml(html, countryHref) {
     return airports;
 }
 
-module.exports = {parseAirlinesHtml, parseAirportsHtml};
+module.exports = { parseAirlinesHtml, parseAirportsHtml };
