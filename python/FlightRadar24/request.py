@@ -63,7 +63,11 @@ def _run_with_retry(fn, retry: Optional[RetryPolicy]):
             last_error = err
         if attempt < retry.max_attempts - 1:
             time.sleep(retry.sleep_for(attempt))
-    assert last_error is not None
+    # Defensive: with max_attempts > 1, last_error is always populated by the
+    # time we reach here, but don't rely on `assert` because it is stripped by
+    # `python -O` and would turn into `raise None` -> TypeError.
+    if last_error is None:
+        raise RuntimeError("retry loop exited without success or captured error")
     raise last_error
 
 

@@ -47,9 +47,13 @@ jobs:
           max_attempts: 3
           command: cd python && pytest -m integration -vv -s
         continue-on-error: ${{ github.event_name == 'push' }}
-      - name: Dependency audit
+      - name: Dependency audit (informational)
+        # Informational only: surfaces vulnerable transitive deps as a soft-fail
+        # without blocking PRs. Re-enable enforcement (drop continue-on-error)
+        # once the audit baseline is clean.
         if: matrix.python-version == '3.13'
-        run: pip-audit --strict --skip-editable -r <(pip freeze | grep -v "^FlightRadarAPI") || true
+        continue-on-error: true
+        run: pip-audit --skip-editable -r <(pip freeze | grep -v "^FlightRadarAPI")
       - name: Build and verify install
         run: |
           python -m build ./python

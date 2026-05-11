@@ -15,8 +15,12 @@ class TimeoutError extends Error {
 // Chrome 136 TLS cipher suites to approximate its JA3 fingerprint.
 // When FR24 updates its Cloudflare bot mitigation, override via
 // `new FlightRadar24API({ impersonate: { ciphers: [...], sigalgs: [...] } })`.
+//
+// Deep-frozen because this constant is exported. A shallow `Object.freeze`
+// would leave the nested arrays writable, letting any consumer push values
+// into them and silently pollute every future request the SDK makes.
 const CHROME136_PROFILE = Object.freeze({
-    ciphers: [
+    ciphers: Object.freeze([
         "TLS_AES_128_GCM_SHA256",
         "TLS_AES_256_GCM_SHA384",
         "TLS_CHACHA20_POLY1305_SHA256",
@@ -32,9 +36,9 @@ const CHROME136_PROFILE = Object.freeze({
         "AES256-GCM-SHA384",
         "AES128-SHA",
         "AES256-SHA",
-    ],
+    ]),
     ecdhCurve: "X25519:P-256:P-384:P-521",
-    sigalgs: [
+    sigalgs: Object.freeze([
         "ecdsa_secp256r1_sha256",
         "rsa_pss_rsae_sha256",
         "rsa_pkcs1_sha256",
@@ -43,7 +47,7 @@ const CHROME136_PROFILE = Object.freeze({
         "rsa_pkcs1_sha384",
         "rsa_pss_rsae_sha512",
         "rsa_pkcs1_sha512",
-    ],
+    ]),
 });
 
 /**

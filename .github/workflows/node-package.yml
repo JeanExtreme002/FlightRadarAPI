@@ -48,6 +48,10 @@ jobs:
           max_attempts: 3
           command: cd nodejs && npm run test:integration
         continue-on-error: ${{ github.event_name == 'push' }}
-      - name: Dependency audit
+      - name: Dependency audit (informational)
+        # Informational only: surfaces high-severity advisories as a soft-fail
+        # without blocking PRs. Re-enable enforcement (drop continue-on-error)
+        # once the audit baseline is clean.
         if: matrix.node-version == '22.x'
-        run: cd nodejs && npm audit --omit=dev --audit-level=high || true
+        continue-on-error: true
+        run: cd nodejs && npm audit --omit=dev --audit-level=high
