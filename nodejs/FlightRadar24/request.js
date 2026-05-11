@@ -41,7 +41,7 @@ const chromeAgent = new Agent({
     },
 });
 
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
  * Make an HTTP request to the FlightRadar24 API.

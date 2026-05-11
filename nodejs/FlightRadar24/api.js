@@ -35,10 +35,10 @@ class FlightRadar24API {
      * Constructor of FlightRadar24API class
      *
      * @param {object} [options={}]
-     * @param {number} [options.timeout=10000] - Request timeout in milliseconds
+     * @param {number} [options.timeout=30000] - Request timeout in milliseconds
      * @param {number} [options.maxWorkers=8] - Maximum concurrent requests when fetching flight details
      */
-    constructor({timeout = 10000, maxWorkers = 8} = {}) {
+    constructor({timeout = 30000, maxWorkers = 8} = {}) {
         this.__flightTrackerConfig = new FlightTrackerConfig();
         this.__loginData = null;
         this.timeout = timeout;
