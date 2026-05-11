@@ -2,7 +2,7 @@
 
 import dataclasses
 import math
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote
 
@@ -20,17 +20,20 @@ class FlightRadar24API:
     Main class of the FlightRadarAPI
     """
 
-    def __init__(self, user: Optional[str] = None, password: Optional[str] = None, timeout: int = 10):
+    def __init__(self, user: Optional[str] = None, password: Optional[str] = None, timeout: int = 10, max_workers: int = 8):
         """
         Constructor of the FlightRadar24API class.
 
-        :param user: Your email (optional)
-        :param password: Your password (optional)
+        :param user: Your email
+        :param password: Your password
+        :param timeout: Request timeout in seconds
+        :param max_workers: Maximum threads used when fetching flight details concurrently
         """
         self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
 
         self.timeout: int = timeout
+        self.max_workers: int = max_workers
 
         if user is not None and password is not None:
             self.login(user, password)
@@ -51,7 +54,7 @@ class FlightRadar24API:
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
         # Try to get the image by the first URL option.
-        response = APIRequest(first_logo_url, headers=Core.image_headers, exclude_status_codes=[403,], timeout=self.timeout)
+        response = APIRequest(first_logo_url, headers=Core.image_headers, allowed_error_codes=[403, 404], timeout=self.timeout)
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
@@ -60,11 +63,13 @@ class FlightRadar24API:
         # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
 
-        response = APIRequest(second_logo_url, headers=Core.image_headers, exclude_status_codes=[403, 404], timeout=self.timeout)
+        response = APIRequest(second_logo_url, headers=Core.image_headers, allowed_error_codes=[403, 404], timeout=self.timeout)
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
             return response.get_content(), second_logo_url.split(".")[-1]
+
+        return None
 
     def get_airport(self, code: str, *, details: bool = False) -> Airport:
         """
@@ -111,7 +116,7 @@ class FlightRadar24API:
         request_params["page"] = page
 
         # Request details from the FlightRadar24.
-        response = APIRequest(Core.api_airport_data_url, request_params, Core.json_headers, exclude_status_codes=[400,], timeout=self.timeout)
+        response = APIRequest(Core.api_airport_data_url, params=request_params, headers=Core.json_headers, allowed_error_codes=[400], timeout=self.timeout)
         content: Dict = response.get_content()
 
         if response.get_status_code() == 400 and content.get("errors"):
@@ -151,7 +156,7 @@ class FlightRadar24API:
             response = APIRequest(href, headers=Core.html_headers, timeout=self.timeout)
             return parse_airports_html(response.get_content(), href)
 
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = executor.map(_fetch, countries)
 
         return [airport for result in results for airport in result]
@@ -243,11 +248,13 @@ class FlightRadar24API:
 
         headers.pop("origin", None)  # Does not work for this request.
 
-        response = APIRequest(flag_url, headers=headers, exclude_status_codes=[403, 404], timeout=self.timeout)
+        response = APIRequest(flag_url, headers=headers, allowed_error_codes=[403, 404], timeout=self.timeout)
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
             return response.get_content(), flag_url.split(".")[-1]
+
+        return None
 
     def get_flight_details(self, flight: Flight) -> Dict[Any, Any]:
         """
@@ -282,13 +289,13 @@ class FlightRadar24API:
             request_params["enc"] = self.__login_data["cookies"]["_frPl"]
 
         # Insert the method parameters into the dictionary for the request.
-        if airline: request_params["airline"] = airline
-        if bounds: request_params["bounds"] = bounds
-        if registration: request_params["reg"] = registration
-        if aircraft_type: request_params["type"] = aircraft_type
+        if airline is not None: request_params["airline"] = airline
+        if bounds is not None: request_params["bounds"] = bounds
+        if registration is not None: request_params["reg"] = registration
+        if aircraft_type is not None: request_params["type"] = aircraft_type
 
         # Get all flights from Data Live FlightRadar24.
-        response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
+        response = APIRequest(Core.real_time_flight_tracker_data_url, params=request_params, headers=Core.json_headers, timeout=self.timeout)
         content = response.get_content()
 
         flights: List[Flight] = list()
@@ -302,10 +309,10 @@ class FlightRadar24API:
             flights.append(Flight(flight_id, flight_info))
 
         if details:
-            with ThreadPoolExecutor() as executor:
-                all_details = list(executor.map(self.get_flight_details, flights))
-            for flight, flight_details in zip(flights, all_details):
-                flight.set_flight_details(flight_details)
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = {executor.submit(self.get_flight_details, f): f for f in flights}
+                for future in as_completed(futures):
+                    futures[future].set_flight_details(future.result())
 
         return flights
 

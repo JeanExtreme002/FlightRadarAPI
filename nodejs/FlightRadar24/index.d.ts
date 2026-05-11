@@ -17,8 +17,8 @@ export class FlightRadar24API {
     private __flightTrackerConfig: FlightTrackerConfig;
     private __loginData: {userData: any; cookies: any;} | null;
     
-    constructor();
-    
+    constructor(options?: {timeout?: number; maxWorkers?: number});
+
     /**
      * Return a list with all airlines.
      */

@@ -8,7 +8,7 @@ problem the pull request solves or what new features it implements.
 **Checklist (complete all items)**:
 
 - [ ] Added tests as necessary.
-- [ ] There is no break change for existing features.
+- [ ] There is no breaking change for existing features.
 
 **References:**
 

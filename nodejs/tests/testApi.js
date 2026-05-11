@@ -12,8 +12,8 @@ describe("Testing FlightRadarAPI version " + version, function() {
         it("Expected at least " + expected + " airlines.", async function() {
             const results = await frApi.getAirlines();
             expect(results.length).to.be.above(expected - 1);
-            
-            const foundIcaos = new Set(results.filter(a => airlines.includes(a.ICAO)).map(a => a.ICAO));
+
+            const foundIcaos = new Set(results.filter((a) => airlines.includes(a.ICAO)).map((a) => a.ICAO));
             expect(foundIcaos.size).to.equal(airlines.length);
         });
     });
@@ -141,7 +141,7 @@ describe("Testing FlightRadarAPI version " + version, function() {
         const targetAirlines = [["WN", "SWA"], ["G3", "GLO"], ["AD", "AZU"], ["AA", "AAL"], ["TK", "THY"]];
         const expected = targetAirlines.length * 0.8;
 
-        const icao = targetAirlines.map(a => a[1]);
+        const icao = targetAirlines.map((a) => a[1]);
 
         let message = "Expected getting logos from at least " + Math.trunc(expected);
         message += " of the following airlines: " + icao.join(", ") + ".";

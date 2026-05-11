@@ -155,10 +155,16 @@ class Flight extends Entity {
      * @return {undefined}
      */
     setFlightDetails(flightDetails) {
+        // Get aircraft data.
         const aircraft = flightDetails["aircraft"];
+
+        // Get airline data.
         const airline = flightDetails?.["airline"];
+
+        // Get airport data.
         const airport = flightDetails?.["airport"];
 
+        // Get destination data.
         const destAirport = airport?.["destination"];
         const destAirportCode = destAirport?.["code"];
         const destAirportInfo = destAirport?.["info"];
@@ -166,6 +172,7 @@ class Flight extends Entity {
         const destAirportCountry = destAirportPosition?.["country"];
         const destAirportTimezone = destAirport?.["timezone"];
 
+        // Get origin data.
         const origAirport = airport?.["origin"];
         const origAirportCode = origAirport?.["code"];
         const origAirportInfo = origAirport?.["info"];
@@ -173,23 +180,31 @@ class Flight extends Entity {
         const origAirportCountry = origAirportPosition?.["country"];
         const origAirportTimezone = origAirport?.["timezone"];
 
+        // Get flight history.
         const history = flightDetails?.["flightHistory"];
+
+        // Get flight status.
         const status = flightDetails?.["status"];
 
+        // Aircraft information.
         this.aircraftAge = this.__getInfo(aircraft?.["age"]);
         this.aircraftCountryId = this.__getInfo(aircraft?.["countryId"]);
         this.aircraftHistory = this.__getInfo(history?.["aircraft"], []);
         this.aircraftImages = this.__getInfo(aircraft?.["images"], []);
         this.aircraftModel = this.__getInfo(aircraft?.["model"]?.["text"]);
 
+        // Airline information.
         this.airlineName = this.__getInfo(airline?.["name"]);
         this.airlineShortName = this.__getInfo(airline?.["short"]);
 
+        // Destination airport position.
         this.destinationAirportAltitude = this.__getInfo(destAirportPosition?.["altitude"]);
         this.destinationAirportCountryCode = this.__getInfo(destAirportCountry?.["code"]);
         this.destinationAirportCountryName = this.__getInfo(destAirportCountry?.["name"]);
         this.destinationAirportLatitude = this.__getInfo(destAirportPosition?.["latitude"]);
         this.destinationAirportLongitude = this.__getInfo(destAirportPosition?.["longitude"]);
+
+        // Destination airport information.
         this.destinationAirportIcao = this.__getInfo(destAirportCode?.["icao"]);
         this.destinationAirportBaggage = this.__getInfo(destAirportInfo?.["baggage"]);
         this.destinationAirportGate = this.__getInfo(destAirportInfo?.["gate"]);
@@ -197,17 +212,22 @@ class Flight extends Entity {
         this.destinationAirportTerminal = this.__getInfo(destAirportInfo?.["terminal"]);
         this.destinationAirportVisible = this.__getInfo(destAirport?.["visible"]);
         this.destinationAirportWebsite = this.__getInfo(destAirport?.["website"]);
+
+        // Destination airport timezone.
         this.destinationAirportTimezoneAbbr = this.__getInfo(destAirportTimezone?.["abbr"]);
         this.destinationAirportTimezoneAbbrName = this.__getInfo(destAirportTimezone?.["abbrName"]);
         this.destinationAirportTimezoneName = this.__getInfo(destAirportTimezone?.["name"]);
         this.destinationAirportTimezoneOffset = this.__getInfo(destAirportTimezone?.["offset"]);
         this.destinationAirportTimezoneOffsetHours = this.__getInfo(destAirportTimezone?.["offsetHours"]);
 
+        // Origin airport position.
         this.originAirportAltitude = this.__getInfo(origAirportPosition?.["altitude"]);
         this.originAirportCountryCode = this.__getInfo(origAirportCountry?.["code"]);
         this.originAirportCountryName = this.__getInfo(origAirportCountry?.["name"]);
         this.originAirportLatitude = this.__getInfo(origAirportPosition?.["latitude"]);
         this.originAirportLongitude = this.__getInfo(origAirportPosition?.["longitude"]);
+
+        // Origin airport information.
         this.originAirportIcao = this.__getInfo(origAirportCode?.["icao"]);
         this.originAirportBaggage = this.__getInfo(origAirportInfo?.["baggage"]);
         this.originAirportGate = this.__getInfo(origAirportInfo?.["gate"]);
@@ -215,16 +235,22 @@ class Flight extends Entity {
         this.originAirportTerminal = this.__getInfo(origAirportInfo?.["terminal"]);
         this.originAirportVisible = this.__getInfo(origAirport?.["visible"]);
         this.originAirportWebsite = this.__getInfo(origAirport?.["website"]);
+
+        // Origin airport timezone.
         this.originAirportTimezoneAbbr = this.__getInfo(origAirportTimezone?.["abbr"]);
         this.originAirportTimezoneAbbrName = this.__getInfo(origAirportTimezone?.["abbrName"]);
         this.originAirportTimezoneName = this.__getInfo(origAirportTimezone?.["name"]);
         this.originAirportTimezoneOffset = this.__getInfo(origAirportTimezone?.["offset"]);
         this.originAirportTimezoneOffsetHours = this.__getInfo(origAirportTimezone?.["offsetHours"]);
 
+        // Flight status.
         this.statusIcon = this.__getInfo(status?.["icon"]);
         this.statusText = this.__getInfo(status?.["text"]);
 
+        // Time details.
         this.timeDetails = this.__getInfo(flightDetails?.["time"], {});
+
+        // Flight trail.
         this.trail = this.__getInfo(flightDetails?.["trail"], []);
     }
 }

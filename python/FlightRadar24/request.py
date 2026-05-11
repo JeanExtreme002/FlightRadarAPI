@@ -26,12 +26,13 @@ class APIRequest:
     def __init__(
         self,
         url: str,
+        *,
         params: Optional[Dict] = None,
         headers: Optional[Dict] = None,
         timeout: int = 30,
         data: Optional[Dict] = None,
         cookies: Optional[Dict] = None,
-        exclude_status_codes: Optional[List[int]] = None
+        allowed_error_codes: Optional[List[int]] = None
     ):
         """
         Constructor of the APIRequest class.
@@ -41,7 +42,7 @@ class APIRequest:
         :param headers: headers for the request
         :param data: data for the request. If "data" is None, request will be a GET. Otherwise, it will be a POST
         :param cookies: cookies for the request
-        :param exclude_status_codes: raise for status code except those on the excluded list
+        :param allowed_error_codes: status codes that should not raise an error
         """
         self.url = url
 
@@ -59,7 +60,7 @@ class APIRequest:
                 response=self.__response
             )
 
-        if self.get_status_code() not in (exclude_status_codes or []):
+        if self.get_status_code() not in (allowed_error_codes or []):
             self.__response.raise_for_status()
 
     def get_content(self) -> Union[Dict, bytes]:
