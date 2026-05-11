@@ -1,17 +1,18 @@
-const { JSDOM } = require("jsdom");
+const { parse } = require("node-html-parser");
 const Airport = require("./entities/airport");
 
 /**
  * Parse the airlines listing HTML page into a list of airline objects.
  *
- * @param {string} html
+ * @param {string|Buffer} html
  * @return {Array<object>}
  */
 function parseAirlinesHtml(html) {
-    const dom = new JSDOM(html);
-    const tbody = dom.window.document.querySelector("tbody");
+    const root = parse(typeof html === "string" ? html : html.toString());
+    const tbody = root.querySelector("tbody");
 
     if (!tbody) {
+        console.warn("parseAirlinesHtml: no <tbody> in response — FR24 page layout may have changed.");
         return [];
     }
 
@@ -20,28 +21,22 @@ function parseAirlinesHtml(html) {
     for (const tr of tbody.querySelectorAll("tr")) {
         const tdNotranslate = tr.querySelector("td.notranslate");
 
-        if (!tdNotranslate) {
-            continue;
-        }
+        if (!tdNotranslate) continue;
 
         const aElement = tdNotranslate.querySelector("a[href^='/data/airlines']");
 
-        if (!aElement) {
-            continue;
-        }
+        if (!aElement) continue;
 
-        const airlineName = aElement.textContent.trim();
+        const airlineName = aElement.text.trim();
 
-        if (airlineName.length < 2) {
-            continue;
-        }
+        if (airlineName.length < 2) continue;
 
         const tdElements = tr.querySelectorAll("td");
         let iata = null;
         let icao = null;
 
         if (tdElements.length >= 4) {
-            const codesText = tdElements[3].textContent.trim();
+            const codesText = tdElements[3].text.trim();
 
             if (codesText.includes(" / ")) {
                 const parts = codesText.split(" / ");
@@ -62,7 +57,7 @@ function parseAirlinesHtml(html) {
         let nAircrafts = null;
 
         if (tdElements.length >= 5) {
-            const aircraftsText = tdElements[4].textContent.trim();
+            const aircraftsText = tdElements[4].text.trim();
 
             if (aircraftsText) {
                 nAircrafts = parseInt(aircraftsText.split(" ")[0].trim(), 10);
@@ -78,15 +73,16 @@ function parseAirlinesHtml(html) {
 /**
  * Parse the airports listing HTML page for a country into a list of Airport instances.
  *
- * @param {string} html
+ * @param {string|Buffer} html
  * @param {string} countryHref - Full URL used to fetch the page (used to derive the display name)
  * @return {Array<Airport>}
  */
 function parseAirportsHtml(html, countryHref) {
-    const dom = new JSDOM(html);
-    const tbody = dom.window.document.querySelector("tbody");
+    const root = parse(typeof html === "string" ? html : html.toString());
+    const tbody = root.querySelector("tbody");
 
     if (!tbody) {
+        console.warn(`parseAirportsHtml: no <tbody> for ${countryHref} — FR24 page layout may have changed.`);
         return [];
     }
 
@@ -96,25 +92,22 @@ function parseAirportsHtml(html, countryHref) {
     const airports = [];
 
     for (const tr of tbody.querySelectorAll("tr")) {
-        const aElements = tr.querySelectorAll("a[data-iata][data-lat][data-lon]");
+        const aElement = tr.querySelector("a[data-iata][data-lat][data-lon]");
 
-        if (aElements.length === 0) {
-            continue;
-        }
+        if (!aElement) continue;
 
-        const aElement = aElements[0];
         let icao = "";
         let iata = aElement.getAttribute("data-iata") || "";
         const latitude = aElement.getAttribute("data-lat") || "";
         const longitude = aElement.getAttribute("data-lon") || "";
-        let namePart = aElement.textContent.trim();
+        let namePart = aElement.text.trim();
 
         const smallElement = aElement.querySelector("small");
 
         if (smallElement) {
-            let codesText = smallElement.textContent.trim();
-            codesText = codesText.replace(/^\(/, "").replace(/\)$/, "").trim();
-            namePart = namePart.replace(smallElement.textContent, "").replace(/\(\)/, "").trim();
+            const smallText = smallElement.text.trim();
+            const codesText = smallText.replace(/^\(/, "").replace(/\)$/, "").trim();
+            namePart = namePart.replace(smallText, "").replace(/\(\)/, "").trim();
 
             if (codesText.includes("/")) {
                 const codes = codesText.split("/");
@@ -138,12 +131,23 @@ function parseAirportsHtml(html, countryHref) {
             }
         }
 
+        let latNum = latitude ? parseFloat(latitude) : null;
+        let lonNum = longitude ? parseFloat(longitude) : null;
+        if (Number.isNaN(latNum) || Number.isNaN(lonNum)) {
+            console.warn(
+                `parseAirportsHtml: invalid coordinates for airport "${namePart}" ` +
+                `(lat=${latitude}, lon=${longitude}) — skipping position.`,
+            );
+            latNum = null;
+            lonNum = null;
+        }
+
         airports.push(new Airport({
             "name": namePart,
             "icao": icao,
             "iata": iata,
-            "lat": latitude ? parseFloat(latitude) : 0.0,
-            "lon": longitude ? parseFloat(longitude) : 0.0,
+            "lat": latNum,
+            "lon": lonNum,
             "alt": null,
             "country": countryDisplayName,
         }));

@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List
+import logging
+from typing import Dict, List, Optional
 
 from bs4 import BeautifulSoup
 
 from .entities.airport import Airport
+
+_logger = logging.getLogger(__name__)
 
 
 def parse_airlines_html(html: bytes) -> List[Dict]:
@@ -15,6 +18,9 @@ def parse_airlines_html(html: bytes) -> List[Dict]:
     tbody = soup.find("tbody")
 
     if not tbody:
+        _logger.warning(
+            "parse_airlines_html: no <tbody> in response — FR24 page layout may have changed."
+        )
         return []
 
     airlines = []
@@ -72,6 +78,10 @@ def parse_airports_html(html: bytes, country_href: str) -> List[Airport]:
     tbody = soup.find("tbody")
 
     if not tbody:
+        _logger.warning(
+            "parse_airports_html: no <tbody> for %s — FR24 page layout may have changed.",
+            country_href,
+        )
         return []
 
     country_name = country_href.split("/")[-1].replace("-", " ").title()
@@ -108,11 +118,17 @@ def parse_airports_html(html: bytes, country_href: str) -> List[Airport]:
             elif len(codes_text) == 4:
                 icao = codes_text
 
+        lat_float: Optional[float]
+        lon_float: Optional[float]
         try:
-            lat_float = float(latitude) if latitude else 0.0
-            lon_float = float(longitude) if longitude else 0.0
+            lat_float = float(latitude) if latitude else None
+            lon_float = float(longitude) if longitude else None
         except ValueError:
-            lat_float, lon_float = 0.0, 0.0
+            _logger.warning(
+                "parse_airports_html: invalid coordinates for airport %r (lat=%r, lon=%r) — skipping position.",
+                name_part, latitude, longitude,
+            )
+            lat_float, lon_float = None, None
 
         airports.append(Airport(basic_info={
             "name": name_part,

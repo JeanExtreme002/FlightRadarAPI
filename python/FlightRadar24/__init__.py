@@ -19,6 +19,7 @@ from .core import Countries
 from .entities import Airport, Entity, Flight
 from .errors import AirportNotFoundError, CloudflareError, FlightRadarError, LoginError
 from .flight_tracker_config import FlightTrackerConfig
+from .request import RetryPolicy
 
 __all__ = [
     "FlightRadar24API",
@@ -31,4 +32,5 @@ __all__ = [
     "FlightRadarError",
     "LoginError",
     "FlightTrackerConfig",
+    "RetryPolicy",
 ]

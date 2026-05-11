@@ -1,4 +1,5 @@
 const Entity = require("./entity");
+const { DEFAULT_TEXT } = require("./entity");
 
 // Positional field mapping for the raw array returned by the FlightRadar24 feed.
 // If the upstream API adds or shifts a field, update only this map.
@@ -105,6 +106,7 @@ class Flight extends Entity {
      * @return {string}
      */
     getAltitude() {
+        if (typeof this.altitude !== "number") return DEFAULT_TEXT;
         return this.altitude.toString() + " ft";
     }
 
@@ -114,6 +116,7 @@ class Flight extends Entity {
      * @return {string}
      */
     getFlightLevel() {
+        if (typeof this.altitude !== "number") return DEFAULT_TEXT;
         if (this.altitude >= 10000) {
             return this.altitude.toString().slice(0, 3) + " FL";
         }
@@ -126,6 +129,7 @@ class Flight extends Entity {
      * @return {string}
      */
     getGroundSpeed() {
+        if (typeof this.groundSpeed !== "number") return DEFAULT_TEXT;
         const suffix = this.groundSpeed > 1 ? "s" : "";
         return this.groundSpeed.toString() + " kt" + suffix;
     }
@@ -136,6 +140,7 @@ class Flight extends Entity {
      * @return {string}
      */
     getHeading() {
+        if (typeof this.heading !== "number") return DEFAULT_TEXT;
         return this.heading.toString() + "°";
     }
 
@@ -145,6 +150,7 @@ class Flight extends Entity {
      * @return {string}
      */
     getVerticalSpeed() {
+        if (typeof this.verticalSpeed !== "number") return DEFAULT_TEXT;
         return this.verticalSpeed.toString() + " fpm";
     }
 

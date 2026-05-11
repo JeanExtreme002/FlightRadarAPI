@@ -32,17 +32,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e "./python[tests]"
-          pip install flake8 mypy build
+          pip install flake8 mypy build pytest-cov pip-audit
       - name: Lint
         run: cd python && python -m flake8 FlightRadar24 tests
       - name: Type check
         run: cd python && python -m mypy FlightRadar24 --ignore-missing-imports
-      - name: Test with pytest
+      - name: Offline tests (PR gate)
+        run: cd python && pytest -m "not integration" --cov=FlightRadar24 --cov-report=term --cov-report=xml -v
+      - name: Integration tests (live FR24)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
           max_attempts: 3
-          command: cd python && pytest tests -vv -s
+          command: cd python && pytest -m integration -vv -s
+        continue-on-error: ${{ github.event_name == 'push' }}
+      - name: Dependency audit (informational)
+        # Informational only: surfaces vulnerable transitive deps as a soft-fail
+        # without blocking PRs. Re-enable enforcement (drop continue-on-error)
+        # once the audit baseline is clean.
+        if: matrix.python-version == '3.13'
+        continue-on-error: true
+        run: pip-audit --skip-editable -r <(pip freeze | grep -v "^FlightRadarAPI")
       - name: Build and verify install
         run: |
           python -m build ./python

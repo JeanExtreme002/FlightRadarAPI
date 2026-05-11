@@ -1,6 +1,7 @@
 const { radians } = require("../util");
 
 const DEFAULT_TEXT = "N/A";
+const EARTH_RADIUS_KM = 6371;
 
 /**
  * Representation of a real entity, at some location.
@@ -52,8 +53,11 @@ class Entity {
         const lat2 = radians(entity.latitude);
         const lon2 = radians(entity.longitude);
 
-        return Math.acos(Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)) * 6371;
+        const angle = Math.acos(Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1));
+        return angle * EARTH_RADIUS_KM;
     }
 }
 
 module.exports = Entity;
+module.exports.DEFAULT_TEXT = DEFAULT_TEXT;
+module.exports.EARTH_RADIUS_KM = EARTH_RADIUS_KM;
