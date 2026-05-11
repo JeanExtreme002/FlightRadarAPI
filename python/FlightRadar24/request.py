@@ -7,10 +7,40 @@ from urllib.parse import urlencode
 
 import brotli
 from curl_cffi import requests
+from curl_cffi.requests import Session
 
 from .errors import CloudflareError
 
 _IMPERSONATE = "chrome136"
+
+
+class APIClient:
+    """
+    Central HTTP client for the FlightRadar24 package.
+
+    Owns the persistent session (cookie jar, TLS fingerprint, future bypass logic)
+    so that the rest of the codebase never has to deal with those concerns directly.
+    """
+
+    def __init__(self) -> None:
+        self.__session: Session = Session(impersonate=_IMPERSONATE)  # type: ignore[arg-type]
+
+    def request(self, url: str, **kwargs) -> "APIRequest":
+        """Make a request through the shared session."""
+        return APIRequest(url, session=self.__session, **kwargs)
+
+    @staticmethod
+    def request_standalone(url: str, **kwargs) -> "APIRequest":
+        """Make a stateless request with no shared session (safe to call from threads)."""
+        return APIRequest(url, **kwargs)
+
+    def get_cookie(self, name: str) -> Optional[str]:
+        """Return the value of a stored cookie by name."""
+        return self.__session.cookies.get(name)
+
+    def clear_cookies(self) -> None:
+        """Clear all cookies from the session."""
+        self.__session.cookies.clear()
 
 
 class APIRequest:
@@ -27,32 +57,36 @@ class APIRequest:
         self,
         url: str,
         *,
+        session: Optional[Session] = None,
         params: Optional[Dict] = None,
         headers: Optional[Dict] = None,
         timeout: int = 30,
         data: Optional[Dict] = None,
-        cookies: Optional[Dict] = None,
         allowed_error_codes: Optional[List[int]] = None
     ):
         """
         Constructor of the APIRequest class.
 
         :param url: URL for the request
+        :param session: session to reuse across requests; handles cookies automatically
         :param params: params that will be inserted on the URL for the request
         :param headers: headers for the request
         :param data: data for the request. If "data" is None, request will be a GET. Otherwise, it will be a POST
-        :param cookies: cookies for the request
         :param allowed_error_codes: status codes that should not raise an error
         """
         self.url = url
 
-        request_method = requests.get if data is None else requests.post
-
         if params: url += "?" + urlencode(params)
-        self.__response = request_method(
-            url, headers=headers, cookies=cookies, data=data, timeout=timeout,
-            impersonate=_IMPERSONATE  # type: ignore[arg-type]
-        )
+
+        if session is not None:
+            request_method = session.get if data is None else session.post
+            self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
+        else:
+            request_method = requests.get if data is None else requests.post
+            self.__response = request_method(
+                url, headers=headers, data=data, timeout=timeout,
+                impersonate=_IMPERSONATE  # type: ignore[arg-type]
+            )
 
         if self.get_status_code() == 520:
             raise CloudflareError(
@@ -103,12 +137,6 @@ class APIRequest:
         if not isinstance(content, bytes):
             raise ValueError(f"Expected bytes response from {self.url}, got JSON")
         return content
-
-    def get_cookies(self) -> Dict:
-        """
-        Return the received cookies from the request.
-        """
-        return self.__response.cookies.get_dict()
 
     def get_headers(self) -> Any:
         """

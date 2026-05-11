@@ -12,7 +12,7 @@ from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
 from .flight_tracker_config import FlightTrackerConfig
 from .parsers import parse_airlines_html, parse_airports_html
-from .request import APIRequest
+from .request import APIClient
 
 
 class FlightRadar24API:
@@ -31,6 +31,7 @@ class FlightRadar24API:
         """
         self.__flight_tracker_config = FlightTrackerConfig()
         self.__login_data: Optional[Dict] = None
+        self.__client = APIClient()
 
         self.timeout: int = timeout
         self.max_workers: int = max_workers
@@ -42,7 +43,7 @@ class FlightRadar24API:
         """
         Return a list with all airlines.
         """
-        response = APIRequest(Core.airlines_data_url, headers=Core.html_headers, timeout=self.timeout)
+        response = self.__client.request(Core.airlines_data_url, headers=Core.html_headers, timeout=self.timeout)
         return parse_airlines_html(response.get_bytes_content())
 
     def get_airline_logo(self, iata: str, icao: str) -> Optional[Tuple[bytes, str]]:
@@ -54,7 +55,10 @@ class FlightRadar24API:
         first_logo_url = Core.airline_logo_url.format(iata, icao)
 
         # Try to get the image by the first URL option.
-        response = APIRequest(first_logo_url, headers=Core.image_headers, allowed_error_codes=[403, 404], timeout=self.timeout)
+        response = self.__client.request(
+            first_logo_url, headers=Core.image_headers,
+            allowed_error_codes=[403, 404], timeout=self.timeout,
+        )
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
@@ -63,7 +67,10 @@ class FlightRadar24API:
         # Get the image by the second airline logo URL.
         second_logo_url = Core.alternative_airline_logo_url.format(icao)
 
-        response = APIRequest(second_logo_url, headers=Core.image_headers, allowed_error_codes=[403, 404], timeout=self.timeout)
+        response = self.__client.request(
+            second_logo_url, headers=Core.image_headers,
+            allowed_error_codes=[403, 404], timeout=self.timeout,
+        )
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
@@ -86,7 +93,10 @@ class FlightRadar24API:
             airport.set_airport_details(self.get_airport_details(code))
             return airport
 
-        response = APIRequest(Core.airport_data_url.format(code), headers=Core.json_headers, timeout=self.timeout)
+        response = self.__client.request(
+            Core.airport_data_url.format(code),
+            headers=Core.json_headers, timeout=self.timeout,
+        )
         content = response.get_json_content()
 
         if not content or not content.get("details"):
@@ -107,8 +117,8 @@ class FlightRadar24API:
 
         request_params: Dict[str, Any] = {"format": "json"}
 
-        if self.__login_data is not None:
-            request_params["token"] = self.__login_data["cookies"]["_frPl"]
+        if self.is_logged_in():
+            request_params["token"] = self.__client.get_cookie("_frPl")
 
         # Insert the method parameters into the dictionary for the request.
         request_params["code"] = code
@@ -116,7 +126,7 @@ class FlightRadar24API:
         request_params["page"] = page
 
         # Request details from the FlightRadar24.
-        response = APIRequest(
+        response = self.__client.request(
             Core.api_airport_data_url,
             params=request_params,
             headers=Core.json_headers,
@@ -148,7 +158,10 @@ class FlightRadar24API:
         """
         Return airport disruptions.
         """
-        response = APIRequest(Core.airport_disruptions_url, headers=Core.json_headers, timeout=self.timeout)
+        response = self.__client.request(
+            Core.airport_disruptions_url,
+            headers=Core.json_headers, timeout=self.timeout,
+        )
         return response.get_json_content()
 
     def get_airports(self, countries: List[Countries]) -> List[Airport]:
@@ -159,7 +172,7 @@ class FlightRadar24API:
         """
         def _fetch(country):
             href = Core.airports_data_url + "/" + country.value
-            response = APIRequest(href, headers=Core.html_headers, timeout=self.timeout)
+            response = APIClient.request_standalone(href, headers=Core.html_headers, timeout=self.timeout)
             return parse_airports_html(response.get_bytes_content(), href)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -176,9 +189,8 @@ class FlightRadar24API:
 
         assert self.__login_data is not None
         headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
-        cookies = self.__login_data["cookies"]
 
-        response = APIRequest(Core.bookmarks_url, headers=headers, cookies=cookies, timeout=self.timeout)
+        response = self.__client.request(Core.bookmarks_url, headers=headers, timeout=self.timeout)
         return response.get_json_content()
 
     def get_bounds(self, zone: Dict[str, float]) -> str:
@@ -254,7 +266,10 @@ class FlightRadar24API:
 
         headers.pop("origin", None)  # Does not work for this request.
 
-        response = APIRequest(flag_url, headers=headers, allowed_error_codes=[403, 404], timeout=self.timeout)
+        response = self.__client.request(
+            flag_url, headers=headers,
+            allowed_error_codes=[403, 404], timeout=self.timeout,
+        )
         status_code = response.get_status_code()
 
         if not (400 <= status_code < 500):
@@ -268,7 +283,9 @@ class FlightRadar24API:
 
         :param flight: A Flight instance
         """
-        response = APIRequest(Core.flight_data_url.format(flight.id), headers=Core.json_headers, timeout=self.timeout)
+        response = APIClient.request_standalone(
+            Core.flight_data_url.format(flight.id), headers=Core.json_headers, timeout=self.timeout,
+        )
         return response.get_json_content()
 
     def get_flights(
@@ -291,8 +308,8 @@ class FlightRadar24API:
         """
         request_params = dataclasses.asdict(self.__flight_tracker_config)
 
-        if self.__login_data is not None:
-            request_params["enc"] = self.__login_data["cookies"]["_frPl"]
+        if self.is_logged_in():
+            request_params["enc"] = self.__client.get_cookie("_frPl")
 
         # Insert the method parameters into the dictionary for the request.
         if airline is not None: request_params["airline"] = airline
@@ -301,7 +318,7 @@ class FlightRadar24API:
         if aircraft_type is not None: request_params["type"] = aircraft_type
 
         # Get all flights from Data Live FlightRadar24.
-        response = APIRequest(
+        response = self.__client.request(
             Core.real_time_flight_tracker_data_url,
             params=request_params,
             headers=Core.json_headers,
@@ -352,10 +369,10 @@ class FlightRadar24API:
 
         headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
 
-        response = APIRequest(
+        response = self.__client.request(
             Core.historical_data_url.format(flight.id, file_type, timestamp),
-            headers=headers, cookies=self.__login_data["cookies"],
-            timeout=self.timeout
+            headers=headers,
+            timeout=self.timeout,
         )
 
         return response.get_bytes_content().decode("utf-8")
@@ -374,14 +391,17 @@ class FlightRadar24API:
         """
         Return the most tracked data.
         """
-        response = APIRequest(Core.most_tracked_url, headers=Core.json_headers, timeout=self.timeout)
+        response = self.__client.request(Core.most_tracked_url, headers=Core.json_headers, timeout=self.timeout)
         return response.get_json_content()
 
     def get_volcanic_eruptions(self) -> Dict:
         """
         Return boundaries of volcanic eruptions and ash clouds impacting aviation.
         """
-        response = APIRequest(Core.volcanic_eruption_data_url, headers=Core.json_headers, timeout=self.timeout)
+        response = self.__client.request(
+            Core.volcanic_eruption_data_url,
+            headers=Core.json_headers, timeout=self.timeout,
+        )
         return response.get_json_content()
 
     def get_zones(self) -> Dict[str, Any]:
@@ -396,7 +416,10 @@ class FlightRadar24API:
         """
         Return the search result.
         """
-        response = APIRequest(Core.search_data_url.format(quote(query), limit), headers=Core.json_headers, timeout=self.timeout)
+        response = self.__client.request(
+            Core.search_data_url.format(quote(query), limit),
+            headers=Core.json_headers, timeout=self.timeout,
+        )
         content = response.get_json_content()
         results = content.get("results", [])
         stats = content.get("stats", {})
@@ -421,6 +444,9 @@ class FlightRadar24API:
         :param user: Your email.
         :param password: Your password.
         """
+        self.__login_data = None
+        self.__client.clear_cookies()
+
         data = {
             "email": user,
             "password": password,
@@ -428,7 +454,10 @@ class FlightRadar24API:
             "type": "web"
         }
 
-        response = APIRequest(Core.user_login_url, headers=Core.json_headers, data=data, timeout=self.timeout)
+        response = self.__client.request(
+            Core.user_login_url,
+            headers=Core.json_headers, data=data, timeout=self.timeout,
+        )
         status_code = response.get_status_code()
         content = response.get_json_content()
 
@@ -437,7 +466,6 @@ class FlightRadar24API:
 
         self.__login_data = {
             "userData": content["userData"],
-            "cookies": response.get_cookies(),
         }
 
     def logout(self) -> bool:
@@ -449,11 +477,12 @@ class FlightRadar24API:
         if self.__login_data is None:
             return True
 
-        cookies = self.__login_data["cookies"]
         self.__login_data = None
-
-        response = APIRequest(Core.user_logout_url, headers=Core.json_headers, cookies=cookies, timeout=self.timeout)
-        return 200 <= response.get_status_code() < 300
+        try:
+            response = self.__client.request(Core.user_logout_url, headers=Core.json_headers, timeout=self.timeout)
+            return 200 <= response.get_status_code() < 300
+        finally:
+            self.__client.clear_cookies()
 
     def set_flight_tracker_config(
         self,

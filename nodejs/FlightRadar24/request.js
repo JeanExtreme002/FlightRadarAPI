@@ -139,4 +139,96 @@ async function request(url, {
     return {content, statusCode, cookies: responseCookies};
 }
 
-module.exports = {request};
+/**
+ * HTTP session that automatically manages cookies across requests.
+ */
+class Session {
+    /** @constructor */
+    constructor() {
+        this.__cookies = {};
+    }
+
+    /**
+     * Return the value of a stored cookie by name.
+     *
+     * @param {string} name
+     * @return {string|undefined}
+     */
+    getCookie(name) {
+        return this.__cookies[name];
+    }
+
+    /**
+     * Clear all stored cookies.
+     */
+    clearCookies() {
+        this.__cookies = {};
+    }
+
+    /**
+     * Make an HTTP request, automatically sending stored cookies and storing
+     * any cookies returned by the response.
+     *
+     * Accepts the same parameters as the module-level {@link request} function.
+     *
+     * @param {string} url
+     * @param {object} [options={}]
+     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     */
+    async request(url, options = {}) {
+        const {cookies: extraCookies, ...rest} = options;
+        const merged = {...this.__cookies, ...(extraCookies ?? {})};
+        const cookies = Object.keys(merged).length > 0 ? merged : null;
+
+        const result = await request(url, {...rest, cookies});
+
+        if (result.cookies && Object.keys(result.cookies).length > 0) {
+            Object.assign(this.__cookies, result.cookies);
+        }
+
+        return result;
+    }
+}
+
+/**
+ * Central HTTP client for the FlightRadar24 package.
+ *
+ * Owns the persistent session (cookie jar, TLS fingerprint, future bypass logic)
+ * so that the rest of the codebase never has to deal with those concerns directly.
+ */
+class APIClient {
+    /** @constructor */
+    constructor() {
+        this.__session = new Session();
+    }
+
+    /**
+     * Make a request through the shared session.
+     *
+     * @param {string} url
+     * @param {object} [options={}]
+     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     */
+    async request(url, options = {}) {
+        return this.__session.request(url, options);
+    }
+
+    /**
+     * Return the value of a stored cookie by name.
+     *
+     * @param {string} name
+     * @return {string|undefined}
+     */
+    getCookie(name) {
+        return this.__session.getCookie(name);
+    }
+
+    /**
+     * Clear all cookies from the session.
+     */
+    clearCookies() {
+        this.__session.clearCookies();
+    }
+}
+
+module.exports = {request, Session, APIClient};
