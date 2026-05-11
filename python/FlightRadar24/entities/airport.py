@@ -66,19 +66,22 @@ class Airport(Entity):
         """
         Initialize instance with extra information about the airport.
         """
-        self._set_position(info["position"]["latitude"], info["position"]["longitude"])
-        self.altitude = info["position"]["altitude"]
+        position = info.get("position") or {}
+        code = info.get("code") or {}
+        country = position.get("country") or {}
+        region = position.get("region") or {}
 
-        self.name = info["name"]
-        self.icao = info["code"]["icao"]
-        self.iata = info["code"]["iata"]
+        self._set_position(position.get("latitude"), position.get("longitude"))
+        self.altitude = position.get("altitude")
+
+        self.name = info.get("name")
+        self.icao = code.get("icao")
+        self.iata = code.get("iata")
 
         # Location information.
-        position = info["position"]
-
-        self.country = position["country"]["name"]
-        self.country_code = self._get_info(position.get("country", {}).get("code"))
-        self.city = self._get_info((position.get("region") or {}).get("city"))
+        self.country = country.get("name")
+        self.country_code = self._get_info(country.get("code"))
+        self.city = self._get_info(region.get("city"))
 
         # Timezone information.
         timezone = info.get("timezone", {})

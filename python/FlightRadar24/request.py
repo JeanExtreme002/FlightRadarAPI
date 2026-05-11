@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import logging
 import random
 import time
 from typing import Any, Dict, List, Optional, Union
@@ -12,6 +13,8 @@ from curl_cffi import requests
 from curl_cffi.requests import Session
 
 from .errors import CloudflareError
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_IMPERSONATE = "chrome136"
 
@@ -212,12 +215,18 @@ class APIRequest:
         content_type = self.__response.headers.get("Content-Type", "")
 
         # Decompress the content if a known encoding was used; fall back to raw bytes otherwise.
-        # curl_cffi may already decompress content automatically — ignore decompression failures.
+        # curl_cffi may already decompress content automatically, so failures here usually mean
+        # the bytes were already decoded by the transport layer — log and continue rather than
+        # surfacing an error the caller cannot act on.
         decode = self.__content_encodings.get(content_encoding, self.__content_encodings[""])
         try:
             content = decode(content)
-        except Exception:
-            pass
+        except Exception as err:
+            _logger.warning(
+                "APIRequest.get_content: failed to decode Content-Encoding=%r for %s (%s). "
+                "Assuming the transport already decompressed and returning raw bytes.",
+                content_encoding, self.url, err,
+            )
 
         # Return a dictionary if the content type is JSON.
         if "application/json" in content_type:

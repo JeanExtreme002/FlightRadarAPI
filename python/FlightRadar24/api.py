@@ -200,10 +200,9 @@ class FlightRadar24API:
         """
         Get the bookmarks from the FlightRadar24 account.
         """
-        if not self.is_logged_in():
+        if self.__login_data is None:
             raise LoginError("You must log in to your account.")
 
-        assert self.__login_data is not None
         headers = {**Core.json_headers, "accesstoken": self.get_login_data()["accessToken"]}
 
         response = self.__client.request(Core.bookmarks_url, headers=headers, timeout=self.timeout)
@@ -374,10 +373,9 @@ class FlightRadar24API:
         :param file_type: Must be "CSV" or "KML"
         :param timestamp: A Unix timestamp
         """
-        if not self.is_logged_in():
+        if self.__login_data is None:
             raise LoginError("You must log in to your account.")
 
-        assert self.__login_data is not None
         file_type = file_type.lower()
 
         if file_type not in ["csv", "kml"]:
@@ -397,10 +395,9 @@ class FlightRadar24API:
         """
         Return the user data.
         """
-        if not self.is_logged_in():
+        if self.__login_data is None:
             raise LoginError("You must log in to your account.")
 
-        assert self.__login_data is not None
         return self.__login_data["userData"].copy()
 
     def get_most_tracked(self) -> Dict:

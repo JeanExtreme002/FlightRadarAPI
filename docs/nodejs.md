@@ -45,7 +45,7 @@ You can fetch various types of data using the following methods:
 - **Zones list:**
 
     ```javascript
-    let zones = await frApi.getZones();
+    let zones = frApi.getZones();
     ```
 
 ### Fetching Detailed Information
@@ -92,7 +92,7 @@ let airlineIcao = "UAE";
 let aircraftType = "B77W";
 
 // You may also set a custom region, such as: bounds = "73,-12,-156,38"
-let zone = (await frApi.getZones())["northamerica"];
+let zone = frApi.getZones()["northamerica"];
 let bounds = frApi.getBounds(zone);
 
 let emiratesFlights = await frApi.getFlights(

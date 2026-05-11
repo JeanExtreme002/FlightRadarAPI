@@ -6,7 +6,7 @@
   "types": "./FlightRadar24/index.d.ts",
   "scripts": {
     "test": "mocha tests --timeout 10000",
-    "test:offline": "mocha tests/testParsersOffline.js --timeout 5000",
+    "test:offline": "mocha tests/testParsersOffline.js tests/testRequestPolicy.js tests/testRequestTransport.js --timeout 10000",
     "test:integration": "mocha tests/testApi.js tests/testSnapshots.js --timeout 10000",
     "test:types": "tsd",
     "lint": "eslint ."

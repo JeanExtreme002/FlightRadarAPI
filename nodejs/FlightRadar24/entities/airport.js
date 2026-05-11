@@ -23,7 +23,8 @@ class Airport extends Entity {
         }
 
         if (info && Object.keys(info).length > 0) {
-            this.__setPosition(info["position"]["latitude"], info["position"]["longitude"]);
+            const position = info["position"] || {};
+            this.__setPosition(position["latitude"] ?? null, position["longitude"] ?? null);
             this.__initializeWithInfo(info);
         }
     }
@@ -81,18 +82,21 @@ class Airport extends Entity {
      * @param {object} info
      */
     __initializeWithInfo(info) {
-        this.altitude = info["position"]["altitude"];
+        const position = info["position"] || {};
+        const code = info["code"] || {};
+        const country = position["country"] || {};
+        const region = position["region"] || {};
 
-        this.name = info["name"];
-        this.icao = info["code"]["icao"];
-        this.iata = info["code"]["iata"];
+        this.altitude = position["altitude"] ?? null;
+
+        this.name = info["name"] ?? null;
+        this.icao = code["icao"] ?? null;
+        this.iata = code["iata"] ?? null;
 
         // Location information.
-        const position = info["position"];
-
-        this.country = position["country"]["name"];
-        this.countryCode = this.__getInfo(position["country"]?.["code"]);
-        this.city = this.__getInfo(position["region"]?.["city"]);
+        this.country = country["name"] ?? null;
+        this.countryCode = this.__getInfo(country["code"]);
+        this.city = this.__getInfo(region["city"]);
 
         // Timezone information.
         const timezone = info["timezone"];
