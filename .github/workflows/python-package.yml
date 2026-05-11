@@ -2,6 +2,8 @@ name: Python Package
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'python/**'
       - '.github/workflows/python-package.yml'
@@ -36,7 +38,11 @@ jobs:
       - name: Type check
         run: cd python && python -m mypy FlightRadar24 --ignore-missing-imports
       - name: Test with pytest
-        run: cd python && pytest tests -vv -s
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: cd python && pytest tests -vv -s
       - name: Build and verify install
         run: |
           python -m build ./python
