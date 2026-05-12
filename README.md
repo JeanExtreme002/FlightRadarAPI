@@ -25,4 +25,9 @@ npm install flightradarapi
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package, for Python or NodeJS, through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).
+Explore the docs of FlightRadarAPI package, for Python or NodeJS, through [FlightRadarAPI Documentation](https://JeanExtreme002.github.io/FlightRadarAPI/) page.
+
+## Project resources
+**Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md)<br>
+**Security policy**: [`SECURITY.md`](SECURITY.md)<br>
+

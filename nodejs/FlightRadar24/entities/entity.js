@@ -45,7 +45,7 @@ class Entity {
     getDistanceFrom(entity) {
         if (this.latitude == null || this.longitude == null ||
             entity.latitude == null || entity.longitude == null) {
-            throw new Error("Cannot calculate distance: one or both entities have no position.");
+            throw new TypeError("Cannot calculate distance: one or both entities have no position.");
         }
 
         const lat1 = radians(this.latitude);

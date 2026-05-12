@@ -333,8 +333,8 @@ class APIClient {
      *     (`{ciphers, sigalgs, ecdhCurve}`). Falls back to the bundled Chrome 136 profile.
      */
     constructor({ impersonate = null, retry = null } = {}) {
-        const dispatcher = impersonate ? buildImpersonateAgent(impersonate) : defaultAgent;
-        this.__session = new Session({ dispatcher });
+        this.__dispatcher = impersonate ? buildImpersonateAgent(impersonate) : defaultAgent;
+        this.__session = new Session({ dispatcher: this.__dispatcher });
         this.__retry = retry;
     }
 
@@ -347,6 +347,24 @@ class APIClient {
      */
     async request(url, options = {}) {
         return runWithRetry(() => this.__session.request(url, options), this.__retry);
+    }
+
+    /**
+     * Make a stateless request that does not touch the shared cookie jar.
+     *
+     * Safe to call from concurrent fan-outs (e.g. `getAirports` issuing one
+     * request per country). The TLS dispatcher is still reused so the
+     * impersonation profile stays consistent with the session.
+     *
+     * @param {string} url
+     * @param {object} [options={}]
+     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     */
+    async requestStandalone(url, options = {}) {
+        return runWithRetry(
+            () => request(url, { dispatcher: this.__dispatcher, ...options }),
+            this.__retry,
+        );
     }
 
     /**

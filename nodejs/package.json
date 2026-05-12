@@ -1,6 +1,6 @@
 {
   "name": "flightradarapi",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "SDK for FlightRadar24",
   "main": "./FlightRadar24/index.js",
   "types": "./FlightRadar24/index.d.ts",

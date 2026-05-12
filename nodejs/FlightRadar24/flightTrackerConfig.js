@@ -4,10 +4,10 @@ const { isNumeric } = require("./util");
 const proxyHandler = {
     set: function(target, key, value) {
         if (!Object.prototype.hasOwnProperty.call(target, key)) {
-            throw new Error("Unknown option: '" + key + "'");
+            throw new RangeError("Unknown option: '" + key + "'");
         }
         if ((typeof value !== "number") && (!isNumeric(value))) {
-            throw new Error("Value must be a number. Got '" + value + "' for key '" + key + "'");
+            throw new TypeError("Value must be a number. Got '" + value + "' for key '" + key + "'");
         }
         target[key] = value.toString();
         return true;
