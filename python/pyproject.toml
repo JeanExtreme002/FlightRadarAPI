@@ -27,12 +27,12 @@ dependencies = [
 exclude = ["tests", ".flake8"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["FlightRadar24"]
+packages = ["FlightRadarAPI", "FlightRadar24"]
 
 # Force-include the PEP 561 marker so downstream type checkers always see it,
 # regardless of future changes to the global exclude list above.
 [tool.hatch.build.targets.wheel.force-include]
-"FlightRadar24/py.typed" = "FlightRadar24/py.typed"
+"FlightRadarAPI/py.typed" = "FlightRadarAPI/py.typed"
 
 [project.optional-dependencies]
 tests = [
@@ -46,7 +46,7 @@ tests = [
 "Bug Reports" = "https://github.com/JeanExtreme002/FlightRadarAPI/issues"
 
 [tool.hatch.version]
-path = "FlightRadar24/__init__.py"
+path = "FlightRadarAPI/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

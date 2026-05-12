@@ -2,7 +2,7 @@
 
 import pytest
 
-from FlightRadar24.errors import CloudflareError
+from FlightRadarAPI.errors import CloudflareError
 from package import Countries, FlightRadar24API
 from util import repeat_test
 

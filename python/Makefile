@@ -1,7 +1,7 @@
 # Makefile for FlightRadarAPI Python package
 
 # Variables
-PACKAGE_NAME = FlightRadar24
+PACKAGE_NAME = FlightRadarAPI
 BUILD_DIR = build
 DIST_DIR = dist
 EGG_INFO = $(PACKAGE_NAME).egg-info

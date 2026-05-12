@@ -24,7 +24,7 @@ from typing import Any, Dict
 
 import pytest
 
-from FlightRadar24.request import APIRequest
+from FlightRadarAPI.request import APIRequest
 
 from _request_doubles import FakeResponse, StubSession
 

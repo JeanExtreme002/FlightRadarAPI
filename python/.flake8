@@ -11,4 +11,4 @@ per-file-ignores =
     tests/package.py:F401, E402
 
     # zones.py is a data file with 2-space indentation; E121 (hanging indent) does not apply.
-    FlightRadar24/zones.py:E121
+    FlightRadarAPI/zones.py:E121

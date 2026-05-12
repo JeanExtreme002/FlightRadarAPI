@@ -34,11 +34,11 @@ jobs:
           pip install -e "./python[tests]"
           pip install flake8 mypy build pytest-cov pip-audit
       - name: Lint
-        run: cd python && python -m flake8 FlightRadar24 tests
+        run: cd python && python -m flake8 FlightRadarAPI FlightRadar24 tests
       - name: Type check
-        run: cd python && python -m mypy FlightRadar24 --ignore-missing-imports
+        run: cd python && python -m mypy FlightRadarAPI --ignore-missing-imports
       - name: Offline tests (PR gate)
-        run: cd python && pytest -m "not integration" --cov=FlightRadar24 --cov-report=term --cov-report=xml -v
+        run: cd python && pytest -m "not integration" --cov=FlightRadarAPI --cov-report=term --cov-report=xml -v
       - name: Integration tests (live FR24)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: nick-fields/retry@v3
@@ -58,4 +58,4 @@ jobs:
         run: |
           python -m build ./python
           pip install python/dist/*.whl --force-reinstall
-          python -c "from FlightRadar24 import FlightRadar24API; api = FlightRadar24API(); print('Install OK')"
+          python -c "from FlightRadarAPI import FlightRadar24API; api = FlightRadar24API(); print('Install OK')"

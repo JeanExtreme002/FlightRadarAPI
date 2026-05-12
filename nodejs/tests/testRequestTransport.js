@@ -18,7 +18,7 @@
 const { expect } = require("chai");
 const { MockAgent } = require("undici");
 
-const { request } = require("../FlightRadar24/request");
+const { request } = require("../FlightRadarAPI/request");
 
 
 describe("Content-type dispatch (transport)", function() {

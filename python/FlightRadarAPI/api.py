@@ -38,7 +38,7 @@ class FlightRadar24API:
         :param max_workers: Maximum threads used when fetching flight details concurrently
         :param impersonate: TLS impersonation profile (curl_cffi). Override when FR24
             updates its Cloudflare bot mitigation faster than this library releases.
-            See ``FlightRadar24.request.DEFAULT_IMPERSONATE`` for the current default.
+            See ``FlightRadarAPI.request.DEFAULT_IMPERSONATE`` for the current default.
         :param retry: Optional :class:`RetryPolicy` applied to transient failures
             (``CloudflareError`` and curl_cffi network errors). Defaults to no retry.
         """

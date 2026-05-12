@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 const expect = require("chai").expect;
 
-const { parseAirlinesHtml, parseAirportsHtml } = require("../FlightRadar24/parsers");
+const { parseAirlinesHtml, parseAirportsHtml } = require("../FlightRadarAPI/parsers");
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");

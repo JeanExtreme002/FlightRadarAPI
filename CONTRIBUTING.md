@@ -55,7 +55,7 @@ is a documented reason not to. Common targets that must stay in sync:
 
 Before publishing a new release, the version **must be bumped**. The version lives in two places:
 
-- `python/FlightRadar24/__init__.py` (`__version__`)
+- `python/FlightRadarAPI/__init__.py` (`__version__`)
 - `nodejs/package.json` (`version`)
 
 ## Reporting bugs and asking questions

@@ -5,7 +5,7 @@ import {
     Airport,
     FlightTrackerConfig,
     Zone,
-} from "../FlightRadar24/index";
+} from "../FlightRadarAPI/index";
 
 const api = new FlightRadar24API();
 expectType<FlightRadar24API>(new FlightRadar24API({timeout: 5000, maxWorkers: 4}));

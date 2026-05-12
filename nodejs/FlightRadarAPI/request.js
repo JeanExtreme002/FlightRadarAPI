@@ -321,7 +321,7 @@ class Session {
 }
 
 /**
- * Central HTTP client for the FlightRadar24 package.
+ * Central HTTP client for the FlightRadarAPI package.
  *
  * Owns the persistent session (cookie jar, TLS fingerprint, future bypass logic)
  * so that the rest of the codebase never has to deal with those concerns directly.

@@ -16,8 +16,8 @@
 const { expect } = require("chai");
 const { MockAgent } = require("undici");
 
-const { request, RetryPolicy, APIClient } = require("../FlightRadar24/request");
-const { CloudflareError } = require("../FlightRadar24/errors");
+const { request, RetryPolicy, APIClient } = require("../FlightRadarAPI/request");
+const { CloudflareError } = require("../FlightRadarAPI/errors");
 const { clientWithFakeSession } = require("./_requestDoubles");
 
 
