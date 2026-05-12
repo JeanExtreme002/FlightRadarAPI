@@ -1,9 +1,9 @@
 {
   "name": "flightradarapi",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "SDK for FlightRadar24",
-  "main": "./FlightRadar24/index.js",
-  "types": "./FlightRadar24/index.d.ts",
+  "main": "./FlightRadarAPI/index.js",
+  "types": "./FlightRadarAPI/index.d.ts",
   "scripts": {
     "test": "mocha tests --timeout 10000",
     "test:offline": "mocha tests/testParsersOffline.js tests/testRequestPolicy.js tests/testRequestTransport.js --timeout 10000",

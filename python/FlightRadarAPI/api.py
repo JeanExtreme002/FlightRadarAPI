@@ -38,7 +38,7 @@ class FlightRadar24API:
         :param max_workers: Maximum threads used when fetching flight details concurrently
         :param impersonate: TLS impersonation profile (curl_cffi). Override when FR24
             updates its Cloudflare bot mitigation faster than this library releases.
-            See ``FlightRadar24.request.DEFAULT_IMPERSONATE`` for the current default.
+            See ``FlightRadarAPI.request.DEFAULT_IMPERSONATE`` for the current default.
         :param retry: Optional :class:`RetryPolicy` applied to transient failures
             (``CloudflareError`` and curl_cffi network errors). Defaults to no retry.
         """
@@ -230,30 +230,39 @@ class FlightRadar24API:
         lon = math.radians(longitude)
 
         approx_earth_radius = 6371
+
+        # Distance from the centre to a corner of the bounding square.
         hypotenuse_distance = math.sqrt(2 * (math.pow(half_side_in_km, 2)))
 
+        # The two diagonal bearings (in radians) used below are 225° (SW corner,
+        # yields the min lat/lon) and 45° (NE corner, yields the max lat/lon).
+        bearing_sw = math.radians(225)
+        bearing_ne = math.radians(45)
+
+        # Destination-point formula along the SW bearing → south-west corner.
         lat_min = math.asin(
             math.sin(lat) * math.cos(hypotenuse_distance / approx_earth_radius)
             + math.cos(lat)
             * math.sin(hypotenuse_distance / approx_earth_radius)
-            * math.cos(225 * (math.pi / 180)),
+            * math.cos(bearing_sw),
         )
         lon_min = lon + math.atan2(
-            math.sin(225 * (math.pi / 180))
+            math.sin(bearing_sw)
             * math.sin(hypotenuse_distance / approx_earth_radius)
             * math.cos(lat),
             math.cos(hypotenuse_distance / approx_earth_radius)
             - math.sin(lat) * math.sin(lat_min),
         )
 
+        # Same formula along the NE bearing → north-east corner.
         lat_max = math.asin(
             math.sin(lat) * math.cos(hypotenuse_distance / approx_earth_radius)
             + math.cos(lat)
             * math.sin(hypotenuse_distance / approx_earth_radius)
-            * math.cos(45 * (math.pi / 180)),
+            * math.cos(bearing_ne),
         )
         lon_max = lon + math.atan2(
-            math.sin(45 * (math.pi / 180))
+            math.sin(bearing_ne)
             * math.sin(hypotenuse_distance / approx_earth_radius)
             * math.cos(lat),
             math.cos(hypotenuse_distance / approx_earth_radius)
@@ -276,7 +285,8 @@ class FlightRadar24API:
 
         :param country: Country name
         """
-        flag_url = Core.country_flag_url.format(country.lower().replace(" ", "-"))
+        slug = country.lower().replace(" ", "-")
+        flag_url = Core.country_flag_url.format(slug)
         headers = Core.image_headers.copy()
 
         headers.pop("origin", None)  # Does not work for this request.

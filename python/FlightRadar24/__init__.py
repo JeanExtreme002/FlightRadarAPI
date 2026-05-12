@@ -1,36 +1,37 @@
 # -*- coding: utf-8 -*-
 
 """
-Unofficial SDK for FlightRadar24.
+Deprecated import alias for the FlightRadarAPI SDK.
 
-This SDK provides flight and airport data available to the public
-on the FlightRadar24 website.
-
-See more information at:
-https://www.flightradar24.com/premium/
-https://www.flightradar24.com/terms-and-conditions
+The package was renamed to ``FlightRadarAPI`` so the Python import name
+matches the PyPI distribution name and the Node.js package name. This
+module re-exports the public API and aliases every submodule so legacy
+imports such as ``from FlightRadar24 import FlightRadar24API`` or
+``from FlightRadar24.errors import CloudflareError`` keep working, but a
+``DeprecationWarning`` is emitted on import.
 """
 
-__author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "1.5.0"
+import importlib
+import pkgutil
+import sys
+import warnings
 
-from .api import FlightRadar24API
-from .core import Countries
-from .entities import Airport, Entity, Flight
-from .errors import AirportNotFoundError, CloudflareError, FlightRadarError, LoginError
-from .flight_tracker_config import FlightTrackerConfig
-from .request import RetryPolicy
+import FlightRadarAPI as _pkg
 
-__all__ = [
-    "FlightRadar24API",
-    "Countries",
-    "Airport",
-    "Entity",
-    "Flight",
-    "AirportNotFoundError",
-    "CloudflareError",
-    "FlightRadarError",
-    "LoginError",
-    "FlightTrackerConfig",
-    "RetryPolicy",
-]
+warnings.warn(
+    "Importing from 'FlightRadar24' is deprecated and will be removed in a "
+    "future release. Import from 'FlightRadarAPI' instead "
+    "(e.g. 'from FlightRadarAPI import FlightRadar24API').",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Mirror every submodule of FlightRadarAPI under the legacy FlightRadar24
+# namespace so dotted imports keep resolving without touching disk.
+for _info in pkgutil.walk_packages(_pkg.__path__, prefix=f"{_pkg.__name__}."):
+    _mod = importlib.import_module(_info.name)
+    sys.modules[_info.name.replace(_pkg.__name__, __name__, 1)] = _mod
+del _info, _mod
+
+from FlightRadarAPI import *  # noqa: E402, F401, F403
+from FlightRadarAPI import __all__, __author__, __version__  # noqa: E402, F401

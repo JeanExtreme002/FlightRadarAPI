@@ -17,9 +17,9 @@ Cloudflare tuning escalated again), these assertions should remain valid
 
 import pytest
 
-from FlightRadar24 import request as request_module
-from FlightRadar24.errors import CloudflareError
-from FlightRadar24.request import APIRequest, RetryPolicy, _run_with_retry
+from FlightRadarAPI import request as request_module
+from FlightRadarAPI.errors import CloudflareError
+from FlightRadarAPI.request import APIRequest, RetryPolicy, _run_with_retry
 
 from _request_doubles import FakeResponse, StubSession
 

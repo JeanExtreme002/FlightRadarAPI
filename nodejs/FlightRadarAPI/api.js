@@ -108,7 +108,7 @@ class FlightRadar24API {
      */
     async getAirport(code, details = false) {
         if (code.length < 3 || code.length > 4) {
-            throw new Error("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
+            throw new TypeError("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
         }
 
         if (details) {
@@ -138,7 +138,7 @@ class FlightRadar24API {
      */
     async getAirportDetails(code, flightLimit = 100, page = 1) {
         if (code.length < 3 || code.length > 4) {
-            throw new Error("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
+            throw new TypeError("The code '" + code + "' is invalid. It must be the IATA or ICAO of the airport.");
         }
 
         const params = { "format": "json", "code": code, "limit": flightLimit, "page": page };
@@ -159,7 +159,7 @@ class FlightRadar24API {
             const limit = errors?.["limit"];
 
             if (limit !== undefined) {
-                throw new Error(limit["notBetween"]);
+                throw new RangeError(limit["notBetween"]);
             }
             throw new AirportNotFoundError("Could not find an airport by the code '" + code + "'.", errors);
         }
@@ -198,9 +198,13 @@ class FlightRadar24API {
      */
     async getAirports(countries) {
         const airports = [];
+        // Use stateless requests for the fan-out so per-country `Set-Cookie`
+        // responses do not race onto the shared session jar.
         await mapConcurrent(countries, this.maxWorkers, async (countryName) => {
             const countryHref = Core.airportsDataUrl + "/" + countryName;
-            const { content } = await this.__client.request(countryHref, { headers: Core.htmlHeaders, timeout: this.timeout });
+            const { content } = await this.__client.requestStandalone(
+                countryHref, { headers: Core.htmlHeaders, timeout: this.timeout },
+            );
             airports.push(...parseAirportsHtml(content, countryHref));
         });
         return airports;
@@ -250,30 +254,38 @@ class FlightRadar24API {
         const lon = radians(longitude);
 
         const approxEarthRadius = 6371;
+
+        // Distance from the centre to a corner of the bounding square.
         const hypotenuseDistance = Math.sqrt(2 * (Math.pow(halfSideInKm, 2)));
 
+        // Diagonal bearings: 225° (SW corner, min lat/lon) and 45° (NE corner, max lat/lon).
+        const bearingSw = radians(225);
+        const bearingNe = radians(45);
+
+        // Destination-point formula along the SW bearing → south-west corner.
         const latMin = Math.asin(
             Math.sin(lat) * Math.cos(hypotenuseDistance / approxEarthRadius) +
             Math.cos(lat) *
             Math.sin(hypotenuseDistance / approxEarthRadius) *
-            Math.cos(225 * (Math.PI / 180)),
+            Math.cos(bearingSw),
         );
         const lonMin = lon + Math.atan2(
-            Math.sin(225 * (Math.PI / 180)) *
+            Math.sin(bearingSw) *
             Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(lat),
             Math.cos(hypotenuseDistance / approxEarthRadius) -
             Math.sin(lat) * Math.sin(latMin),
         );
 
+        // Same formula along the NE bearing → north-east corner.
         const latMax = Math.asin(
             Math.sin(lat) * Math.cos(hypotenuseDistance / approxEarthRadius) +
             Math.cos(lat) *
             Math.sin(hypotenuseDistance / approxEarthRadius) *
-            Math.cos(45 * (Math.PI / 180)),
+            Math.cos(bearingNe),
         );
         const lonMax = lon + Math.atan2(
-            Math.sin(45 * (Math.PI / 180)) *
+            Math.sin(bearingNe) *
             Math.sin(hypotenuseDistance / approxEarthRadius) *
             Math.cos(lat),
             Math.cos(hypotenuseDistance / approxEarthRadius) -
@@ -296,7 +308,8 @@ class FlightRadar24API {
      * @return {Promise<[object, string] | null>}
      */
     async getCountryFlag(country) {
-        const flagUrl = Core.countryFlagUrl(country.toLowerCase().replaceAll(" ", "-"));
+        const slug = country.toLowerCase().replaceAll(" ", "-");
+        const flagUrl = Core.countryFlagUrl(slug);
 
         const headers = { ...Core.imageHeaders };
         delete headers["origin"];
@@ -321,7 +334,9 @@ class FlightRadar24API {
      * @return {Promise<object>}
      */
     async getFlightDetails(flight) {
-        const { content } = await this.__client.request(
+        // Stateless request so the concurrent fan-out in `getFlights(..., details=true)`
+        // doesn't interleave cookie writes on the shared session.
+        const { content } = await this.__client.requestStandalone(
             Core.flightDataUrl(flight.id), { headers: Core.jsonHeaders, timeout: this.timeout },
         );
         return content;
@@ -399,7 +414,7 @@ class FlightRadar24API {
         fileType = fileType.toLowerCase();
 
         if (!["csv", "kml"].includes(fileType)) {
-            throw new Error("File type '" + fileType + "' is not supported. Only CSV and KML are supported.");
+            throw new TypeError("File type '" + fileType + "' is not supported. Only CSV and KML are supported.");
         }
 
         const headers = { ...Core.jsonHeaders, "accesstoken": this.getLoginData()["accessToken"] };

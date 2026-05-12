@@ -2,8 +2,8 @@
 
 import pytest
 
-from FlightRadar24 import Entity, Flight
-from FlightRadar24.errors import CloudflareError, LoginError
+from FlightRadarAPI import Entity, Flight
+from FlightRadarAPI.errors import CloudflareError, LoginError
 from package import Countries, FlightRadar24API, version
 from util import repeat_test
 

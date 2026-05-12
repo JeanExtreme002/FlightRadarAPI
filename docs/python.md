@@ -16,7 +16,7 @@ pip install FlightRadarAPI
 Start by importing the `FlightRadar24API` class and creating an instance of it:
 
 ```python
-from FlightRadar24 import FlightRadar24API
+from FlightRadarAPI import FlightRadar24API
 fr_api = FlightRadar24API()
 ```
 

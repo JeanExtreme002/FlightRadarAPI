@@ -10,7 +10,7 @@ guard the parser's invariants, not byte-for-byte equality with production.
 
 import os
 
-from FlightRadar24.parsers import parse_airlines_html, parse_airports_html
+from FlightRadarAPI.parsers import parse_airlines_html, parse_airports_html
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
