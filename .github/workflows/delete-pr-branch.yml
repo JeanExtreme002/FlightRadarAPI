@@ -1,0 +1,41 @@
+name: Delete PR branch
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    name: Delete head branch after PR close
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const ref = pr.head.ref;
+
+            const protectedBranches = new Set(["main", "gh-pages"]);
+            if (protectedBranches.has(ref)) {
+              core.info(`Refusing to delete protected branch: ${ref}`);
+              return;
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${ref}`,
+              });
+              core.info(`Deleted branch: ${ref}`);
+            } catch (err) {
+              if (err.status === 422 || err.status === 404) {
+                core.info(`Branch already gone: ${ref}`);
+                return;
+              }
+              throw err;
+            }
