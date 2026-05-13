@@ -1,0 +1,33 @@
+version: 2
+
+# Security-only updates.
+# `open-pull-requests-limit: 0` disables version-update PRs while still
+# allowing Dependabot to open PRs for security advisories.
+# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#open-pull-requests-limit
+updates:
+  - package-ecosystem: "pip"
+    directory: "/python"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    labels:
+      - "deps"
+      - "security"
+
+  - package-ecosystem: "npm"
+    directory: "/nodejs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    labels:
+      - "deps"
+      - "security"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    labels:
+      - "deps"
+      - "security"
