@@ -49,11 +49,6 @@ class APIRequest(object):
     """
     Class to make requests to the FlightRadar24.
     """
-    __content_encodings = {
-        "": lambda x: x,
-        "br": brotli.decompress,
-        "gzip": gzip.decompress
-    }
 
     def __init__(
         self,
@@ -118,9 +113,18 @@ class APIRequest(object):
         content_encoding = self.__response.headers.get("Content-Encoding", "")
         content_type = self.__response.headers.get("Content-Type", "")
 
-        # Try to decode the content.
-        try: content = self.__content_encodings[content_encoding](content)
-        except Exception: pass
+        # The transport (requests/urllib3) normally decompresses gzip/brotli bodies
+        # transparently, in which case the payload is already plain and must not be
+        # decoded again. Only decode when the body still looks compressed: gzip is
+        # identified by its magic number; brotli has no magic number, so it is tried
+        # and silently skipped if the data was already decompressed by the transport.
+        if content_encoding == "gzip" and content[:2] == b"\x1f\x8b":
+            content = gzip.decompress(content)
+        elif content_encoding == "br":
+            try:
+                content = brotli.decompress(content)
+            except brotli.error:
+                pass
 
         # Return a dictionary if the content type is JSON.
         if "application/json" in content_type:
