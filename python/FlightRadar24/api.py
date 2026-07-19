@@ -10,7 +10,7 @@ from .core import Core
 from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
-from .request import APIRequest
+from .request import APIRequest, reset_connections
 
 
 @dataclasses.dataclass
@@ -341,6 +341,8 @@ class FlightRadar24API(object):
         *,
         details: bool = False,
         flight_id: Optional[str] = None,
+        max_retries: int = 3,
+        retry_delay: float = 0.5,
     ) -> List[Flight]:
         """
         Return a list of flights. See more options at set_flight_tracker_config() method.
@@ -350,6 +352,8 @@ class FlightRadar24API(object):
         :param registration: Aircraft registration
         :param aircraft_type: Aircraft model code. Ex: "B737"
         :param details: If True, it returns flights with detailed information
+        :param max_retries: Attempts made when the feed returns no flights (see below)
+        :param retry_delay: Seconds to wait between such attempts
         """
         request_params = dataclasses.asdict(self.__flight_tracker_config)
 
@@ -363,23 +367,39 @@ class FlightRadar24API(object):
         if aircraft_type: request_params["type"] = aircraft_type
         if flight_id: request_params["selected"] = flight_id
 
-        # Get all flights from Data Live FlightRadar24.
-        response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
-        response = response.get_content()
-
         flights: List[Flight] = list()
 
-        for flight_id, flight_info in response.items():
+        # The feed endpoint is load-balanced and some backend nodes intermittently
+        # answer HTTP 200 with a stats-only body ("visible" counts all zero, no
+        # flight entries) even though flights exist in the requested area. Such a
+        # response is indistinguishable from a genuinely empty region, so an empty
+        # result is retried a few times. Keep-alive connections stick to the same
+        # backend node, so the pooled connection is dropped before each retry to
+        # get routed to a different (healthy) node.
+        for attempt in range(max(1, max_retries)):
+            if attempt > 0:
+                reset_connections()
+                time.sleep(retry_delay)
 
-            # Get flights only.
-            if not flight_id[0].isnumeric():
-                continue
+            # Get all flights from Data Live FlightRadar24.
+            response = APIRequest(Core.real_time_flight_tracker_data_url, request_params, Core.json_headers, timeout=self.timeout)
+            content = response.get_content()
 
-            flight = Flight(flight_id, flight_info)
-            flights.append(flight)
+            for fid, flight_info in content.items():
 
-            # Set flight details.
-            if details:
+                # Get flights only.
+                if not fid[0].isnumeric():
+                    continue
+
+                flight = Flight(fid, flight_info)
+                flights.append(flight)
+
+            if flights:
+                break
+
+        # Set flight details.
+        if details:
+            for flight in flights:
                 flight_details = self.get_flight_details(flight)
                 flight.set_flight_details(flight_details)
 

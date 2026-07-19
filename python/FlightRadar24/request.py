@@ -24,6 +24,27 @@ _session.headers.update({
 })
 
 
+def reset_connections() -> None:
+    """
+    Drop the session's pooled keep-alive connections and its AWS load
+    balancer affinity cookies, so the next request gets routed to a
+    different backend node.
+
+    FR24's endpoints sit behind an AWS ALB with cookie-based session
+    stickiness (AWSALB/AWSALBCORS): once a request lands on a broken
+    backend node (e.g. feed.js answering a stats-only body with zero
+    flights), the affinity cookie pins every later request to that same
+    node. Only these cookies are removed — others (e.g. Cloudflare
+    clearance) must survive.
+    """
+    _session.close()
+
+    jar = _session.cookies
+    for cookie in list(jar):
+        if cookie.name.startswith("AWSALB"):
+            jar.clear(cookie.domain, cookie.path, cookie.name)
+
+
 class APIRequest(object):
     """
     Class to make requests to the FlightRadar24.
