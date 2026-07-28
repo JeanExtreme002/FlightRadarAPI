@@ -27,6 +27,13 @@ async function mapConcurrent(items, concurrency, fn) {
     await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
 }
 
+// Some FR24 live-feed backends answer 200 with a well-formed envelope but no
+// flight entries — indistinguishable from a legitimately empty result. The
+// `AWSALB` cookie then pins the session to that backend, so dropping it is what
+// makes the load balancer re-roll on retry.
+const FEED_STICKY_COOKIES = ["AWSALB", "AWSALBCORS"];
+const FEED_EMPTY_RETRIES = 4;
+
 /**
  * Main class of the FlightRadarAPI
  */
@@ -363,22 +370,25 @@ class FlightRadar24API {
         if (registration !== null) params["reg"] = registration;
         if (aircraftType !== null) params["type"] = aircraftType;
 
-        const { content } = await this.__client.request(Core.realTimeFlightTrackerDataUrl, {
-            params,
-            headers: Core.jsonHeaders,
-            timeout: this.timeout,
-        });
+        let flights = [];
 
-        const flights = [];
+        for (let attempt = 0; attempt <= FEED_EMPTY_RETRIES; attempt++) {
+            const { content } = await this.__client.request(Core.realTimeFlightTrackerDataUrl, {
+                params,
+                headers: Core.jsonHeaders,
+                timeout: this.timeout,
+            });
 
-        for (const flightId in content) {
-            if (!Object.prototype.hasOwnProperty.call(content, flightId)) {
-                continue;
+            // Get flights only.
+            flights = Object.entries(content ?? {})
+                .filter(([flightId]) => isNumeric(flightId[0]))
+                .map(([flightId, info]) => new Flight(flightId, info));
+
+            // `full_count: 0` means the feed really has nothing to report.
+            if (flights.length > 0 || !(content?.["full_count"] > 0)) {
+                break;
             }
-            if (!isNumeric(flightId[0])) {
-                continue;
-            }
-            flights.push(new Flight(flightId, content[flightId]));
+            FEED_STICKY_COOKIES.forEach((name) => this.__client.deleteCookie(name));
         }
 
         if (details) {

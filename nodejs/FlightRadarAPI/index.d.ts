@@ -33,6 +33,8 @@ export class APIClient {
     requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
     getCookie(name: string): string | undefined;
     clearCookies(): void;
+    /** Drop a single cookie, leaving the rest of the jar intact. */
+    deleteCookie(name: string): void;
 }
 
 /**

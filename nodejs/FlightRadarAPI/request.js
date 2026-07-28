@@ -292,6 +292,18 @@ class Session {
     }
 
     /**
+     * Drop a single stored cookie, leaving the rest of the jar intact.
+     *
+     * Sheds load-balancer stickiness without discarding the login session,
+     * which lives in the same jar.
+     *
+     * @param {string} name
+     */
+    deleteCookie(name) {
+        delete this.__cookies[name];
+    }
+
+    /**
      * Make an HTTP request, automatically sending stored cookies and storing
      * any cookies returned by the response.
      *
@@ -382,6 +394,15 @@ class APIClient {
      */
     clearCookies() {
         this.__session.clearCookies();
+    }
+
+    /**
+     * Drop a single cookie from the session, leaving the rest of the jar intact.
+     *
+     * @param {string} name
+     */
+    deleteCookie(name) {
+        this.__session.deleteCookie(name);
     }
 }
 
