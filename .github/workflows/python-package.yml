@@ -40,7 +40,6 @@ jobs:
       - name: Offline tests (PR gate)
         run: cd python && pytest -m "not integration" --cov=FlightRadarAPI --cov-report=term --cov-report=xml -v
       - name: Integration tests (live FR24)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10

@@ -41,7 +41,6 @@ jobs:
       - name: Offline tests (PR gate)
         run: npm run test:offline
       - name: Integration tests (live FR24)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10

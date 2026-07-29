@@ -122,6 +122,17 @@ class APIClient:
         """Clear all cookies from the session."""
         self.__session.cookies.clear()
 
+    def delete_cookie(self, name: str) -> None:
+        """Drop a single cookie, leaving the rest of the jar intact.
+
+        Sheds load-balancer stickiness without discarding the login session,
+        which lives in the same jar.
+        """
+        try:
+            del self.__session.cookies[name]
+        except KeyError:
+            pass
+
 
 class APIRequest:
     """

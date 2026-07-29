@@ -14,6 +14,13 @@ from .flight_tracker_config import FlightTrackerConfig
 from .parsers import parse_airlines_html, parse_airports_html
 from .request import APIClient, RetryPolicy
 
+# Some FR24 live-feed backends answer 200 with a well-formed envelope but no
+# flight entries -- indistinguishable from a legitimately empty result. The
+# "AWSALB" cookie then pins the session to that backend, so dropping it is what
+# makes the load balancer re-roll on retry.
+FEED_STICKY_COOKIES = ("AWSALB", "AWSALBCORS")
+FEED_EMPTY_RETRIES = 4
+
 
 class FlightRadar24API:
     """
@@ -342,24 +349,31 @@ class FlightRadar24API:
         if registration is not None: request_params["reg"] = registration
         if aircraft_type is not None: request_params["type"] = aircraft_type
 
-        # Get all flights from Data Live FlightRadar24.
-        response = self.__client.request(
-            Core.real_time_flight_tracker_data_url,
-            params=request_params,
-            headers=Core.json_headers,
-            timeout=self.timeout,
-        )
-        content = response.get_json_content()
-
         flights: List[Flight] = list()
 
-        for flight_id, flight_info in content.items():
+        for _ in range(FEED_EMPTY_RETRIES + 1):
+            # Get all flights from Data Live FlightRadar24.
+            response = self.__client.request(
+                Core.real_time_flight_tracker_data_url,
+                params=request_params,
+                headers=Core.json_headers,
+                timeout=self.timeout,
+            )
+            content = response.get_json_content()
 
             # Get flights only.
-            if not flight_id[0].isnumeric():
-                continue
+            flights = [
+                Flight(flight_id, flight_info)
+                for flight_id, flight_info in content.items()
+                if flight_id[0].isnumeric()
+            ]
 
-            flights.append(Flight(flight_id, flight_info))
+            # "full_count": 0 means the feed really has nothing to report.
+            if flights or not content.get("full_count"):
+                break
+
+            for cookie_name in FEED_STICKY_COOKIES:
+                self.__client.delete_cookie(cookie_name)
 
         if details:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
