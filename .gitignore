@@ -19,6 +19,11 @@ coverage.xml
 # Node.js
 node_modules/
 
+# Version managers (local dev only)
+.tool-versions
+.python-version
+.nvmrc
+
 # Editors / OS
 .idea/
 .vscode/
