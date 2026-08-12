@@ -104,7 +104,7 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
         return None
 
     if isinstance(value, int):
-        return value
+        return value if abs(value) <= MAX_EXACT_INTEGER else float(value)
 
     if isinstance(value, float):
         return value if math.isfinite(value) else None
@@ -186,13 +186,15 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
             )
 
         airports.append(Airport(basic_info={
-            "name": row.get("name", ""),
-            "icao": row.get("icao", ""),
-            "iata": row.get("iata", ""),
+            # `or ""` rather than a get() default: a JSON null must not survive
+            # as None, which is what Node's `?? ""` guarantees on its side.
+            "name": row.get("name") or "",
+            "icao": row.get("icao") or "",
+            "iata": row.get("iata") or "",
             "lat": latitude,
             "lon": longitude,
             "alt": _to_number(row.get("alt")),
-            "country": row.get("country", ""),
+            "country": row.get("country") or "",
         }))
 
     if wanted is not None:

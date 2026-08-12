@@ -17,12 +17,20 @@ from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_a
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
-# Coercion cases live outside the port so both languages are held to the same
-# table; see the `comment` field in the file itself.
-_SHARED = os.path.join(os.path.dirname(__file__), "..", "..", "testdata", "numeric-coercion.json")
-
-with open(_SHARED, "rb") as _f:
-    SHARED_NUMERIC_CASES = json.load(_f)["cases"]
+# Every case here caught a real bug or pins a stated invariant. Keep it in step
+# with the same list in nodejs/tests/testParsersOffline.js: the two ports have
+# drifted apart on exactly these inputs before.
+NUMERIC_CASES = [
+    ("whitespace", " ", None),
+    ("an array holding a number", [43], None),
+    ("a coordinate with a hemisphere suffix", "43.30 N", None),
+    ("an exponent overflowing a double", "1e999", None),
+    ("400 plain digits", "1" * 400, None),
+    ("a whole number as a string", "2436", 2436),
+    ("an integer past 2**53", 9007199254740993, 9007199254740992),
+    ("a negative decimal", "-23.4", -23.4),
+    ("a genuine zero", 0, 0),
+]
 
 
 def _load(name: str) -> bytes:
@@ -127,17 +135,32 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
     assert isinstance(airport.altitude, int)
 
 
-@pytest.mark.parametrize("case", SHARED_NUMERIC_CASES, ids=lambda case: case["label"])
-def test_parse_airports_json_numeric_coercion(case):
+@pytest.mark.parametrize(
+    "value,expected",
+    [(case[1], case[2]) for case in NUMERIC_CASES],
+    ids=[case[0] for case in NUMERIC_CASES],
+)
+def test_parse_airports_json_numeric_coercion(value, expected):
     payload = json.dumps({"rows": [{
         "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
-        "lat": case["input"], "lon": case["input"], "alt": case["input"],
+        "lat": value, "lon": value, "alt": value,
     }]})
     airport = parse_airports_json(payload)[0]
 
-    assert airport.latitude == case["expected"]
-    assert airport.longitude == case["expected"]
-    assert airport.altitude == case["expected"]
+    assert airport.latitude == expected
+    assert airport.longitude == expected
+    assert airport.altitude == expected
+
+
+def test_parse_airports_json_null_text_fields_become_empty_strings():
+    """A None here would break any caller that treats these as strings, e.g.
+    get_country_flag(airport.country)."""
+    payload = json.dumps({"rows": [{
+        "name": None, "iata": None, "icao": None, "country": None, "lat": 1, "lon": 2, "alt": 3,
+    }]})
+    airport = parse_airports_json(payload)[0]
+
+    assert [airport.name, airport.iata, airport.icao, airport.country] == ["", "", "", ""]
 
 
 def test_parse_airports_json_country_spelling_and_slug_round_trip():

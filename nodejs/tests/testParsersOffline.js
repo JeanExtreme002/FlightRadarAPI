@@ -16,11 +16,20 @@ const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("../Flig
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
 
-// Coercion cases live outside the port so both languages are held to the same
-// table; see the `comment` field in the file itself.
-const SHARED_NUMERIC_CASES = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "..", "..", "testdata", "numeric-coercion.json"), "utf-8"),
-).cases;
+// Every case here caught a real bug or pins a stated invariant. Keep it in step
+// with the same list in python/tests/test_parsers_offline.py: the two ports have
+// drifted apart on exactly these inputs before.
+const NUMERIC_CASES = [
+    ["whitespace", " ", null],
+    ["an array holding a number", [43], null],
+    ["a coordinate with a hemisphere suffix", "43.30 N", null],
+    ["an exponent overflowing a double", "1e999", null],
+    ["400 plain digits", "1".repeat(400), null],
+    ["a whole number as a string", "2436", 2436],
+    ["an integer past 2**53", 9007199254740993, 9007199254740992],
+    ["a negative decimal", "-23.4", -23.4],
+    ["a genuine zero", 0, 0],
+];
 
 
 describe("parseAirlinesHtml (offline)", function() {
@@ -144,6 +153,17 @@ describe("parseAirportsJson (offline)", function() {
         expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
     });
 
+    it("reads null text fields as empty strings", function() {
+        // A None here would break any caller that treats these as strings, e.g.
+        // getCountryFlag(airport.country).
+        const payload = JSON.stringify({ rows: [{
+            name: null, iata: null, icao: null, country: null, lat: 1, lon: 2, alt: 3,
+        }] });
+        const [airport] = parseAirportsJson(payload);
+
+        expect([airport.name, airport.iata, airport.icao, airport.country]).to.deep.equal(["", "", "", ""]);
+    });
+
     it("parses a body that arrived as raw bytes", function() {
         // request() returns an ArrayBuffer when the response carries an
         // unexpected content-type; the JSON inside is still good.
@@ -162,8 +182,8 @@ describe("parseAirportsJson (offline)", function() {
 });
 
 
-describe("parseAirportsJson numeric coercion (shared cases)", function() {
-    for (const { label, input, expected } of SHARED_NUMERIC_CASES) {
+describe("parseAirportsJson numeric coercion", function() {
+    for (const [label, input, expected] of NUMERIC_CASES) {
         it(`reads ${label} as ${JSON.stringify(expected)}`, function() {
             const payload = JSON.stringify({ rows: [{
                 name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
