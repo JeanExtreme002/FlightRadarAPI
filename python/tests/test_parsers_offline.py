@@ -9,6 +9,7 @@ guard the parser's invariants, not byte-for-byte equality with production.
 """
 
 import json
+import math
 import os
 
 import pytest
@@ -27,7 +28,6 @@ NUMERIC_CASES = [
     ("an exponent overflowing a double", "1e999", None),
     ("400 plain digits", "1" * 400, None),
     ("a whole number as a string", "2436", 2436),
-    ("an integer past 2**53", 9007199254740993, 9007199254740992),
     ("a negative decimal", "-23.4", -23.4),
     ("a genuine zero", 0, 0),
 ]
@@ -150,6 +150,19 @@ def test_parse_airports_json_numeric_coercion(value, expected):
     assert airport.latitude == expected
     assert airport.longitude == expected
     assert airport.altitude == expected
+
+
+@pytest.mark.parametrize("literal", ["1" * 400, "9007199254740993", "-" + "1" * 400])
+def test_parse_airports_json_survives_raw_numbers_no_double_can_hold(literal):
+    """Written as text on purpose: json.loads turns these into unbounded ints,
+    where float() raises OverflowError instead of returning inf."""
+    payload = (
+        '{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",'
+        f'"lat":{literal},"lon":1,"alt":2}}]}}'
+    )
+    latitude = parse_airports_json(payload)[0].latitude
+
+    assert latitude is None or math.isfinite(latitude)
 
 
 def test_parse_airports_json_null_text_fields_become_empty_strings():

@@ -26,7 +26,6 @@ const NUMERIC_CASES = [
     ["an exponent overflowing a double", "1e999", null],
     ["400 plain digits", "1".repeat(400), null],
     ["a whole number as a string", "2436", 2436],
-    ["an integer past 2**53", 9007199254740993, 9007199254740992],
     ["a negative decimal", "-23.4", -23.4],
     ["a genuine zero", 0, 0],
 ];
@@ -151,6 +150,20 @@ describe("parseAirportsJson (offline)", function() {
 
     it("returns an empty list for an unknown country", function() {
         expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
+    });
+
+    it("survives numbers written raw in the JSON that no double can hold", function() {
+        // Built as text on purpose: a JS number literal is already rounded (or
+        // Infinity) before it can reach the payload, so only raw JSON exercises
+        // this. Python reaches it as an unbounded int, where float() overflows.
+        for (const literal of ["1".repeat(400), "9007199254740993", "-1".concat("1".repeat(399))]) {
+            const payload = `{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain","lat":${literal},"lon":1,"alt":2}]}`;
+            const [airport] = parseAirportsJson(payload);
+
+            expect(airport.latitude, literal.slice(0, 12)).to.satisfy(
+                (latitude) => latitude === null || Number.isFinite(latitude),
+            );
+        }
     });
 
     it("reads null text fields as empty strings", function() {

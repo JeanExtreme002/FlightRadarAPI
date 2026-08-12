@@ -100,43 +100,43 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     stay ints so that altitudes read the same in both ports -- the feed sends
     `alt` as an int for most rows and as a string ("-1") for the rest.
     """
-    if value is None or isinstance(value, bool):
+    # Booleans are ints in Python, and str() on a list or dict would invent a
+    # number: str([43]) == "43".
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         return None
 
-    if isinstance(value, int):
-        return value if abs(value) <= MAX_EXACT_INTEGER else float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
 
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
+        # Decimal numbers only, so both ports accept and reject exactly the same
+        # strings: bare `float` would also take "1_000" and "inf".
+        if not NUMERIC_PATTERN.match(stripped):
+            return None
 
-    # Only strings are worth parsing; str() on anything else would invent a
-    # number, e.g. str([43]) == "43".
-    if not isinstance(value, str):
+        text: Union[int, float, str] = stripped
+    else:
+        text = value
+
+    # Every value funnels through one conversion, so overflow is handled once:
+    # Python ints have no ceiling, and both "1e999" and 400 plain digits reach
+    # here as something a double cannot hold.
+    try:
+        number = float(text)
+    except OverflowError:
         return None
-
-    text = value.strip()
-
-    # Decimal numbers only, so both ports accept and reject exactly the same
-    # strings: bare `float` would also take "1_000" and "inf".
-    if not NUMERIC_PATTERN.match(text):
-        return None
-
-    # Float first: the pattern still admits values that overflow a double, both
-    # as exponents ("1e999") and as plain digits ("1" * 400). Python ints have no
-    # such ceiling, so checking them after int() would let those through.
-    number = float(text)
 
     if not math.isfinite(number):
         return None
 
     try:
         exact = int(text)
-    except ValueError:
+    except (ValueError, OverflowError):
         return number
 
-    # JavaScript cannot represent integers past 2**53 - 1 exactly, so past that
-    # both ports report the same double instead of drifting apart.
-    return exact if abs(exact) <= MAX_EXACT_INTEGER else number
+    # Whole numbers stay ints so altitudes read the same in both ports, but only
+    # up to where JavaScript is still exact. `exact == number` keeps a decimal
+    # like -23.4 from being truncated to -23.
+    return exact if exact == number and abs(exact) <= MAX_EXACT_INTEGER else number
 
 
 def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:
