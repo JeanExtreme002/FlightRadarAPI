@@ -11,7 +11,7 @@ from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
 from .flight_tracker_config import FlightTrackerConfig
-from .parsers import parse_airlines_html, parse_airports_html
+from .parsers import parse_airlines_html, parse_airports_json
 from .request import APIClient, RetryPolicy
 
 # Some FR24 live-feed backends answer 200 with a well-formed envelope but no
@@ -187,21 +187,17 @@ class FlightRadar24API:
         )
         return response.get_json_content()
 
-    def get_airports(self, countries: List[Countries]) -> List[Airport]:
+    def get_airports(self, countries: Optional[List[Countries]] = None) -> List[Airport]:
         """
-        Return a list with all airports for specified countries.
+        Return a list with all airports, optionally narrowed to some countries.
 
-        :param countries: List of country names from Countries enum.
+        :param countries: List of country names from Countries enum. Every country when omitted.
         """
-        def _fetch(country):
-            href = Core.airports_data_url + "/" + country.value
-            response = self.__client.request_standalone(href, headers=Core.html_headers, timeout=self.timeout)
-            return parse_airports_html(response.get_bytes_content(), href)
-
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(_fetch, countries)
-
-        return [airport for result in results for airport in result]
+        response = self.__client.request(
+            Core.airports_json_url, headers=Core.json_headers, timeout=self.timeout,
+        )
+        slugs = [country.value for country in countries] if countries is not None else None
+        return parse_airports_json(response.get_json_content(), slugs)
 
     def get_bookmarks(self) -> Dict:
         """

@@ -1,0 +1,68 @@
+{
+    "version": "1786010717",
+    "rows": [
+        {
+            "name": "Sao Paulo Guarulhos International Airport",
+            "iata": "GRU",
+            "icao": "SBGR",
+            "lat": -23.429991,
+            "lon": -46.4674,
+            "country": "Brazil",
+            "alt": 2436
+        },
+        {
+            "name": "Rio de Janeiro Galeao International Airport",
+            "iata": "GIG",
+            "icao": "SBGL",
+            "lat": -22.805696,
+            "lon": -43.25523,
+            "country": "Brazil",
+            "alt": 22
+        },
+        {
+            "name": "Sao Paulo Congonhas Airport",
+            "iata": "CGH",
+            "icao": "SBSP",
+            "lat": -23.627348,
+            "lon": -46.655987,
+            "country": "Brazil",
+            "alt": 2614
+        },
+        {
+            "name": "Los Angeles International Airport",
+            "iata": "LAX",
+            "icao": "KLAX",
+            "lat": 33.94252,
+            "lon": -118.406998,
+            "country": "United States",
+            "alt": 125
+        },
+        {
+            "name": "New York John F. Kennedy International Airport",
+            "iata": "JFK",
+            "icao": "KJFK",
+            "lat": 40.639751,
+            "lon": -73.7789,
+            "country": "United States",
+            "alt": 14
+        },
+        {
+            "name": "A Coruna Airport",
+            "iata": "LCG",
+            "icao": "LECO",
+            "lat": 43.302059,
+            "lon": -8.37725,
+            "country": "Spain",
+            "alt": 326
+        },
+        {
+            "name": "Broken Coords Airport",
+            "iata": "BAD",
+            "icao": "SBAD",
+            "lat": "n/a",
+            "lon": "",
+            "country": "Brazil",
+            "alt": 0
+        }
+    ]
+}

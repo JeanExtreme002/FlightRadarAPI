@@ -5,7 +5,7 @@ const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const { AirportNotFoundError, LoginError } = require("./errors");
 const { isNumeric, radians, rad2deg } = require("./util");
-const { parseAirlinesHtml, parseAirportsHtml } = require("./parsers");
+const { parseAirlinesHtml, parseAirportsJson } = require("./parsers");
 
 
 /**
@@ -198,23 +198,16 @@ class FlightRadar24API {
     }
 
     /**
-     * Return a list with all airports for specified countries.
+     * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {Array<string>} countries - Array of country names from Countries enum
+     * @param {Array<string>} [countries] - Array of country names from Countries enum; every country when omitted
      * @return {Promise<Array<Airport>>}
      */
     async getAirports(countries) {
-        const airports = [];
-        // Use stateless requests for the fan-out so per-country `Set-Cookie`
-        // responses do not race onto the shared session jar.
-        await mapConcurrent(countries, this.maxWorkers, async (countryName) => {
-            const countryHref = Core.airportsDataUrl + "/" + countryName;
-            const { content } = await this.__client.requestStandalone(
-                countryHref, { headers: Core.htmlHeaders, timeout: this.timeout },
-            );
-            airports.push(...parseAirportsHtml(content, countryHref));
-        });
-        return airports;
+        const { content } = await this.__client.request(
+            Core.airportsJsonUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
+        );
+        return parseAirportsJson(content, countries ?? null);
     }
 
     /**

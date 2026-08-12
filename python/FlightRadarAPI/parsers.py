@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import json
 import logging
-from typing import Dict, List, Optional
+import math
+import re
+import unicodedata
+from typing import Dict, List, Optional, Union
 
 from bs4 import BeautifulSoup
 
@@ -70,74 +74,99 @@ def parse_airlines_html(html: bytes) -> List[Dict]:
     return airlines
 
 
-def parse_airports_html(html: bytes, country_href: str) -> List[Airport]:
+def country_to_slug(country: Optional[str]) -> str:
     """
-    Parse the airports listing HTML page for a country into a list of Airport instances.
+    Slugify a country name the way FR24 spells it in its data page URLs, so feed
+    rows can be matched against the Countries enum ("United States" -> "united-states").
     """
-    soup = BeautifulSoup(html, "html.parser")
-    tbody = soup.find("tbody")
+    # The feed is ASCII today ("Curacao"); stripping diacritics keeps the match
+    # working if that ever changes.
+    decomposed = unicodedata.normalize("NFKD", str(country or ""))
+    ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
 
-    if not tbody:
-        _logger.warning(
-            "parse_airports_html: no <tbody> for %s — FR24 page layout may have changed.",
-            country_href,
-        )
+
+def _to_coordinate(value: object) -> Optional[float]:
+    """
+    Coerce a feed coordinate into a float, or None when it is unusable.
+
+    Invalid coordinates must not become 0.0: that would place the airport in the
+    Gulf of Guinea instead of marking its position as unknown.
+    """
+    if value is None or value == "":
+        return None
+
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+    return number if math.isfinite(number) else None
+
+
+def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:
+    """
+    Parse the airports JSON feed into a list of Airport instances.
+
+    :param payload: Body of Core.airports_json_url.
+    :param countries: Country slugs from the Countries enum. Every airport is kept when omitted.
+    """
+    if isinstance(payload, (bytes, str)):
+        try:
+            data = json.loads(payload)
+        except ValueError:
+            _logger.warning("parse_airports_json: response is not valid JSON — FR24 feed may have changed.")
+            return []
+    else:
+        data = payload
+
+    rows = data.get("rows") if isinstance(data, dict) else None
+
+    if not isinstance(rows, list):
+        _logger.warning('parse_airports_json: no "rows" array in response — FR24 feed may have changed.')
         return []
 
-    country_name = country_href.split("/")[-1].replace("-", " ").title()
+    wanted = {country_to_slug(country) for country in countries} if countries is not None else None
+    matched = set()
     airports = []
 
-    for tr in tbody.find_all("tr"):
-        a_elements = tr.find_all("a", attrs={"data-iata": True, "data-lat": True, "data-lon": True})
-
-        if not a_elements:
+    for row in rows:
+        if not isinstance(row, dict):
             continue
 
-        a_element = a_elements[0]
+        slug = country_to_slug(row.get("country"))
 
-        icao = ""
-        iata = str(a_element.get("data-iata", "")).strip()
-        latitude = str(a_element.get("data-lat", "")).strip()
-        longitude = str(a_element.get("data-lon", "")).strip()
-        name_part = a_element.get_text(strip=True)
+        if wanted is not None:
+            if slug not in wanted:
+                continue
+            matched.add(slug)
 
-        small_element = a_element.find("small")
+        latitude = _to_coordinate(row.get("lat"))
+        longitude = _to_coordinate(row.get("lon"))
 
-        if small_element:
-            codes_text = small_element.get_text(strip=True).lstrip("(").rstrip(")").strip()
-            name_part = name_part.replace(small_element.get_text(strip=True), "").replace("()", "").strip()
-
-            if "/" in codes_text:
-                code1, code2 = (s.strip() for s in codes_text.split("/", maxsplit=1))
-                if len(code1) == 3 and len(code2) == 4:
-                    iata, icao = code1, code2
-                elif len(code1) == 4 and len(code2) == 3:
-                    iata, icao = code2, code1
-            elif len(codes_text) == 3:
-                iata = codes_text
-            elif len(codes_text) == 4:
-                icao = codes_text
-
-        lat_float: Optional[float]
-        lon_float: Optional[float]
-        try:
-            lat_float = float(latitude) if latitude else None
-            lon_float = float(longitude) if longitude else None
-        except ValueError:
+        if latitude is None or longitude is None:
             _logger.warning(
-                "parse_airports_html: invalid coordinates for airport %r (lat=%r, lon=%r) — skipping position.",
-                name_part, latitude, longitude,
+                "parse_airports_json: invalid coordinates for airport %r (lat=%r, lon=%r) — skipping position.",
+                row.get("name", ""), row.get("lat"), row.get("lon"),
             )
-            lat_float, lon_float = None, None
 
         airports.append(Airport(basic_info={
-            "name": name_part,
-            "icao": icao,
-            "iata": iata,
-            "lat": lat_float,
-            "lon": lon_float,
-            "alt": None,
-            "country": country_name,
+            "name": row.get("name", ""),
+            "icao": row.get("icao", ""),
+            "iata": row.get("iata", ""),
+            "lat": latitude,
+            "lon": longitude,
+            "alt": _to_coordinate(row.get("alt")),
+            "country": row.get("country", ""),
         }))
+
+    if wanted is not None:
+        missing = sorted(wanted - matched)
+
+        if missing:
+            _logger.warning(
+                "parse_airports_json: no airports found for %s — check the Countries enum.",
+                ", ".join(missing),
+            )
 
     return airports

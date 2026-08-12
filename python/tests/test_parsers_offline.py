@@ -10,7 +10,7 @@ guard the parser's invariants, not byte-for-byte equality with production.
 
 import os
 
-from FlightRadarAPI.parsers import parse_airlines_html, parse_airports_html
+from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_airports_json
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -63,42 +63,62 @@ def test_parse_airlines_html_empty_input_returns_empty_list():
     assert parse_airlines_html(b"") == []
     assert parse_airlines_html(b"<html><body><p>no tbody here</p></body></html>") == []
 
+# --- parse_airports_json ---
 
-# --- parse_airports_html ---
 
-def test_parse_airports_html_extracts_basic_fields():
-    airports = parse_airports_html(_load("airports_brazil.html"), "/data/airports/brazil")
+def test_parse_airports_json_extracts_basic_fields():
+    airports = parse_airports_json(_load("airports.json"))
     by_iata = {a.iata: a for a in airports}
     assert "GRU" in by_iata and "GIG" in by_iata
 
     gru = by_iata["GRU"]
     assert gru.icao == "SBGR"
     assert gru.country == "Brazil"
-    assert abs(gru.latitude - (-23.4356)) < 1e-6
-    assert abs(gru.longitude - (-46.4731)) < 1e-6
+    assert abs(gru.latitude - (-23.429991)) < 1e-6
+    assert abs(gru.longitude - (-46.4674)) < 1e-6
+    assert gru.altitude == 2436
 
 
-def test_parse_airports_html_handles_iata_only_small_tag():
-    airports = parse_airports_html(_load("airports_brazil.html"), "/data/airports/brazil")
-    cgh = next(a for a in airports if a.iata == "CGH")
-    assert cgh.icao == ""
+def test_parse_airports_json_keeps_every_country_without_filter():
+    countries = {a.country for a in parse_airports_json(_load("airports.json"))}
+    assert {"Brazil", "United States", "Spain"} <= countries
 
 
-def test_parse_airports_html_invalid_coordinates_become_none():
+def test_parse_airports_json_filters_by_country_slug():
+    airports = parse_airports_json(_load("airports.json"), ["united-states"])
+    assert airports
+    assert all(a.country == "United States" for a in airports)
+
+
+def test_parse_airports_json_accepts_several_countries():
+    airports = parse_airports_json(_load("airports.json"), ["brazil", "spain"])
+    assert {a.country for a in airports} == {"Brazil", "Spain"}
+
+
+def test_parse_airports_json_invalid_coordinates_become_none():
     """Regression: invalid coords used to be silently coerced to (0.0, 0.0)
     placing the airport in the Gulf of Guinea. They must be None now."""
-    airports = parse_airports_html(_load("airports_brazil.html"), "/data/airports/brazil")
+    airports = parse_airports_json(_load("airports.json"))
     bad = next(a for a in airports if a.iata == "BAD")
     assert bad.latitude is None
     assert bad.longitude is None
 
 
-def test_parse_airports_html_empty_input_returns_empty_list():
-    assert parse_airports_html(b"", "/data/airports/brazil") == []
+def test_parse_airports_json_unknown_country_returns_empty_list():
+    assert parse_airports_json(_load("airports.json"), ["atlantis"]) == []
 
 
-def test_parse_airports_html_derives_country_from_href():
-    airports = parse_airports_html(
-        _load("airports_brazil.html"), "/data/airports/united-states",
-    )
-    assert all(a.country == "United States" for a in airports)
+def test_parse_airports_json_invalid_payload_returns_empty_list():
+    assert parse_airports_json(b"") == []
+    assert parse_airports_json(b"{}") == []
+    assert parse_airports_json(b"<html>not json</html>") == []
+
+
+# --- country_to_slug ---
+
+def test_country_to_slug_matches_countries_enum_spelling():
+    assert country_to_slug("United States") == "united-states"
+    assert country_to_slug("Democratic Republic Of The Congo") == "democratic-republic-of-the-congo"
+    assert country_to_slug("Curacao") == "curacao"
+    assert country_to_slug("Curaçao") == "curacao"
+    assert country_to_slug(None) == ""

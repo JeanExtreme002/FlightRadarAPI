@@ -233,7 +233,12 @@ class APIRequest:
         try:
             content = decode(content)
         except Exception as err:
-            _logger.warning(
+            # No gzip magic number under a "gzip" header means curl_cffi already
+            # decompressed the body — routine, so keep it out of the warning log.
+            transport_decoded = content_encoding == "gzip" and not content.startswith(b"\x1f\x8b")
+
+            _logger.log(
+                logging.DEBUG if transport_decoded else logging.WARNING,
                 "APIRequest.get_content: failed to decode Content-Encoding=%r for %s (%s). "
                 "Assuming the transport already decompressed and returning raw bytes.",
                 content_encoding, self.url, err,

@@ -71,89 +71,106 @@ function parseAirlinesHtml(html) {
 }
 
 /**
- * Parse the airports listing HTML page for a country into a list of Airport instances.
+ * Slugify a country name the way FR24 spells it in its data page URLs, so feed
+ * rows can be matched against the Countries enum.
  *
- * @param {string|Buffer} html
- * @param {string} countryHref - Full URL used to fetch the page (used to derive the display name)
+ * @param {string} country - Country name as spelled by FR24 (e.g. "United States")
+ * @return {string} URL-friendly form matching the Countries enum (e.g. "united-states")
+ */
+function countryToSlug(country) {
+    // The feed is ASCII today ("Curacao"); stripping diacritics keeps the match
+    // working if that ever changes.
+    return String(country ?? "")
+        .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+/**
+ * Coerce a feed coordinate into a number, or null when it is unusable.
+ *
+ * Invalid coordinates must not become 0.0: that would place the airport in the
+ * Gulf of Guinea instead of marking its position as unknown.
+ *
+ * @param {*} value
+ * @return {number|null}
+ */
+function toCoordinate(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const number = typeof value === "number" ? value : parseFloat(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * Parse the airports JSON feed into a list of Airport instances.
+ *
+ * @param {object|string|Buffer} payload - Body of Core.airportsJsonUrl
+ * @param {Array<string>} [countries] - Country slugs from the Countries enum; every airport is kept when omitted
  * @return {Array<Airport>}
  */
-function parseAirportsHtml(html, countryHref) {
-    const root = parse(typeof html === "string" ? html : html.toString());
-    const tbody = root.querySelector("tbody");
+function parseAirportsJson(payload, countries = null) {
+    let data = payload;
 
-    if (!tbody) {
-        console.warn(`parseAirportsHtml: no <tbody> for ${countryHref} — FR24 page layout may have changed.`);
+    if (typeof data === "string" || Buffer.isBuffer(data)) {
+        try {
+            data = JSON.parse(data.toString());
+        }
+        catch {
+            console.warn("parseAirportsJson: response is not valid JSON — FR24 feed may have changed.");
+            return [];
+        }
+    }
+
+    const rows = data && Array.isArray(data["rows"]) ? data["rows"] : null;
+
+    if (!rows) {
+        console.warn("parseAirportsJson: no \"rows\" array in response — FR24 feed may have changed.");
         return [];
     }
 
-    const countryDisplayName = countryHref.split("/").pop().replace(/-/g, " ")
-        .split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-
+    const wanted = countries ? new Set(countries.map(countryToSlug)) : null;
+    const matched = new Set();
     const airports = [];
 
-    for (const tr of tbody.querySelectorAll("tr")) {
-        const aElement = tr.querySelector("a[data-iata][data-lat][data-lon]");
+    for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
 
-        if (!aElement) continue;
+        const slug = countryToSlug(row["country"]);
 
-        let icao = "";
-        let iata = aElement.getAttribute("data-iata") || "";
-        const latitude = aElement.getAttribute("data-lat") || "";
-        const longitude = aElement.getAttribute("data-lon") || "";
-        let namePart = aElement.text.trim();
-
-        const smallElement = aElement.querySelector("small");
-
-        if (smallElement) {
-            const smallText = smallElement.text.trim();
-            const codesText = smallText.replace(/^\(/, "").replace(/\)$/, "").trim();
-            namePart = namePart.replace(smallText, "").replace(/\(\)/, "").trim();
-
-            if (codesText.includes("/")) {
-                const codes = codesText.split("/");
-                const code1 = codes[0].trim();
-                const code2 = codes[1].trim();
-
-                if (code1.length === 3 && code2.length === 4) {
-                    iata = code1;
-                    icao = code2;
-                }
-                else if (code1.length === 4 && code2.length === 3) {
-                    iata = code2;
-                    icao = code1;
-                }
-            }
-            else if (codesText.length === 3) {
-                iata = codesText;
-            }
-            else if (codesText.length === 4) {
-                icao = codesText;
-            }
+        if (wanted) {
+            if (!wanted.has(slug)) continue;
+            matched.add(slug);
         }
 
-        let latNum = latitude ? parseFloat(latitude) : null;
-        let lonNum = longitude ? parseFloat(longitude) : null;
-        if (Number.isNaN(latNum) || Number.isNaN(lonNum)) {
+        const latitude = toCoordinate(row["lat"]);
+        const longitude = toCoordinate(row["lon"]);
+
+        if (latitude === null || longitude === null) {
             console.warn(
-                `parseAirportsHtml: invalid coordinates for airport "${namePart}" ` +
-                `(lat=${latitude}, lon=${longitude}) — skipping position.`,
+                `parseAirportsJson: invalid coordinates for airport "${row["name"] ?? ""}" ` +
+                `(lat=${row["lat"]}, lon=${row["lon"]}) — skipping position.`,
             );
-            latNum = null;
-            lonNum = null;
         }
 
         airports.push(new Airport({
-            "name": namePart,
-            "icao": icao,
-            "iata": iata,
-            "lat": latNum,
-            "lon": lonNum,
-            "alt": null,
-            "country": countryDisplayName,
+            "name": row["name"] ?? "",
+            "icao": row["icao"] ?? "",
+            "iata": row["iata"] ?? "",
+            "lat": latitude,
+            "lon": longitude,
+            "alt": toCoordinate(row["alt"]),
+            "country": row["country"] ?? "",
         }));
+    }
+
+    if (wanted) {
+        const missing = [...wanted].filter((slug) => !matched.has(slug));
+
+        if (missing.length > 0) {
+            console.warn(`parseAirportsJson: no airports found for ${missing.join(", ")} — check the Countries enum.`);
+        }
     }
 
     return airports;
 }
 
-module.exports = { parseAirlinesHtml, parseAirportsHtml };
+module.exports = { parseAirlinesHtml, parseAirportsJson, countryToSlug };
