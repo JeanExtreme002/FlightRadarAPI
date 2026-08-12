@@ -1,26 +1,7 @@
 name: Publish Packages
 
-# Publishes both distributions whenever a GitHub Release is published:
-#   - python/  -> PyPI  (FlightRadarAPI)
-#   - nodejs/  -> npm   (flightradarapi)
-#
-# Both registries are reached via OIDC "trusted publishing", so no long-lived
-# API token is stored in this repository. Setup required once per registry:
-#
-#   PyPI  -> pypi.org > project > Publishing > add a GitHub trusted publisher
-#            (owner: JeanExtreme002, repo: FlightRadarAPI,
-#             workflow: publish.yml, environment: pypi)
-#
-#   npm   -> npmjs.com > package > Settings > Trusted publisher
-#            (GitHub Actions, repo JeanExtreme002/FlightRadarAPI,
-#             workflow publish.yml, environment: npm)
-#            Requires npm >= 11.5.1, which the job installs explicitly.
-#
-# If npm trusted publishing is ever unavailable, swap the publish step for a
-# classic token: set the NPM_TOKEN secret and add
-#   env:
-#     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-# to the `npm publish` step (the setup-node registry-url is already in place).
+# Both registries use OIDC trusted publishing, which must be configured once
+# on pypi.org and npmjs.com for this repo, workflow file and environment.
 
 on:
   release:
@@ -41,9 +22,6 @@ permissions:
   contents: read
 
 jobs:
-  # Guard rail: the release tag must match the version declared in both
-  # manifests. Without this, a mistyped tag would silently republish the
-  # version that is already on the registry (or publish the wrong one).
   verify-versions:
     runs-on: ubuntu-latest
     steps:
@@ -68,7 +46,6 @@ jobs:
       - name: Check versions match the release tag
         if: github.event_name == 'release'
         run: |
-          # Accepts both "v1.5.2" and "1.5.2" tags.
           tag="${{ github.event.release.tag_name }}"
           tag="${tag#v}"
           if [ "$tag" != "${{ steps.versions.outputs.python }}" ]; then
@@ -144,8 +121,8 @@ jobs:
         run: npm run test:types
 
       - name: Offline tests
-        # Live FR24 integration tests are intentionally excluded: a flaky
-        # upstream response must never block a release that already passed CI.
+        # Live FR24 integration tests are left out on purpose: a flaky upstream
+        # response must not block a release that already passed CI.
         run: npm run test:offline
 
       - name: Validate package contents
