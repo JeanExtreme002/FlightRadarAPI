@@ -51,18 +51,16 @@ describe("Testing FlightRadarAPI version " + version, function() {
             expect(results.length).to.be.above(expected - 1);
         });
 
-        it("Expected every airport when no country is given.", async function() {
+        it("Expected every airport when no country is given, each with a flag.", async function() {
             const results = await frApi.getAirports();
             expect(results.length).to.be.above(expected);
             expect(new Set(results.map((airport) => airport.country)).size).to.be.above(countries.length);
-        });
 
-        it("Expected the country of an airport to resolve to a flag.", async function() {
-            // Regression: FR24 spells some countries with parentheses, which used
-            // to produce an invalid flag URL when chaining the two calls.
-            const results = await frApi.getAirports([Countries.MYANMAR_BURMA]);
-            expect(results.length).to.be.above(0);
-            expect(await frApi.getCountryFlag(results[0].country)).to.not.equal(null);
+            // Regression: FR24 spells some countries with characters that used to
+            // reach the flag URL verbatim ("Myanmar (Burma)"). Picked from the
+            // response rather than hard-coded, so the guard survives a rename.
+            const tricky = results.find((airport) => /[^a-z ]/i.test(airport.country)) ?? results[0];
+            expect(await frApi.getCountryFlag(tricky.country), tricky.country).to.not.equal(null);
         });
     });
 

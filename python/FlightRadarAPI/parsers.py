@@ -13,6 +13,8 @@ from .entities.airport import Airport
 
 _logger = logging.getLogger(__name__)
 
+NUMERIC_PATTERN = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
+
 
 def parse_airlines_html(html: bytes) -> List[Dict]:
     """
@@ -95,24 +97,26 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     stay ints so that altitudes read the same in both ports -- the feed sends
     `alt` as an int for most rows and as a string ("-1") for the rest.
     """
-    if value is None or isinstance(value, bool) or value == "":
+    if value is None or isinstance(value, bool):
         return None
 
     if isinstance(value, int):
         return value
 
-    if isinstance(value, str):
-        try:
-            return int(value.strip())
-        except ValueError:
-            pass
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
 
-    try:
-        number = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    text = str(value).strip()
+
+    # Decimal numbers only, so both ports accept and reject exactly the same
+    # strings: bare `float` would also take "1_000" and "inf".
+    if not NUMERIC_PATTERN.match(text):
         return None
 
-    return number if math.isfinite(number) else None
+    try:
+        return int(text)
+    except ValueError:
+        return float(text)
 
 
 def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:

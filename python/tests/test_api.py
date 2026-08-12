@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import re
+
 import pytest
 
 from FlightRadarAPI import Entity, Flight
@@ -59,14 +61,11 @@ def test_get_airports_without_countries(expect=1800):
     assert len(results) > expect
     assert len({airport.country for airport in results}) > 2
 
-
-@repeat_test(**repeat_test_config)
-def test_get_airports_country_resolves_to_flag():
-    """Regression: FR24 spells some countries with parentheses, which used to
-    produce an invalid flag URL when chaining the two calls."""
-    results = fr_api.get_airports(countries=[Countries.MYANMAR_BURMA])
-    assert len(results) > 0
-    assert fr_api.get_country_flag(results[0].country) is not None
+    # Regression: FR24 spells some countries with characters that used to reach
+    # the flag URL verbatim ("Myanmar (Burma)"). Picked from the response rather
+    # than hard-coded, so the guard survives a rename.
+    tricky = next((a for a in results if re.search(r"[^a-zA-Z ]", a.country)), results[0])
+    assert fr_api.get_country_flag(tricky.country) is not None, tricky.country
 
 
 @repeat_test(**repeat_test_config)

@@ -118,6 +118,35 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
     assert isinstance(airport.altitude, int)
 
 
+def test_parse_airports_json_never_turns_bad_coordinate_into_zero():
+    """0.0 would put the airport in the Gulf of Guinea. Kept in step with the
+    Node port, whose numeric pattern rejects each of these too."""
+    for value in [" ", "   ", [], "abc", "0x10", "1_000", "inf", True, {}]:
+        payload = json.dumps({"rows": [{
+            "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
+            "lat": value, "lon": value, "alt": value,
+        }]})
+        airport = parse_airports_json(payload)[0]
+
+        assert airport.latitude is None, value
+        assert airport.longitude is None, value
+        assert airport.altitude is None, value
+
+
+def test_parse_airports_json_country_spelling_and_slug_round_trip():
+    ann = next(a for a in parse_airports_json(_load("airports.json")) if a.iata == "VBA")
+
+    assert ann.country == "Myanmar (Burma)"
+    assert country_to_slug(ann.country) == "myanmar-burma"
+    # Feed sends `alt` as a string on a few rows; it must read as a number.
+    assert ann.altitude == 43
+
+
+def test_parse_airports_json_filter_accepts_either_country_spelling():
+    for slug in ["myanmar-burma", "Myanmar (Burma)"]:
+        assert len(parse_airports_json(_load("airports.json"), [slug])) == 1
+
+
 def test_parse_airports_json_keeps_altitude_as_int():
     """Both ports must agree on altitude: 2436, never 2436.0."""
     gru = next(a for a in parse_airports_json(_load("airports.json")) if a.iata == "GRU")

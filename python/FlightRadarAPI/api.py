@@ -187,14 +187,18 @@ class FlightRadar24API:
         )
         return response.get_json_content()
 
-    def get_airports(self, countries: Optional[List[Union[Countries, str]]] = None) -> List[Airport]:
+    def get_airports(
+        self, countries: Optional[Union[List[Union[Countries, str]], Countries, str]] = None,
+    ) -> List[Airport]:
         """
         Return a list with all airports, optionally narrowed to some countries.
 
-        :param countries: Country names from the Countries enum, or their slug strings.
-            Every country when omitted.
+        :param countries: Country names from the Countries enum, or their slug strings,
+            as a list or a single value. Every country when omitted.
         """
-        if countries is not None and len(countries) == 0:
+        wanted = [countries] if isinstance(countries, (Countries, str)) else countries
+
+        if wanted is not None and len(wanted) == 0:
             return []
 
         response = self.__client.request(
@@ -202,9 +206,9 @@ class FlightRadar24API:
         )
         slugs: Optional[List[str]] = None
 
-        if countries is not None:
+        if wanted is not None:
             # Accepts Countries members and plain slug strings alike.
-            slugs = [str(getattr(country, "value", country)) for country in countries]
+            slugs = [str(getattr(country, "value", country)) for country in wanted]
 
         # get_content() rather than get_json_content(): a non-JSON body (an
         # interstitial served as text/html) then reaches the parser, which warns

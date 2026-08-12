@@ -107,6 +107,21 @@ describe("parseAirportsJson (offline)", function() {
         expect(bad.longitude).to.equal(null);
     });
 
+    it("keeps FR24's own country spelling and still slugifies it for URLs", function() {
+        const ann = airports.find((airport) => airport.iata === "VBA");
+
+        expect(ann.country).to.equal("Myanmar (Burma)");
+        expect(countryToSlug(ann.country)).to.equal("myanmar-burma");
+        // Feed sends `alt` as a string on a few rows; it must read as a number.
+        expect(ann.altitude).to.equal(43);
+    });
+
+    it("matches a filter written with either spelling of the country", function() {
+        for (const slug of ["myanmar-burma", "Myanmar (Burma)"]) {
+            expect(parseAirportsJson(load("airports.json"), [slug]).length).to.equal(1);
+        }
+    });
+
     it("rejects numeric-looking junk instead of truncating it", function() {
         const payload = JSON.stringify({ rows: [{
             name: "Junk Airport", iata: "JNK", icao: "JJNK",
@@ -117,6 +132,22 @@ describe("parseAirportsJson (offline)", function() {
         expect(airport.latitude).to.equal(null);
         expect(airport.longitude).to.be.closeTo(-8.37725, 1e-6);
         expect(airport.altitude).to.equal(-1);
+    });
+
+    it("never turns an unusable coordinate into 0", function() {
+        // 0 would put the airport in the Gulf of Guinea. Kept in step with the
+        // Python port, whose `float` rejects each of these too.
+        for (const value of [" ", "   ", [], "abc", "0x10", "1_000", "inf", true, {}]) {
+            const payload = JSON.stringify({ rows: [{
+                name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
+                lat: value, lon: value, alt: value,
+            }] });
+            const [airport] = parseAirportsJson(payload);
+
+            expect(airport.latitude, `lat for ${JSON.stringify(value)}`).to.equal(null);
+            expect(airport.longitude, `lon for ${JSON.stringify(value)}`).to.equal(null);
+            expect(airport.altitude, `alt for ${JSON.stringify(value)}`).to.equal(null);
+        }
     });
 
     it("returns an empty list for an unknown country", function() {

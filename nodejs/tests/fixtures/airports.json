@@ -56,6 +56,15 @@
             "alt": 326
         },
         {
+            "name": "Ann Airport",
+            "iata": "VBA",
+            "icao": "VYAN",
+            "lat": 19.770643,
+            "lon": 94.026405,
+            "country": "Myanmar (Burma)",
+            "alt": "43"
+        },
+        {
             "name": "Broken Coords Airport",
             "iata": "BAD",
             "icao": "SBAD",

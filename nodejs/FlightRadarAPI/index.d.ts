@@ -116,9 +116,10 @@ export class FlightRadar24API {
     /**
      * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {string[]} [countries] - Array of country names; every country when omitted
+     * @param {string[]|string} [countries] - Country names, as an array or a single
+     *     value; every country when omitted
      */
-    getAirports(countries?: string[]): Promise<Airport[]>;
+    getAirports(countries?: string[] | string): Promise<Airport[]>;
     
     /**
      * Return the bookmarks from the FlightRadar24 account.
@@ -311,8 +312,9 @@ export class Entity {
  * Airport representation.
  */
 export class Airport extends Entity {
-    latitude: number;
-    longitude: number;
+    // null when FR24 reports no usable coordinates for the airport.
+    latitude: number | null;
+    longitude: number | null;
     altitude: number | null;
     name: string;
     icao: string;

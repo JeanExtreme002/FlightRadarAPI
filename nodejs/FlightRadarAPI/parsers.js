@@ -85,21 +85,27 @@ function countryToSlug(country) {
         .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+// Decimal numbers only, so both ports accept and reject exactly the same
+// strings. `Number` on its own would take "0x10" and "" (as 0) where Python's
+// `float` refuses them, and `parseFloat` would read "43.30 N" as 43.3.
+const NUMERIC_PATTERN = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+
 /**
  * Coerce a numeric feed field into a number, or null when it is unusable.
  *
  * An unusable coordinate must not become 0: that would place the airport in the
- * Gulf of Guinea instead of marking its position as unknown. `Number` rather
- * than `parseFloat` keeps this as strict as the Python port, which uses `float`:
- * `parseFloat` would turn "43.30 N" into 43.3 where `float` rejects it.
+ * Gulf of Guinea instead of marking its position as unknown.
  *
  * @param {*} value
  * @return {number|null}
  */
 function toNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
-    const number = typeof value === "number" ? value : Number(String(value).trim());
-    return Number.isFinite(number) ? number : null;
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    if (value === null || value === undefined) return null;
+
+    const text = String(value).trim();
+
+    return NUMERIC_PATTERN.test(text) ? toNumber(Number(text)) : null;
 }
 
 /**
