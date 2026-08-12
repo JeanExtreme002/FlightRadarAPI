@@ -15,6 +15,9 @@ _logger = logging.getLogger(__name__)
 
 NUMERIC_PATTERN = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
 
+# Number.MAX_SAFE_INTEGER, the largest integer JavaScript holds exactly.
+MAX_EXACT_INTEGER = 2 ** 53 - 1
+
 
 def parse_airlines_html(html: bytes) -> List[Dict]:
     """
@@ -118,12 +121,22 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     if not NUMERIC_PATTERN.match(text):
         return None
 
+    # Float first: the pattern still admits values that overflow a double, both
+    # as exponents ("1e999") and as plain digits ("1" * 400). Python ints have no
+    # such ceiling, so checking them after int() would let those through.
+    number = float(text)
+
+    if not math.isfinite(number):
+        return None
+
     try:
-        return int(text)
+        exact = int(text)
     except ValueError:
-        # The pattern still admits overflowing exponents such as "1e999".
-        number = float(text)
-        return number if math.isfinite(number) else None
+        return number
+
+    # JavaScript cannot represent integers past 2**53 - 1 exactly, so past that
+    # both ports report the same double instead of drifting apart.
+    return exact if abs(exact) <= MAX_EXACT_INTEGER else number
 
 
 def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:

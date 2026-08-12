@@ -11,9 +11,18 @@ guard the parser's invariants, not byte-for-byte equality with production.
 import json
 import os
 
+import pytest
+
 from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_airports_json
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
+
+# Coercion cases live outside the port so both languages are held to the same
+# table; see the `comment` field in the file itself.
+_SHARED = os.path.join(os.path.dirname(__file__), "..", "..", "testdata", "numeric-coercion.json")
+
+with open(_SHARED, "rb") as _f:
+    SHARED_NUMERIC_CASES = json.load(_f)["cases"]
 
 
 def _load(name: str) -> bytes:
@@ -118,19 +127,17 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
     assert isinstance(airport.altitude, int)
 
 
-def test_parse_airports_json_never_turns_bad_coordinate_into_zero():
-    """0.0 would put the airport in the Gulf of Guinea. Kept in step with the
-    Node port, whose numeric pattern rejects each of these too."""
-    for value in [" ", "   ", [], [43], "abc", "0x10", "1_000", "inf", "1e999", "-1e999", True, {}]:
-        payload = json.dumps({"rows": [{
-            "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
-            "lat": value, "lon": value, "alt": value,
-        }]})
-        airport = parse_airports_json(payload)[0]
+@pytest.mark.parametrize("case", SHARED_NUMERIC_CASES, ids=lambda case: case["label"])
+def test_parse_airports_json_numeric_coercion(case):
+    payload = json.dumps({"rows": [{
+        "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
+        "lat": case["input"], "lon": case["input"], "alt": case["input"],
+    }]})
+    airport = parse_airports_json(payload)[0]
 
-        assert airport.latitude is None, value
-        assert airport.longitude is None, value
-        assert airport.altitude is None, value
+    assert airport.latitude == case["expected"]
+    assert airport.longitude == case["expected"]
+    assert airport.altitude == case["expected"]
 
 
 def test_parse_airports_json_country_spelling_and_slug_round_trip():

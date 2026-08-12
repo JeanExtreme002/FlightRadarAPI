@@ -16,6 +16,12 @@ const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("../Flig
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
 
+// Coercion cases live outside the port so both languages are held to the same
+// table; see the `comment` field in the file itself.
+const SHARED_NUMERIC_CASES = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "..", "testdata", "numeric-coercion.json"), "utf-8"),
+).cases;
+
 
 describe("parseAirlinesHtml (offline)", function() {
     let airlines;
@@ -134,22 +140,6 @@ describe("parseAirportsJson (offline)", function() {
         expect(airport.altitude).to.equal(-1);
     });
 
-    it("never turns an unusable coordinate into 0", function() {
-        // 0 would put the airport in the Gulf of Guinea. Kept in step with the
-        // Python port, whose `float` rejects each of these too.
-        for (const value of [" ", "   ", [], [43], "abc", "0x10", "1_000", "inf", "1e999", "-1e999", true, {}]) {
-            const payload = JSON.stringify({ rows: [{
-                name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
-                lat: value, lon: value, alt: value,
-            }] });
-            const [airport] = parseAirportsJson(payload);
-
-            expect(airport.latitude, `lat for ${JSON.stringify(value)}`).to.equal(null);
-            expect(airport.longitude, `lon for ${JSON.stringify(value)}`).to.equal(null);
-            expect(airport.altitude, `alt for ${JSON.stringify(value)}`).to.equal(null);
-        }
-    });
-
     it("returns an empty list for an unknown country", function() {
         expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
     });
@@ -169,6 +159,23 @@ describe("parseAirportsJson (offline)", function() {
         expect(parseAirportsJson("{}")).to.deep.equal([]);
         expect(parseAirportsJson("<html>not json</html>")).to.deep.equal([]);
     });
+});
+
+
+describe("parseAirportsJson numeric coercion (shared cases)", function() {
+    for (const { label, input, expected } of SHARED_NUMERIC_CASES) {
+        it(`reads ${label} as ${JSON.stringify(expected)}`, function() {
+            const payload = JSON.stringify({ rows: [{
+                name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
+                lat: input, lon: input, alt: input,
+            }] });
+            const [airport] = parseAirportsJson(payload);
+
+            expect(airport.latitude, "latitude").to.equal(expected);
+            expect(airport.longitude, "longitude").to.equal(expected);
+            expect(airport.altitude, "altitude").to.equal(expected);
+        });
+    }
 });
 
 
