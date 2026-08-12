@@ -166,15 +166,17 @@ describe("parseAirportsJson (offline)", function() {
         }
     });
 
-    it("reads null text fields as empty strings", function() {
-        // A None here would break any caller that treats these as strings, e.g.
-        // getCountryFlag(airport.country).
-        const payload = JSON.stringify({ rows: [{
-            name: null, iata: null, icao: null, country: null, lat: 1, lon: 2, alt: 3,
-        }] });
-        const [airport] = parseAirportsJson(payload);
+    it("keeps text fields as strings whatever the feed sends", function() {
+        // Anything else breaks callers that treat these as strings, e.g.
+        // getCountryFlag(airport.country) slugifying an object.
+        for (const literal of ["null", "0", "false", "true", "[]", "{}", "123"]) {
+            const payload = `{"rows":[{"name":${literal},"iata":${literal},"icao":${literal},` +
+                `"country":${literal},"lat":1,"lon":2,"alt":3}]}`;
+            const [airport] = parseAirportsJson(payload);
 
-        expect([airport.name, airport.iata, airport.icao, airport.country]).to.deep.equal(["", "", "", ""]);
+            expect([airport.name, airport.iata, airport.icao, airport.country], literal)
+                .to.deep.equal(["", "", "", ""]);
+        }
     });
 
     it("parses a body that arrived as raw bytes", function() {

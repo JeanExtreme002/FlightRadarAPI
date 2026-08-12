@@ -165,12 +165,14 @@ def test_parse_airports_json_survives_raw_numbers_no_double_can_hold(literal):
     assert latitude is None or math.isfinite(latitude)
 
 
-def test_parse_airports_json_null_text_fields_become_empty_strings():
-    """A None here would break any caller that treats these as strings, e.g.
-    get_country_flag(airport.country)."""
-    payload = json.dumps({"rows": [{
-        "name": None, "iata": None, "icao": None, "country": None, "lat": 1, "lon": 2, "alt": 3,
-    }]})
+@pytest.mark.parametrize("literal", ["null", "0", "false", "true", "[]", "{}", "123"])
+def test_parse_airports_json_keeps_text_fields_as_strings(literal):
+    """Anything else breaks callers that treat these as strings, e.g.
+    get_country_flag(airport.country) slugifying a dict."""
+    payload = (
+        '{"rows":[{"name":%s,"iata":%s,"icao":%s,"country":%s,"lat":1,"lon":2,"alt":3}]}'
+        % (literal, literal, literal, literal)
+    )
     airport = parse_airports_json(payload)[0]
 
     assert [airport.name, airport.iata, airport.icao, airport.country] == ["", "", "", ""]

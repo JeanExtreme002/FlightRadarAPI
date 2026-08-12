@@ -91,6 +91,17 @@ def country_to_slug(country: Optional[str]) -> str:
     return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
 
 
+def _to_text(value: object) -> str:
+    """
+    Keep a text field as a string, or "" when the feed sends anything else.
+
+    Airport documents these as strings and callers treat them as such:
+    get_country_flag(airport.country) would slugify a dict into "object-object"
+    and request that flag.
+    """
+    return value if isinstance(value, str) else ""
+
+
 def _to_number(value: object) -> Optional[Union[int, float]]:
     """
     Coerce a numeric feed field into a number, or None when it is unusable.
@@ -182,19 +193,17 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
         if latitude is None or longitude is None:
             _logger.warning(
                 "parse_airports_json: invalid coordinates for airport %r (lat=%r, lon=%r) — skipping position.",
-                row.get("name", ""), row.get("lat"), row.get("lon"),
+                _to_text(row.get("name")), row.get("lat"), row.get("lon"),
             )
 
         airports.append(Airport(basic_info={
-            # `or ""` rather than a get() default: a JSON null must not survive
-            # as None, which is what Node's `?? ""` guarantees on its side.
-            "name": row.get("name") or "",
-            "icao": row.get("icao") or "",
-            "iata": row.get("iata") or "",
+            "name": _to_text(row.get("name")),
+            "icao": _to_text(row.get("icao")),
+            "iata": _to_text(row.get("iata")),
             "lat": latitude,
             "lon": longitude,
             "alt": _to_number(row.get("alt")),
-            "country": row.get("country") or "",
+            "country": _to_text(row.get("country")),
         }))
 
     if wanted is not None:

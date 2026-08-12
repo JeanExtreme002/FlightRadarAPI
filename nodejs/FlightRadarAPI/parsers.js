@@ -111,6 +111,20 @@ function toNumber(value) {
 }
 
 /**
+ * Keep a text field as a string, or "" when the feed sends anything else.
+ *
+ * Airport declares these as strings, and callers treat them as such —
+ * `getCountryFlag(airport.country)` would happily slugify an object into
+ * "object-object" and request that flag.
+ *
+ * @param {*} value
+ * @return {string}
+ */
+function toStringField(value) {
+    return typeof value === "string" ? value : "";
+}
+
+/**
  * Decode a response body into text, or null when it arrived already parsed.
  *
  * `request()` returns an ArrayBuffer whenever the response carries an
@@ -175,19 +189,19 @@ function parseAirportsJson(payload, countries = null) {
 
         if (latitude === null || longitude === null) {
             console.warn(
-                `parseAirportsJson: invalid coordinates for airport "${row["name"] ?? ""}" ` +
+                `parseAirportsJson: invalid coordinates for airport "${toStringField(row["name"])}" ` +
                 `(lat=${row["lat"]}, lon=${row["lon"]}) — skipping position.`,
             );
         }
 
         airports.push(new Airport({
-            "name": row["name"] ?? "",
-            "icao": row["icao"] ?? "",
-            "iata": row["iata"] ?? "",
+            "name": toStringField(row["name"]),
+            "icao": toStringField(row["icao"]),
+            "iata": toStringField(row["iata"]),
             "lat": latitude,
             "lon": longitude,
             "alt": toNumber(row["alt"]),
-            "country": row["country"] ?? "",
+            "country": toStringField(row["country"]),
         }));
     }
 
