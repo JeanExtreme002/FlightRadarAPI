@@ -5,7 +5,7 @@ const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const { AirportNotFoundError, LoginError } = require("./errors");
 const { isNumeric, radians, rad2deg } = require("./util");
-const { parseAirlinesHtml, parseAirportsJson } = require("./parsers");
+const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("./parsers");
 
 
 /**
@@ -204,6 +204,8 @@ class FlightRadar24API {
      * @return {Promise<Array<Airport>>}
      */
     async getAirports(countries) {
+        if (countries && countries.length === 0) return [];
+
         const { content } = await this.__client.request(
             Core.airportsJsonUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
         );
@@ -308,8 +310,10 @@ class FlightRadar24API {
      * @return {Promise<[object, string] | null>}
      */
     async getCountryFlag(country) {
-        const slug = country.toLowerCase().replaceAll(" ", "-");
-        const flagUrl = Core.countryFlagUrl(slug);
+        // Slugified the same way as the airports feed, so the `country` of an
+        // Airport can be handed straight back here: FR24 spells some names with
+        // parentheses ("Myanmar (Burma)") that must not reach the URL.
+        const flagUrl = Core.countryFlagUrl(countryToSlug(country));
 
         const headers = { ...Core.imageHeaders };
         delete headers["origin"];

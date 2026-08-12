@@ -86,17 +86,19 @@ function countryToSlug(country) {
 }
 
 /**
- * Coerce a feed coordinate into a number, or null when it is unusable.
+ * Coerce a numeric feed field into a number, or null when it is unusable.
  *
- * Invalid coordinates must not become 0.0: that would place the airport in the
- * Gulf of Guinea instead of marking its position as unknown.
+ * An unusable coordinate must not become 0: that would place the airport in the
+ * Gulf of Guinea instead of marking its position as unknown. `Number` rather
+ * than `parseFloat` keeps this as strict as the Python port, which uses `float`:
+ * `parseFloat` would turn "43.30 N" into 43.3 where `float` rejects it.
  *
  * @param {*} value
  * @return {number|null}
  */
-function toCoordinate(value) {
+function toNumber(value) {
     if (value === null || value === undefined || value === "") return null;
-    const number = typeof value === "number" ? value : parseFloat(value);
+    const number = typeof value === "number" ? value : Number(String(value).trim());
     return Number.isFinite(number) ? number : null;
 }
 
@@ -141,8 +143,8 @@ function parseAirportsJson(payload, countries = null) {
             matched.add(slug);
         }
 
-        const latitude = toCoordinate(row["lat"]);
-        const longitude = toCoordinate(row["lon"]);
+        const latitude = toNumber(row["lat"]);
+        const longitude = toNumber(row["lon"]);
 
         if (latitude === null || longitude === null) {
             console.warn(
@@ -157,7 +159,7 @@ function parseAirportsJson(payload, countries = null) {
             "iata": row["iata"] ?? "",
             "lat": latitude,
             "lon": longitude,
-            "alt": toCoordinate(row["alt"]),
+            "alt": toNumber(row["alt"]),
             "country": row["country"] ?? "",
         }));
     }

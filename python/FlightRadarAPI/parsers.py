@@ -86,15 +86,26 @@ def country_to_slug(country: Optional[str]) -> str:
     return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
 
 
-def _to_coordinate(value: object) -> Optional[float]:
+def _to_number(value: object) -> Optional[Union[int, float]]:
     """
-    Coerce a feed coordinate into a float, or None when it is unusable.
+    Coerce a numeric feed field into a number, or None when it is unusable.
 
-    Invalid coordinates must not become 0.0: that would place the airport in the
-    Gulf of Guinea instead of marking its position as unknown.
+    An unusable coordinate must not become 0.0: that would place the airport in
+    the Gulf of Guinea instead of marking its position as unknown. Whole numbers
+    stay ints so that altitudes read the same in both ports -- the feed sends
+    `alt` as an int for most rows and as a string ("-1") for the rest.
     """
-    if value is None or value == "":
+    if value is None or isinstance(value, bool) or value == "":
         return None
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            pass
 
     try:
         number = float(value)  # type: ignore[arg-type]
@@ -141,8 +152,8 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
                 continue
             matched.add(slug)
 
-        latitude = _to_coordinate(row.get("lat"))
-        longitude = _to_coordinate(row.get("lon"))
+        latitude = _to_number(row.get("lat"))
+        longitude = _to_number(row.get("lon"))
 
         if latitude is None or longitude is None:
             _logger.warning(
@@ -156,7 +167,7 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
             "iata": row.get("iata", ""),
             "lat": latitude,
             "lon": longitude,
-            "alt": _to_coordinate(row.get("alt")),
+            "alt": _to_number(row.get("alt")),
             "country": row.get("country", ""),
         }))
 

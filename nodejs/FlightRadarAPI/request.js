@@ -364,9 +364,9 @@ class APIClient {
     /**
      * Make a stateless request that does not touch the shared cookie jar.
      *
-     * Safe to call from concurrent fan-outs (e.g. `getAirports` issuing one
-     * request per country). The TLS dispatcher is still reused so the
-     * impersonation profile stays consistent with the session.
+     * Safe to call from concurrent fan-outs, where per-response `Set-Cookie`
+     * headers would otherwise race onto the shared jar. The TLS dispatcher is
+     * still reused so the impersonation profile stays consistent with the session.
      *
      * @param {string} url
      * @param {object} [options={}]

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Offline parser tests against bundled HTML fixtures.
+"""Offline parser tests against bundled fixtures.
 
 These tests run with no network access and exist specifically so that PRs
 can be gated on the parser logic without depending on FR24 being reachable
-or its HTML layout being stable. When FR24 changes the page structure,
-update the fixtures (re-saving a real page is fine) — the assertions here
+or its payloads being stable. When FR24 changes a page or feed,
+update the fixtures (re-saving a real response is fine) — the assertions here
 guard the parser's invariants, not byte-for-byte equality with production.
 """
 
+import json
 import os
 
 from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_airports_json
@@ -104,6 +105,25 @@ def test_parse_airports_json_invalid_coordinates_become_none():
     assert bad.longitude is None
 
 
+def test_parse_airports_json_rejects_numeric_looking_junk():
+    payload = json.dumps({"rows": [{
+        "name": "Junk Airport", "iata": "JNK", "icao": "JJNK",
+        "lat": "43.30 N", "lon": -8.37725, "country": "Spain", "alt": "-1",
+    }]})
+    airport = parse_airports_json(payload)[0]
+
+    assert airport.latitude is None
+    assert abs(airport.longitude - (-8.37725)) < 1e-6
+    assert airport.altitude == -1
+    assert isinstance(airport.altitude, int)
+
+
+def test_parse_airports_json_keeps_altitude_as_int():
+    """Both ports must agree on altitude: 2436, never 2436.0."""
+    gru = next(a for a in parse_airports_json(_load("airports.json")) if a.iata == "GRU")
+    assert isinstance(gru.altitude, int)
+
+
 def test_parse_airports_json_unknown_country_returns_empty_list():
     assert parse_airports_json(_load("airports.json"), ["atlantis"]) == []
 
@@ -122,3 +142,12 @@ def test_country_to_slug_matches_countries_enum_spelling():
     assert country_to_slug("Curacao") == "curacao"
     assert country_to_slug("Curaçao") == "curacao"
     assert country_to_slug(None) == ""
+
+
+def test_country_to_slug_strips_parentheses_for_flag_urls():
+    """Regression: get_country_flag(airport.country) 404'd for these while the
+    slug was built with a plain space-to-hyphen replacement."""
+    assert country_to_slug("Myanmar (Burma)") == "myanmar-burma"
+    assert country_to_slug("Cocos (Keeling) Islands") == "cocos-keeling-islands"
+    assert country_to_slug("Falkland Islands (Malvinas)") == "falkland-islands-malvinas"
+    assert country_to_slug("Timor-Leste (East Timor)") == "timor-leste-east-timor"

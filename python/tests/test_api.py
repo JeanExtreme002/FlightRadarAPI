@@ -54,6 +54,22 @@ def test_get_airports(expect=1800, countries=[Countries.BRAZIL, Countries.UNITED
 
 
 @repeat_test(**repeat_test_config)
+def test_get_airports_without_countries(expect=1800):
+    results = fr_api.get_airports()
+    assert len(results) > expect
+    assert len({airport.country for airport in results}) > 2
+
+
+@repeat_test(**repeat_test_config)
+def test_get_airports_country_resolves_to_flag():
+    """Regression: FR24 spells some countries with parentheses, which used to
+    produce an invalid flag URL when chaining the two calls."""
+    results = fr_api.get_airports(countries=[Countries.MYANMAR_BURMA])
+    assert len(results) > 0
+    assert fr_api.get_country_flag(results[0].country) is not None
+
+
+@repeat_test(**repeat_test_config)
 def test_get_zones(expect=5):
     results = fr_api.get_zones()
 

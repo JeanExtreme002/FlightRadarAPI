@@ -107,6 +107,18 @@ describe("parseAirportsJson (offline)", function() {
         expect(bad.longitude).to.equal(null);
     });
 
+    it("rejects numeric-looking junk instead of truncating it", function() {
+        const payload = JSON.stringify({ rows: [{
+            name: "Junk Airport", iata: "JNK", icao: "JJNK",
+            lat: "43.30 N", lon: -8.37725, country: "Spain", alt: "-1",
+        }] });
+        const [airport] = parseAirportsJson(payload);
+
+        expect(airport.latitude).to.equal(null);
+        expect(airport.longitude).to.be.closeTo(-8.37725, 1e-6);
+        expect(airport.altitude).to.equal(-1);
+    });
+
     it("returns an empty list for an unknown country", function() {
         expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
     });
@@ -126,5 +138,14 @@ describe("countryToSlug (offline)", function() {
         expect(countryToSlug("Curacao")).to.equal("curacao");
         expect(countryToSlug("Curaçao")).to.equal("curacao");
         expect(countryToSlug("")).to.equal("");
+    });
+
+    it("strips the parentheses FR24 uses, keeping country flag URLs valid", function() {
+        // Regression: `getCountryFlag(airport.country)` 404'd for these while the
+        // slug was built with a plain space-to-hyphen replacement.
+        expect(countryToSlug("Myanmar (Burma)")).to.equal("myanmar-burma");
+        expect(countryToSlug("Cocos (Keeling) Islands")).to.equal("cocos-keeling-islands");
+        expect(countryToSlug("Falkland Islands (Malvinas)")).to.equal("falkland-islands-malvinas");
+        expect(countryToSlug("Timor-Leste (East Timor)")).to.equal("timor-leste-east-timor");
     });
 });

@@ -233,9 +233,12 @@ class APIRequest:
         try:
             content = decode(content)
         except Exception as err:
-            # No gzip magic number under a "gzip" header means curl_cffi already
-            # decompressed the body — routine, so keep it out of the warning log.
-            transport_decoded = content_encoding == "gzip" and not content.startswith(b"\x1f\x8b")
+            # curl_cffi decompresses gzip and br transparently while leaving the
+            # header in place, so failing here is routine rather than actionable.
+            # A body that does carry the gzip magic number is genuinely corrupt
+            # and still warns; brotli has no magic number to check.
+            corrupt_gzip = content_encoding == "gzip" and content.startswith(b"\x1f\x8b")
+            transport_decoded = content_encoding in ("gzip", "br") and not corrupt_gzip
 
             _logger.log(
                 logging.DEBUG if transport_decoded else logging.WARNING,
