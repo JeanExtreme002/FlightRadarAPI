@@ -1,0 +1,133 @@
+name: Publish Packages
+
+# Both registries use OIDC trusted publishing, which must be configured once
+# on pypi.org and npmjs.com for this repo, workflow file and environment.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which package(s) to publish'
+        type: choice
+        options: [both, pypi, npm]
+        default: both
+      dry_run:
+        description: 'Build and validate only, without uploading'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read declared versions
+        id: versions
+        run: |
+          py_version=$(grep -oP '__version__\s*=\s*"\K[^"]+' python/FlightRadarAPI/__init__.py)
+          npm_version=$(node -p "require('./nodejs/package.json').version")
+          echo "python=$py_version" >> "$GITHUB_OUTPUT"
+          echo "npm=$npm_version" >> "$GITHUB_OUTPUT"
+          echo "Python: $py_version | npm: $npm_version"
+
+      - name: Check versions are in sync
+        run: |
+          if [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.npm }}" ]; then
+            echo "::error::Version mismatch: python=${{ steps.versions.outputs.python }} npm=${{ steps.versions.outputs.npm }}"
+            exit 1
+          fi
+
+      - name: Check versions match the release tag
+        if: github.event_name == 'release'
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          tag="${tag#v}"
+          if [ "$tag" != "${{ steps.versions.outputs.python }}" ]; then
+            echo "::error::Release tag $tag does not match package version ${{ steps.versions.outputs.python }}"
+            exit 1
+          fi
+
+  publish-pypi:
+    needs: verify-versions
+    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'pypi'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Required for trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build package
+        run: python -m build ./python
+
+      - name: Validate distributions
+        run: python -m twine check python/dist/*
+
+      - name: Verify the built wheel imports
+        run: |
+          pip install python/dist/*.whl
+          python -c "from FlightRadarAPI import FlightRadar24API; FlightRadar24API(); print('Install OK')"
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || inputs.dry_run == false
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist/
+
+  publish-npm:
+    needs: verify-versions
+    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'npm'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write  # Required for trusted publishing (OIDC) + provenance
+    defaults:
+      run:
+        working-directory: ./nodejs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm
+        # npm trusted publishing (OIDC) requires npm >= 11.5.1.
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run test:types
+
+      - name: Offline tests
+        # Live FR24 integration tests are left out on purpose: a flaky upstream
+        # response must not block a release that already passed CI.
+        run: npm run test:offline
+
+      - name: Validate package contents
+        run: npm publish --dry-run
+
+      - name: Publish to npm
+        if: github.event_name == 'release' || inputs.dry_run == false
+        run: npm publish --provenance --access public
