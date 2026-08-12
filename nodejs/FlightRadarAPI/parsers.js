@@ -101,11 +101,31 @@ const NUMERIC_PATTERN = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
  */
 function toNumber(value) {
     if (typeof value === "number") return Number.isFinite(value) ? value : null;
-    if (value === null || value === undefined) return null;
+    // Only strings are worth parsing. Stringifying anything else would let
+    // `[43]` through as 43, which Python's `float` rejects.
+    if (typeof value !== "string") return null;
 
-    const text = String(value).trim();
+    const text = value.trim();
 
     return NUMERIC_PATTERN.test(text) ? toNumber(Number(text)) : null;
+}
+
+/**
+ * Decode a response body into text, or null when it arrived already parsed.
+ *
+ * `request()` returns an ArrayBuffer whenever the response carries an
+ * unexpected content-type, so a perfectly good JSON body can land here as raw
+ * bytes rather than as an object.
+ *
+ * @param {*} payload
+ * @return {string|null}
+ */
+function toText(payload) {
+    if (typeof payload === "string") return payload;
+    if (Buffer.isBuffer(payload)) return payload.toString();
+    if (payload instanceof ArrayBuffer) return Buffer.from(payload).toString();
+    if (ArrayBuffer.isView(payload)) return Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength).toString();
+    return null;
 }
 
 /**
@@ -117,10 +137,11 @@ function toNumber(value) {
  */
 function parseAirportsJson(payload, countries = null) {
     let data = payload;
+    const text = toText(payload);
 
-    if (typeof data === "string" || Buffer.isBuffer(data)) {
+    if (text !== null) {
         try {
-            data = JSON.parse(data.toString());
+            data = JSON.parse(text);
         }
         catch {
             console.warn("parseAirportsJson: response is not valid JSON — FR24 feed may have changed.");

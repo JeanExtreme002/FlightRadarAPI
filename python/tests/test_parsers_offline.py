@@ -121,7 +121,7 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
 def test_parse_airports_json_never_turns_bad_coordinate_into_zero():
     """0.0 would put the airport in the Gulf of Guinea. Kept in step with the
     Node port, whose numeric pattern rejects each of these too."""
-    for value in [" ", "   ", [], "abc", "0x10", "1_000", "inf", True, {}]:
+    for value in [" ", "   ", [], [43], "abc", "0x10", "1_000", "inf", "1e999", "-1e999", True, {}]:
         payload = json.dumps({"rows": [{
             "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
             "lat": value, "lon": value, "alt": value,

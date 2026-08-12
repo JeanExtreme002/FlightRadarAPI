@@ -106,7 +106,12 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     if isinstance(value, float):
         return value if math.isfinite(value) else None
 
-    text = str(value).strip()
+    # Only strings are worth parsing; str() on anything else would invent a
+    # number, e.g. str([43]) == "43".
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
 
     # Decimal numbers only, so both ports accept and reject exactly the same
     # strings: bare `float` would also take "1_000" and "inf".
@@ -116,7 +121,9 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     try:
         return int(text)
     except ValueError:
-        return float(text)
+        # The pattern still admits overflowing exponents such as "1e999".
+        number = float(text)
+        return number if math.isfinite(number) else None
 
 
 def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:

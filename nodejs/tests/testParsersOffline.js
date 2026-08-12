@@ -137,7 +137,7 @@ describe("parseAirportsJson (offline)", function() {
     it("never turns an unusable coordinate into 0", function() {
         // 0 would put the airport in the Gulf of Guinea. Kept in step with the
         // Python port, whose `float` rejects each of these too.
-        for (const value of [" ", "   ", [], "abc", "0x10", "1_000", "inf", true, {}]) {
+        for (const value of [" ", "   ", [], [43], "abc", "0x10", "1_000", "inf", "1e999", "-1e999", true, {}]) {
             const payload = JSON.stringify({ rows: [{
                 name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
                 lat: value, lon: value, alt: value,
@@ -152,6 +152,16 @@ describe("parseAirportsJson (offline)", function() {
 
     it("returns an empty list for an unknown country", function() {
         expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
+    });
+
+    it("parses a body that arrived as raw bytes", function() {
+        // request() returns an ArrayBuffer when the response carries an
+        // unexpected content-type; the JSON inside is still good.
+        const json = load("airports.json");
+
+        for (const payload of [Buffer.from(json), new TextEncoder().encode(json), new TextEncoder().encode(json).buffer]) {
+            expect(parseAirportsJson(payload).length, payload.constructor.name).to.equal(airports.length);
+        }
     });
 
     it("returns an empty list when the feed has no rows", function() {
