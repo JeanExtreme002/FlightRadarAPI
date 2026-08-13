@@ -46,10 +46,7 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: cd nodejs && npm run test:integration
-        # Soft on push and pull_request: the offline step above is the PR gate, and
-        # FR24 changing its site must not block unrelated PRs. Hard on the weekly
-        # cron and on manual runs, which exist to catch exactly that.
-        continue-on-error: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+        continue-on-error: ${{ github.event_name == 'push' }}
       - name: Dependency audit (informational)
         # Informational only: surfaces high-severity advisories as a soft-fail
         # without blocking PRs. Re-enable enforcement (drop continue-on-error)
