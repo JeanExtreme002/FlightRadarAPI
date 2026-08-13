@@ -6,6 +6,7 @@ import pytest
 
 from FlightRadarAPI import Entity, Flight
 from FlightRadarAPI.errors import CloudflareError, LoginError
+from FlightRadarAPI.parsers import country_to_slug
 from package import Countries, FlightRadar24API, version
 from util import repeat_test
 
@@ -66,6 +67,16 @@ def test_get_airports_without_countries(expect=1800):
     # than hard-coded, so the guard survives a rename.
     tricky = next((a for a in results if re.search(r"[^a-zA-Z ]", a.country)), results[0])
     assert fr_api.get_country_flag(tricky.country) is not None, tricky.country
+
+    # The filter matches a slug derived from the feed's display name ("United
+    # States") against the enum's URL slugs ("united-states"). Those are two
+    # different FR24 vocabularies that happen to agree, so pin it: a rename on
+    # either side silently empties one country.
+    feed = {country_to_slug(a.country) for a in results}
+    values = {c.value for c in Countries}
+
+    assert not (values - feed), "enum values absent from the feed: %s" % sorted(values - feed)
+    assert not (feed - values), "feed countries absent from the enum: %s" % sorted(feed - values)
 
 
 @repeat_test(**repeat_test_config)
