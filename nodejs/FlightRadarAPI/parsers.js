@@ -79,8 +79,11 @@ function parseAirlinesHtml(html) {
  */
 function countryToSlug(country) {
     // Diacritics stripped so a future "Curaçao" still matches "curacao".
+    // Punctuation is deleted before the hyphenation pass, the way the enum values
+    // were built: "Virgin Islands (U.S.)" is virgin-islands-us, not -u-s.
     return String(country ?? "")
         .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Za-z0-9\s-]/g, "")
         .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 

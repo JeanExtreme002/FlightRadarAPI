@@ -116,10 +116,10 @@ export class FlightRadar24API {
     /**
      * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {string[]|string} [countries] - Country names, as an array or a single
-     *     value; every country when omitted
+     * @param {Iterable<string>|string} [countries] - Country names, as any iterable
+     *     or a single value; every country when omitted
      */
-    getAirports(countries?: string[] | string): Promise<Airport[]>;
+    getAirports(countries?: Iterable<string> | string): Promise<Airport[]>;
     
     /**
      * Return the bookmarks from the FlightRadar24 account.

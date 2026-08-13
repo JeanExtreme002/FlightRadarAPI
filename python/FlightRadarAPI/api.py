@@ -210,14 +210,10 @@ class FlightRadar24API:
         response = self.__client.request(
             Core.airports_json_url, headers=Core.json_headers, timeout=self.timeout,
         )
-        slugs: Optional[List[str]] = None
 
-        if wanted is not None:
-            slugs = [str(getattr(country, "value", country)) for country in wanted]
-
-        # get_content(), not get_json_content(): a body served as text/html must
-        # reach the parser's guard rather than raise.
-        return parse_airports_json(response.get_content(), slugs)
+        # get_content(), not get_json_content(): an html body reaches the parser's
+        # guard; a malformed JSON body still raises. The parser slugifies `wanted`.
+        return parse_airports_json(response.get_content(), wanted)
 
     def get_bookmarks(self) -> Dict:
         """

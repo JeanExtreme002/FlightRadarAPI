@@ -6,7 +6,7 @@ import math
 import re
 import unicodedata
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from bs4 import BeautifulSoup
 
@@ -84,7 +84,7 @@ def parse_airlines_html(html: bytes) -> List[Dict]:
     return airlines
 
 
-def country_to_slug(country: Optional[str]) -> str:
+def country_to_slug(country: object) -> str:
     """
     Slugify a country name the way FR24 spells it in its data page URLs, so feed
     rows can be matched against the Countries enum ("United States" -> "united-states").
@@ -98,7 +98,11 @@ def country_to_slug(country: Optional[str]) -> str:
 
     decomposed = unicodedata.normalize("NFKD", "" if country is None else str(country))
     ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
-    return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
+
+    # Punctuation is deleted before the hyphenation pass, the way the enum values
+    # were built: "Virgin Islands (U.S.)" is virgin-islands-us, not -u-s.
+    depunctuated = re.sub(r"[^A-Za-z0-9\s-]", "", ascii_only)
+    return re.sub(r"[^a-z0-9]+", "-", depunctuated.lower()).strip("-")
 
 
 def _to_text(value: object) -> str:
@@ -156,12 +160,14 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     return exact if exact == number and abs(exact) <= MAX_EXACT_INTEGER else number
 
 
-def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[List[str]] = None) -> List[Airport]:
+def parse_airports_json(
+    payload: Union[bytes, str, Dict], countries: Optional[Iterable[object]] = None,
+) -> List[Airport]:
     """
     Parse the airports JSON feed into a list of Airport instances.
 
     :param payload: Body of Core.airports_json_url.
-    :param countries: Country slugs from the Countries enum. Every airport is kept when omitted.
+    :param countries: Country slugs, or Countries members. Every airport is kept when omitted.
     """
     if isinstance(payload, (bytes, str)):
         try:

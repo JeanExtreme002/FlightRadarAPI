@@ -27,6 +27,7 @@ expectType<Promise<object>>(api.getAirportDetails("ATL", 10, 1));
 // getAirports
 expectType<Promise<Airport[]>>(api.getAirports(["Brazil"]));
 expectType<Promise<Airport[]>>(api.getAirports("Brazil"));
+expectType<Promise<Airport[]>>(api.getAirports(new Set(["Brazil"])));
 expectType<Promise<Airport[]>>(api.getAirports());
 
 // getAirlines
