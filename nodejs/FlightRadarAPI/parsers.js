@@ -178,9 +178,11 @@ function parseAirportsJson(payload, countries = null) {
         // Arrays are objects in JS; Python's isinstance(row, dict) drops them.
         if (!row || typeof row !== "object" || Array.isArray(row)) continue;
 
-        const slug = countryToSlug(row["country"]);
-
+        // Slugified only when filtering: it is otherwise unused, and this loop
+        // runs over every airport in the feed.
         if (wanted) {
+            const slug = countryToSlug(row["country"]);
+
             if (!wanted.has(slug)) continue;
             matched.add(slug);
         }

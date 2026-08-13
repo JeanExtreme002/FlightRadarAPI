@@ -52,25 +52,29 @@ describe("Testing FlightRadarAPI version " + version, function() {
             expect(results.length).to.be.above(expected - 1);
         });
 
+        let everyAirport;
+        before(async function() {
+            everyAirport = await frApi.getAirports();
+        });
+
         it("Expected every airport when no country is given, each with a flag.", async function() {
-            const results = await frApi.getAirports();
-            expect(results.length).to.be.above(expected);
-            expect(new Set(results.map((airport) => airport.country)).size).to.be.above(countries.length);
+            expect(everyAirport.length).to.be.above(expected);
+            expect(new Set(everyAirport.map((airport) => airport.country)).size).to.be.above(countries.length);
 
             // Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
-            const tricky = results.find((airport) => /[^a-z ]/i.test(airport.country)) ?? results[0];
+            const tricky = everyAirport.find((airport) => /[^a-z ]/i.test(airport.country)) ?? everyAirport[0];
             expect(await frApi.getCountryFlag(tricky.country), tricky.country).to.not.equal(null);
         });
 
-        it("Expected the Countries enum and the feed to name the same countries.", async function() {
-            // Two FR24 vocabularies that happen to agree; a rename on either side
-            // silently empties one country.
-            const feed = new Set((await frApi.getAirports()).map((airport) => countryToSlug(airport.country)));
-            const values = Object.values(Countries);
+        it("Expected every Countries value to name a country the feed knows.", async function() {
+            // The enum's URL slugs and the feed's display names are two FR24
+            // vocabularies; a rename silently empties that country's filter. The
+            // reverse direction is not asserted: a country FR24 adds is a gap in
+            // the enum, not a regression.
+            const feed = new Set(everyAirport.map((airport) => countryToSlug(airport.country)));
+            const absent = Object.values(Countries).filter((value) => !feed.has(value));
 
-            expect(values.filter((value) => !feed.has(value)), "enum values absent from the feed").to.deep.equal([]);
-            expect([...feed].filter((slug) => !values.includes(slug)), "feed countries absent from the enum")
-                .to.deep.equal([]);
+            expect(absent, "enum values absent from the feed").to.deep.equal([]);
         });
     });
 

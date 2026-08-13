@@ -178,9 +178,11 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
         if not isinstance(row, dict):
             continue
 
-        slug = country_to_slug(row.get("country"))
-
+        # Slugified only when filtering: it is otherwise unused, and this loop
+        # runs over every airport in the feed.
         if wanted is not None:
+            slug = country_to_slug(row.get("country"))
+
             if slug not in wanted:
                 continue
             matched.add(slug)

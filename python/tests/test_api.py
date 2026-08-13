@@ -66,13 +66,12 @@ def test_get_airports_without_countries(expect=1800):
     tricky = next((a for a in results if re.search(r"[^a-zA-Z ]", a.country)), results[0])
     assert fr_api.get_country_flag(tricky.country) is not None, tricky.country
 
-    # Two FR24 vocabularies that happen to agree; a rename on either side
-    # silently empties one country.
-    feed = {country_to_slug(a.country) for a in results}
-    values = {c.value for c in Countries}
+    # The enum's URL slugs and the feed's display names are two FR24 vocabularies;
+    # a rename silently empties that country's filter. The reverse direction is not
+    # asserted: a country FR24 adds is a gap in the enum, not a regression.
+    absent = {c.value for c in Countries} - {country_to_slug(a.country) for a in results}
 
-    assert not (values - feed), "enum values absent from the feed: %s" % sorted(values - feed)
-    assert not (feed - values), "feed countries absent from the enum: %s" % sorted(feed - values)
+    assert not absent, "enum values absent from the feed: %s" % sorted(absent)
 
 
 @repeat_test(**repeat_test_config)

@@ -200,19 +200,23 @@ class FlightRadar24API {
     /**
      * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {Array<string>|string} [countries] - Country names from the Countries enum,
-     *     as an array or a single value; every country when omitted
+     * @param {Iterable<string>|string} [countries] - Country names from the Countries enum,
+     *     as any iterable or a single value; every country when omitted
      * @return {Promise<Array<Airport>>}
      */
     async getAirports(countries) {
-        const wanted = typeof countries === "string" ? [countries] : countries;
+        // Any iterable, matching the Python port, which just iterates the argument.
+        let wanted = null;
+
+        if (typeof countries === "string") wanted = [countries];
+        else if (countries != null) wanted = Array.from(countries);
 
         if (wanted && wanted.length === 0) return [];
 
         const { content } = await this.__client.request(
             Core.airportsJsonUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
         );
-        return parseAirportsJson(content, wanted ?? null);
+        return parseAirportsJson(content, wanted);
     }
 
     /**
