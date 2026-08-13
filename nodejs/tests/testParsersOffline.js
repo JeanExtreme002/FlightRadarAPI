@@ -198,6 +198,13 @@ describe("parseAirportsJson (offline)", function() {
         }
     });
 
+    it("skips rows that are not objects, as the Python port does", function() {
+        const payload = "{\"rows\":[[1,2,3],\"x\",7,null," +
+            "{\"name\":\"Real\",\"iata\":\"RRR\",\"icao\":\"RRRR\",\"country\":\"Spain\",\"lat\":1,\"lon\":2,\"alt\":3}]}";
+
+        expect(parseAirportsJson(payload).map((airport) => airport.iata)).to.deep.equal(["RRR"]);
+    });
+
     it("returns an empty list when the feed has no rows", function() {
         expect(parseAirportsJson("")).to.deep.equal([]);
         expect(parseAirportsJson("{}")).to.deep.equal([]);

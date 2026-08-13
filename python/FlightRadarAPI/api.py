@@ -209,7 +209,8 @@ class FlightRadar24API:
         if wanted is not None:
             slugs = [str(getattr(country, "value", country)) for country in wanted]
 
-        # get_content(), not get_json_content(): a non-JSON body must reach the guard.
+        # get_content(), not get_json_content(): a body served as text/html must
+        # reach the parser's guard rather than raise.
         return parse_airports_json(response.get_content(), slugs)
 
     def get_bookmarks(self) -> Dict:

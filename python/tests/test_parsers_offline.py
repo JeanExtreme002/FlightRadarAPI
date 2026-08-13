@@ -209,6 +209,15 @@ def test_parse_airports_json_keeps_altitude_as_int():
     assert isinstance(gru.altitude, int)
 
 
+def test_parse_airports_json_skips_rows_that_are_not_objects():
+    payload = (
+        '{"rows":[[1,2,3],"x",7,null,'
+        '{"name":"Real","iata":"RRR","icao":"RRRR","country":"Spain","lat":1,"lon":2,"alt":3}]}'
+    )
+
+    assert [a.iata for a in parse_airports_json(payload)] == ["RRR"]
+
+
 def test_parse_airports_json_unknown_country_returns_empty_list():
     assert parse_airports_json(_load("airports.json"), ["atlantis"]) == []
 

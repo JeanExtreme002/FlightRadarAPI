@@ -175,7 +175,8 @@ function parseAirportsJson(payload, countries = null) {
     const airports = [];
 
     for (const row of rows) {
-        if (!row || typeof row !== "object") continue;
+        // Arrays are objects in JS; Python's isinstance(row, dict) drops them.
+        if (!row || typeof row !== "object" || Array.isArray(row)) continue;
 
         const slug = countryToSlug(row["country"]);
 
