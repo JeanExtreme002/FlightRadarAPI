@@ -32,6 +32,9 @@ class Core:
     airport_data_url = flightradar_base_url + "/airports/traffic-stats/?airport={}"
     airports_data_url = flightradar_base_url + "/data/airports"
 
+    # Every airport in one payload; the per-country pages above are client-rendered.
+    airports_json_url = flightradar_base_url + "/_json/airports.php"
+
     # Airlines data URL.
     airlines_data_url = flightradar_base_url + "/data/airlines"
 

@@ -28,7 +28,7 @@ export class APIClient {
     request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
     /**
      * Make a stateless request that bypasses the shared cookie jar. Safe to
-     * call from concurrent fan-outs (e.g. `getAirports`).
+     * call from concurrent fan-outs.
      */
     requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
     getCookie(name: string): string | undefined;
@@ -114,11 +114,12 @@ export class FlightRadar24API {
     getAirportDisruptions(): Promise<object>;
     
     /**
-     * Return a list with all airports for specified countries.
+     * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {string[]} countries - Array of country names
+     * @param {Iterable<string>|string} [countries] - Country names, as any iterable
+     *     or a single value; every country when omitted
      */
-    getAirports(countries: string[]): Promise<Airport[]>;
+    getAirports(countries?: Iterable<string> | string): Promise<Airport[]>;
     
     /**
      * Return the bookmarks from the FlightRadar24 account.
@@ -311,8 +312,8 @@ export class Entity {
  * Airport representation.
  */
 export class Airport extends Entity {
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
     altitude: number | null;
     name: string;
     icao: string;

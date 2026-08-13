@@ -47,6 +47,8 @@ const Core = {
     apiAirportDataUrl: `${API_FR24_BASE}/airport.json`,
     airportDataUrl: (code) => `${FR24_BASE}/airports/traffic-stats/?airport=${code}`,
     airportsDataUrl: `${FR24_BASE}/data/airports`,
+    // Every airport in one payload; the per-country pages above are client-rendered.
+    airportsJsonUrl: `${FR24_BASE}/_json/airports.php`,
 
     airlinesDataUrl: `${FR24_BASE}/data/airlines`,
 

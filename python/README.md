@@ -32,6 +32,7 @@ flights = fr_api.get_flights(...)  # Returns a list of Flight objects
 **Getting airports list:**
 ```py
 airports = fr_api.get_airports(...)  # Returns a list of Airport objects
+all_airports = fr_api.get_airports()  # Omit the countries to get every airport
 ```
 **Getting airlines list:**
 ```py

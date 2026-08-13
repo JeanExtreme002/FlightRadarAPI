@@ -1,4 +1,5 @@
 const { FlightRadar24API, Flight, Entity, FlightTrackerConfig, Countries, version } = require("..");
+const { countryToSlug } = require("../FlightRadarAPI/parsers");
 const expect = require("chai").expect;
 
 
@@ -49,6 +50,35 @@ describe("Testing FlightRadarAPI version " + version, function() {
         it("Expected at least " + expected + " airports.", async function() {
             const results = await frApi.getAirports(countries);
             expect(results.length).to.be.above(expected - 1);
+        });
+
+        let everyAirport;
+        before(async function() {
+            everyAirport = await frApi.getAirports();
+        });
+
+        it("Expected every airport when no country is given, each with a flag.", async function() {
+            expect(everyAirport.length).to.be.above(expected);
+            expect(new Set(everyAirport.map((airport) => airport.country)).size).to.be.above(countries.length);
+
+            // Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
+            // Sorted so the pick does not depend on the order the feed happens to
+            // list airports in.
+            const punctuated = everyAirport.map((airport) => airport.country).filter((name) => /[^a-z ]/i.test(name));
+            const tricky = punctuated.sort()[0] ?? everyAirport[0].country;
+
+            expect(await frApi.getCountryFlag(tricky), tricky).to.not.equal(null);
+        });
+
+        it("Expected every Countries value to name a country the feed knows.", async function() {
+            // The enum's URL slugs and the feed's display names are two FR24
+            // vocabularies; a rename silently empties that country's filter. The
+            // reverse direction is not asserted: a country FR24 adds is a gap in
+            // the enum, not a regression.
+            const feed = new Set(everyAirport.map((airport) => countryToSlug(airport.country)));
+            const absent = Object.values(Countries).filter((value) => !feed.has(value));
+
+            expect(absent, "enum values absent from the feed").to.deep.equal([]);
         });
     });
 
@@ -126,11 +156,13 @@ describe("Testing FlightRadarAPI version " + version, function() {
                 const flights = await frApi.getFlights(null, bounds);
 
                 for (const flight of flights) {
-                    expect(flight.latitude).to.be.below(zone["tl_y"]);
-                    expect(flight.latitude).to.be.above(zone["br_y"]);
+                    // Inclusive, like the Python port: FR24 returns flights sitting
+                    // exactly on the boundary of the requested box.
+                    expect(flight.latitude).to.be.at.most(zone["tl_y"]);
+                    expect(flight.latitude).to.be.at.least(zone["br_y"]);
 
-                    expect(flight.longitude).to.be.below(zone["br_x"]);
-                    expect(flight.longitude).to.be.above(zone["tl_x"]);
+                    expect(flight.longitude).to.be.at.most(zone["br_x"]);
+                    expect(flight.longitude).to.be.at.least(zone["tl_x"]);
                 }
                 expect(flights.length).to.be.above(expected - 1);
             }

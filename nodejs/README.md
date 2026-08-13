@@ -31,10 +31,13 @@ const frApi = new FlightRadar24API();
 let flights = await frApi.getFlights(...);  // Returns a list of Flight objects
 ```
 
-**Getting airports list (requires country selection):**
+**Getting airports list:**
 ```javascript
 // Get airports from specific countries
 let airports = await frApi.getAirports([Countries.BRAZIL, Countries.UNITED_STATES]);  // Returns a list of Airport objects
+
+// Omit the countries to get every airport
+let allAirports = await frApi.getAirports();
 ```
 
 **Getting airlines list:**

@@ -233,7 +233,23 @@ class APIRequest:
         try:
             content = decode(content)
         except Exception as err:
-            _logger.warning(
+            # Decided by the body, not the header: undecodable text is genuinely
+            # broken and must warn, while binary bodies carry no such tell. Nothing
+            # here may raise, or it would replace `err` with its own failure.
+            if not isinstance(content, bytes):
+                transport_decoded = True
+            elif content_type.startswith(("application/json", "text/")):
+                try:
+                    content.decode("utf-8")
+                    transport_decoded = True
+                except UnicodeDecodeError:
+                    transport_decoded = False
+            else:
+                corrupt_gzip = content_encoding == "gzip" and content.startswith(b"\x1f\x8b")
+                transport_decoded = content_encoding in ("gzip", "br") and not corrupt_gzip
+
+            _logger.log(
+                logging.DEBUG if transport_decoded else logging.WARNING,
                 "APIRequest.get_content: failed to decode Content-Encoding=%r for %s (%s). "
                 "Assuming the transport already decompressed and returning raw bytes.",
                 content_encoding, self.url, err,

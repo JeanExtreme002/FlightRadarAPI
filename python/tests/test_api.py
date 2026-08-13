@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import re
+
 import pytest
 
 from FlightRadarAPI import Entity, Flight
 from FlightRadarAPI.errors import CloudflareError, LoginError
+from FlightRadarAPI.parsers import country_to_slug
 from package import Countries, FlightRadar24API, version
 from util import repeat_test
 
@@ -51,6 +54,27 @@ def test_get_airport_details(airports=["ATL", "LAX", "DXB", "DFW"]):
 def test_get_airports(expect=1800, countries=[Countries.BRAZIL, Countries.UNITED_STATES]):
     results = fr_api.get_airports(countries=countries)
     assert len(results) >= expect
+
+
+@repeat_test(**repeat_test_config)
+def test_get_airports_without_countries(expect=1800):
+    results = fr_api.get_airports()
+    assert len(results) > expect
+    assert len({airport.country for airport in results}) > 2
+
+    # Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)". Sorted
+    # so the pick does not depend on the order the feed happens to list airports in.
+    punctuated = sorted(a.country for a in results if re.search(r"[^a-zA-Z ]", a.country))
+    tricky = punctuated[0] if punctuated else results[0].country
+
+    assert fr_api.get_country_flag(tricky) is not None, tricky
+
+    # The enum's URL slugs and the feed's display names are two FR24 vocabularies;
+    # a rename silently empties that country's filter. The reverse direction is not
+    # asserted: a country FR24 adds is a gap in the enum, not a regression.
+    absent = {c.value for c in Countries} - {country_to_slug(a.country) for a in results}
+
+    assert not absent, "enum values absent from the feed: %s" % sorted(absent)
 
 
 @repeat_test(**repeat_test_config)
