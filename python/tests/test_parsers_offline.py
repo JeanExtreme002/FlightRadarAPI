@@ -14,6 +14,7 @@ import os
 
 import pytest
 
+from FlightRadarAPI.core import Countries
 from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_airports_json
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -236,6 +237,13 @@ def test_country_to_slug_matches_countries_enum_spelling():
     assert country_to_slug("Curacao") == "curacao"
     assert country_to_slug("Curaçao") == "curacao"
     assert country_to_slug(None) == ""
+
+
+def test_country_to_slug_takes_a_countries_member():
+    """get_airports accepts them, so get_country_flag(airport.country) style calls
+    must not slugify "Countries.BRAZIL"."""
+    assert country_to_slug(Countries.BRAZIL) == "brazil"
+    assert country_to_slug(Countries.MYANMAR_BURMA) == "myanmar-burma"
 
 
 def test_country_to_slug_strips_parentheses_for_flag_urls():

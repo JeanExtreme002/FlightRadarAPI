@@ -3,7 +3,7 @@
 import dataclasses
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.parse import quote
 
 from .core import Core, Countries
@@ -188,15 +188,21 @@ class FlightRadar24API:
         return response.get_json_content()
 
     def get_airports(
-        self, countries: Optional[Union[List[Union[Countries, str]], Countries, str]] = None,
+        self, countries: Optional[Union[Iterable[Union[Countries, str]], Countries, str]] = None,
     ) -> List[Airport]:
         """
         Return a list with all airports, optionally narrowed to some countries.
 
         :param countries: Country names from the Countries enum, or their slug strings,
-            as a list or a single value. Every country when omitted.
+            as any iterable or a single value. Every country when omitted.
         """
-        wanted = [countries] if isinstance(countries, (Countries, str)) else countries
+        wanted: Optional[List[Union[Countries, str]]] = None
+
+        if isinstance(countries, (Countries, str)):
+            wanted = [countries]
+        elif countries is not None:
+            # Materialised: a generator has no len() and is consumed once.
+            wanted = list(countries)
 
         if wanted is not None and len(wanted) == 0:
             return []

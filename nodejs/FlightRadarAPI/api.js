@@ -205,11 +205,20 @@ class FlightRadar24API {
      * @return {Promise<Array<Airport>>}
      */
     async getAirports(countries) {
-        // Any iterable, matching the Python port, which just iterates the argument.
+        // Any iterable, matching the Python port. Array.from would turn a
+        // non-iterable into [], answering a mistake with an empty result where
+        // Python raises.
         let wanted = null;
 
-        if (typeof countries === "string") wanted = [countries];
-        else if (countries != null) wanted = Array.from(countries);
+        if (typeof countries === "string") {
+            wanted = [countries];
+        }
+        else if (countries != null) {
+            if (typeof countries[Symbol.iterator] !== "function") {
+                throw new TypeError("getAirports expects a country name or an iterable of country names.");
+            }
+            wanted = Array.from(countries);
+        }
 
         if (wanted && wanted.length === 0) return [];
 

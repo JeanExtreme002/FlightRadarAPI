@@ -88,8 +88,11 @@ def country_to_slug(country: Optional[str]) -> str:
     Slugify a country name the way FR24 spells it in its data page URLs, so feed
     rows can be matched against the Countries enum ("United States" -> "united-states").
     """
-    # Diacritics stripped so a future "Curaçao" still matches "curacao". `is None`
-    # rather than truthiness: str(0 or "") is "" here but String(0 ?? "") is "0".
+    # `.value` unwraps a Countries member, which str() would render as
+    # "Countries.BRAZIL". Diacritics are stripped so a future "Curaçao" still
+    # matches "curacao"; `is None` rather than truthiness because str(0 or "") is
+    # "" here while String(0 ?? "") is "0" in Node.
+    country = getattr(country, "value", country)
     decomposed = unicodedata.normalize("NFKD", "" if country is None else str(country))
     ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
     return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")

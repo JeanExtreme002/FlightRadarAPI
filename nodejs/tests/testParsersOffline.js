@@ -12,6 +12,7 @@ const path = require("path");
 const expect = require("chai").expect;
 
 const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("../FlightRadarAPI/parsers");
+const { Countries } = require("../FlightRadarAPI/core");
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
@@ -237,6 +238,11 @@ describe("countryToSlug (offline)", function() {
         expect(countryToSlug("Curacao")).to.equal("curacao");
         expect(countryToSlug("Curaçao")).to.equal("curacao");
         expect(countryToSlug("")).to.equal("");
+    });
+
+    it("takes a Countries value, which is what getAirports accepts", function() {
+        expect(countryToSlug(Countries.BRAZIL)).to.equal("brazil");
+        expect(countryToSlug(Countries.MYANMAR_BURMA)).to.equal("myanmar-burma");
     });
 
     it("strips the parentheses FR24 uses, keeping country flag URLs valid", function() {
