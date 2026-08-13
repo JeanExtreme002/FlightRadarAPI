@@ -124,8 +124,9 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
 
     Plain whole numbers stay ints, so an altitude reads 2436 in both ports rather
     than 2436.0 here -- the feed sends `alt` as an int for most rows and as a
-    string ("-1") for the rest. Exponent notation is the exception: "1e3" is a
-    float here and an integral Number in Node, equal in value but not in type.
+    string ("-1") for the rest. Anything written with a decimal point or an
+    exponent stays a float: "2436.0" and "1e3" are floats here and integral
+    Numbers in Node, equal in value but not in type.
     """
     # bool is an int here, and str([43]) would invent a number.
     if isinstance(value, bool) or not isinstance(value, (int, float, str)):
