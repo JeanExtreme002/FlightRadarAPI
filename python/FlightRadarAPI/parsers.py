@@ -99,10 +99,9 @@ def country_to_slug(country: object) -> str:
     decomposed = unicodedata.normalize("NFKD", "" if country is None else str(country))
     ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
 
-    # Punctuation is deleted before the hyphenation pass, the way the enum values
-    # were built: "Virgin Islands (U.S.)" is virgin-islands-us, not -u-s.
-    depunctuated = re.sub(r"[^A-Za-z0-9\s-]", "", ascii_only)
-    return re.sub(r"[^a-z0-9]+", "-", depunctuated.lower()).strip("-")
+    # Punctuation becomes a hyphen rather than being deleted: FR24's own assets are
+    # named that way, e.g. flags-small/cote-d-ivoire.svg.
+    return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
 
 
 def _to_text(value: object) -> str:
