@@ -85,10 +85,14 @@ function countryToSlug(country) {
         .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-// Decimal numbers only, so both ports accept and reject exactly the same
+// ASCII decimal numbers only, so both ports accept and reject exactly the same
 // strings. `Number` on its own would take "0x10" and "" (as 0) where Python's
 // `float` refuses them, and `parseFloat` would read "43.30 N" as 43.3.
-const NUMERIC_PATTERN = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+const NUMERIC_PATTERN = /^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
+
+// Trimmed explicitly: String.trim() also strips U+FEFF, which Python's
+// str.strip() keeps, while str.strip() drops U+001C-U+001F, which trim() keeps.
+const SURROUNDING_SPACE = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
 
 /**
  * Coerce a numeric feed field into a number, or null when it is unusable.
@@ -105,7 +109,7 @@ function toNumber(value) {
     // `[43]` through as 43, which Python's `float` rejects.
     if (typeof value !== "string") return null;
 
-    const text = value.trim();
+    const text = value.replace(SURROUNDING_SPACE, "");
 
     return NUMERIC_PATTERN.test(text) ? toNumber(Number(text)) : null;
 }
@@ -172,6 +176,7 @@ function parseAirportsJson(payload, countries = null) {
 
     const wanted = countries ? new Set(countries.map(countryToSlug)) : null;
     const matched = new Set();
+    const unpositioned = [];
     const airports = [];
 
     for (const row of rows) {
@@ -184,14 +189,15 @@ function parseAirportsJson(payload, countries = null) {
             matched.add(slug);
         }
 
-        const latitude = toNumber(row["lat"]);
-        const longitude = toNumber(row["lon"]);
+        let latitude = toNumber(row["lat"]);
+        let longitude = toNumber(row["lon"]);
 
+        // Half a position is not a position: a consumer gating on `latitude`
+        // would treat the airport as located and read a null longitude.
         if (latitude === null || longitude === null) {
-            console.warn(
-                `parseAirportsJson: invalid coordinates for airport "${toStringField(row["name"])}" ` +
-                `(lat=${row["lat"]}, lon=${row["lon"]}) — skipping position.`,
-            );
+            latitude = null;
+            longitude = null;
+            unpositioned.push(toStringField(row["name"]));
         }
 
         airports.push(new Airport({
@@ -203,6 +209,16 @@ function parseAirportsJson(payload, countries = null) {
             "alt": toNumber(row["alt"]),
             "country": toStringField(row["country"]),
         }));
+    }
+
+    // Summarised rather than logged per row: the feed carries every airport, so
+    // a degraded response would otherwise print hundreds of lines per call.
+    if (unpositioned.length > 0) {
+        const sample = unpositioned.slice(0, 3).map((name) => `"${name}"`).join(", ");
+        console.warn(
+            `parseAirportsJson: ${unpositioned.length} airport(s) had unusable coordinates ` +
+            `and carry no position (e.g. ${sample}).`,
+        );
     }
 
     if (wanted) {

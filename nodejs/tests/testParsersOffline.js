@@ -143,9 +143,29 @@ describe("parseAirportsJson (offline)", function() {
         }] });
         const [airport] = parseAirportsJson(payload);
 
+        // One unusable coordinate drops the whole position: half a position
+        // would read as located to anything gating on `latitude`.
         expect(airport.latitude).to.equal(null);
-        expect(airport.longitude).to.be.closeTo(-8.37725, 1e-6);
+        expect(airport.longitude).to.equal(null);
+        // Altitude is independent of the position and survives.
         expect(airport.altitude).to.equal(-1);
+    });
+
+    it("agrees with the Python port on Unicode digits and stray control bytes", function() {
+        // Python's \d matches "٤٣" and str.strip() drops U+001C, while
+        // String.trim() drops U+FEFF -- each port used to accept what the other
+        // rejected. Only ASCII digits and an explicit space set are allowed now.
+        const read = (value) => {
+            const payload = JSON.stringify({ rows: [{
+                name: "X", iata: "XXX", icao: "XXXX", country: "Spain", lat: value, lon: value, alt: value,
+            }] });
+            return parseAirportsJson(payload)[0].altitude;
+        };
+
+        expect(read("\u0664\u0663"), "Arabic-Indic digits").to.equal(null);
+        expect(read("\ufeff43"), "leading U+FEFF").to.equal(null);
+        expect(read("\u001c43"), "leading U+001C").to.equal(null);
+        expect(read("  43  "), "plain spaces still trimmed").to.equal(43);
     });
 
     it("returns an empty list for an unknown country", function() {

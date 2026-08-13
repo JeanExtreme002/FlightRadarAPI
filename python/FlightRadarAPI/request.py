@@ -234,11 +234,21 @@ class APIRequest:
             content = decode(content)
         except Exception as err:
             # curl_cffi decompresses gzip and br transparently while leaving the
-            # header in place, so failing here is routine rather than actionable.
-            # A body that does carry the gzip magic number is genuinely corrupt
-            # and still warns; brotli has no magic number to check.
-            corrupt_gzip = content_encoding == "gzip" and content.startswith(b"\x1f\x8b")
-            transport_decoded = content_encoding in ("gzip", "br") and not corrupt_gzip
+            # header in place, so failing here is usually routine. Decide by
+            # looking at the body rather than trusting the header: a text payload
+            # that will not decode is genuinely broken and must stay a warning,
+            # since the caller would otherwise only see the parser complain that
+            # the JSON is invalid. Binary bodies carry no such tell, and a gzip
+            # magic number under a "gzip" header means real corruption.
+            if content_type.startswith(("application/json", "text/")):
+                try:
+                    content.decode("utf-8")
+                    transport_decoded = True
+                except UnicodeDecodeError:
+                    transport_decoded = False
+            else:
+                corrupt_gzip = content_encoding == "gzip" and content.startswith(b"\x1f\x8b")
+                transport_decoded = content_encoding in ("gzip", "br") and not corrupt_gzip
 
             _logger.log(
                 logging.DEBUG if transport_decoded else logging.WARNING,

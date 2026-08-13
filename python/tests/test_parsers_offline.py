@@ -129,10 +129,28 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
     }]})
     airport = parse_airports_json(payload)[0]
 
+    # One unusable coordinate drops the whole position: half a position would
+    # read as located to anything gating on `latitude`.
     assert airport.latitude is None
-    assert abs(airport.longitude - (-8.37725)) < 1e-6
+    assert airport.longitude is None
+    # Altitude is independent of the position and survives.
     assert airport.altitude == -1
     assert isinstance(airport.altitude, int)
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("٤٣", None),   # Arabic-Indic digits, which \d matched before re.ASCII
+    ("﻿43", None),       # U+FEFF, which String.trim() drops and str.strip() keeps
+    ("43", None),       # U+001C, which str.strip() drops and String.trim() keeps
+    ("  43  ", 43),           # plain spaces are still trimmed
+])
+def test_parse_airports_json_agrees_with_node_on_unicode(value, expected):
+    payload = json.dumps({"rows": [{
+        "name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
+        "lat": value, "lon": value, "alt": value,
+    }]})
+
+    assert parse_airports_json(payload)[0].altitude == expected
 
 
 @pytest.mark.parametrize(
