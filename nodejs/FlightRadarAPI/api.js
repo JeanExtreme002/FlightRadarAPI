@@ -313,9 +313,7 @@ class FlightRadar24API {
      * @return {Promise<[object, string] | null>}
      */
     async getCountryFlag(country) {
-        // Slugified the same way as the airports feed, so the `country` of an
-        // Airport can be handed straight back here: FR24 spells some names with
-        // parentheses ("Myanmar (Burma)") that must not reach the URL.
+        // Same slugifier as the feed, which spells some names "Myanmar (Burma)".
         const flagUrl = Core.countryFlagUrl(countryToSlug(country));
 
         const headers = { ...Core.imageHeaders };

@@ -13,12 +13,10 @@ from .entities.airport import Airport
 
 _logger = logging.getLogger(__name__)
 
-# ASCII only: \d would otherwise match Unicode digits such as "٤٣", which the
-# Node port rejects.
+# ASCII only: \d would otherwise match Unicode digits such as "٤٣".
 NUMERIC_PATTERN = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$", re.ASCII)
 
-# Stripped explicitly: str.strip() also drops U+001C-U+001F, which JavaScript's
-# String.trim() keeps, while trim() drops U+FEFF, which str.strip() keeps.
+# str.strip() and trim() disagree on U+001C-U+001F and U+FEFF: pick one set.
 SURROUNDING_SPACE = " \t\n\r\f\v"
 
 # Number.MAX_SAFE_INTEGER, the largest integer JavaScript holds exactly.
@@ -90,10 +88,8 @@ def country_to_slug(country: Optional[str]) -> str:
     Slugify a country name the way FR24 spells it in its data page URLs, so feed
     rows can be matched against the Countries enum ("United States" -> "united-states").
     """
-    # The feed is ASCII today ("Curacao"); stripping diacritics keeps the match
-    # working if that ever changes.
-    # `is None` rather than a truthiness check: str(0 or "") is "" in Python but
-    # String(0 ?? "") is "0" in Node, and the two must slugify alike.
+    # Diacritics stripped so a future "Curaçao" still matches "curacao". `is None`
+    # rather than truthiness: str(0 or "") is "" here but String(0 ?? "") is "0".
     decomposed = unicodedata.normalize("NFKD", "" if country is None else str(country))
     ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
     return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
@@ -119,16 +115,13 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     stay ints so that altitudes read the same in both ports -- the feed sends
     `alt` as an int for most rows and as a string ("-1") for the rest.
     """
-    # Booleans are ints in Python, and str() on a list or dict would invent a
-    # number: str([43]) == "43".
+    # bool is an int here, and str([43]) would invent a number.
     if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         return None
 
     if isinstance(value, str):
         stripped = value.strip(SURROUNDING_SPACE)
 
-        # Decimal numbers only, so both ports accept and reject exactly the same
-        # strings: bare `float` would also take "1_000" and "inf".
         if not NUMERIC_PATTERN.match(stripped):
             return None
 
@@ -136,9 +129,7 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     else:
         text = value
 
-    # Every value funnels through one conversion, so overflow is handled once:
-    # Python ints have no ceiling, and both "1e999" and 400 plain digits reach
-    # here as something a double cannot hold.
+    # One conversion, so overflow is handled once: Python ints have no ceiling.
     try:
         number = float(text)
     except OverflowError:
@@ -152,9 +143,7 @@ def _to_number(value: object) -> Optional[Union[int, float]]:
     except (ValueError, OverflowError):
         return number
 
-    # Whole numbers stay ints so altitudes read the same in both ports, but only
-    # up to where JavaScript is still exact. `exact == number` keeps a decimal
-    # like -23.4 from being truncated to -23.
+    # int only when lossless (so -23.4 survives) and only where JavaScript is exact.
     return exact if exact == number and abs(exact) <= MAX_EXACT_INTEGER else number
 
 
@@ -199,8 +188,7 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
         latitude = _to_number(row.get("lat"))
         longitude = _to_number(row.get("lon"))
 
-        # Half a position is not a position: a consumer gating on `latitude`
-        # would treat the airport as located and read a None longitude.
+        # One bad coordinate drops both: half a position reads as located.
         if latitude is None or longitude is None:
             latitude = longitude = None
             unpositioned.append(_to_text(row.get("name")))
@@ -215,8 +203,7 @@ def parse_airports_json(payload: Union[bytes, str, Dict], countries: Optional[Li
             "country": _to_text(row.get("country")),
         }))
 
-    # Summarised rather than logged per row: the feed carries every airport, so a
-    # degraded response would otherwise print hundreds of lines per call.
+    # One line, not one per row: the feed carries every airport.
     if unpositioned:
         _logger.warning(
             "parse_airports_json: %d airport(s) had unusable coordinates and carry no position (e.g. %s).",

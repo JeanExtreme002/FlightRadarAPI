@@ -233,13 +233,8 @@ class APIRequest:
         try:
             content = decode(content)
         except Exception as err:
-            # curl_cffi decompresses gzip and br transparently while leaving the
-            # header in place, so failing here is usually routine. Decide by
-            # looking at the body rather than trusting the header: a text payload
-            # that will not decode is genuinely broken and must stay a warning,
-            # since the caller would otherwise only see the parser complain that
-            # the JSON is invalid. Binary bodies carry no such tell, and a gzip
-            # magic number under a "gzip" header means real corruption.
+            # Decided by the body, not the header: undecodable text is genuinely
+            # broken and must warn, while binary bodies carry no such tell.
             if content_type.startswith(("application/json", "text/")):
                 try:
                     content.decode("utf-8")

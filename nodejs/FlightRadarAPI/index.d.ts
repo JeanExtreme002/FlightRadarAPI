@@ -312,7 +312,6 @@ export class Entity {
  * Airport representation.
  */
 export class Airport extends Entity {
-    // null when FR24 reports no usable coordinates for the airport.
     latitude: number | null;
     longitude: number | null;
     altitude: number | null;

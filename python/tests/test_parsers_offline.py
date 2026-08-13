@@ -18,9 +18,7 @@ from FlightRadarAPI.parsers import country_to_slug, parse_airlines_html, parse_a
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
-# Every case here caught a real bug or pins a stated invariant. Keep it in step
-# with the same list in nodejs/tests/testParsersOffline.js: the two ports have
-# drifted apart on exactly these inputs before.
+# Keep in step with the same list in nodejs/tests/testParsersOffline.js.
 NUMERIC_CASES = [
     ("whitespace", " ", None),
     ("an array holding a number", [43], None),
@@ -129,11 +127,9 @@ def test_parse_airports_json_rejects_numeric_looking_junk():
     }]})
     airport = parse_airports_json(payload)[0]
 
-    # One unusable coordinate drops the whole position: half a position would
-    # read as located to anything gating on `latitude`.
+    # One bad coordinate drops both; altitude is independent and survives.
     assert airport.latitude is None
     assert airport.longitude is None
-    # Altitude is independent of the position and survives.
     assert airport.altitude == -1
     assert isinstance(airport.altitude, int)
 
@@ -172,8 +168,7 @@ def test_parse_airports_json_numeric_coercion(value, expected):
 
 @pytest.mark.parametrize("literal", ["1" * 400, "9007199254740993", "-" + "1" * 400])
 def test_parse_airports_json_survives_raw_numbers_no_double_can_hold(literal):
-    """Written as text on purpose: json.loads turns these into unbounded ints,
-    where float() raises OverflowError instead of returning inf."""
+    """Written as text: json.loads turns these into unbounded ints."""
     payload = (
         '{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",'
         f'"lat":{literal},"lon":1,"alt":2}}]}}'
@@ -185,8 +180,7 @@ def test_parse_airports_json_survives_raw_numbers_no_double_can_hold(literal):
 
 @pytest.mark.parametrize("literal", ["null", "0", "false", "true", "[]", "{}", "123"])
 def test_parse_airports_json_keeps_text_fields_as_strings(literal):
-    """Anything else breaks callers that treat these as strings, e.g.
-    get_country_flag(airport.country) slugifying a dict."""
+    """Anything else breaks get_country_flag(airport.country)."""
     payload = (
         '{"rows":[{"name":%s,"iata":%s,"icao":%s,"country":%s,"lat":1,"lon":2,"alt":3}]}'
         % (literal, literal, literal, literal)
@@ -201,7 +195,6 @@ def test_parse_airports_json_country_spelling_and_slug_round_trip():
 
     assert ann.country == "Myanmar (Burma)"
     assert country_to_slug(ann.country) == "myanmar-burma"
-    # Feed sends `alt` as a string on a few rows; it must read as a number.
     assert ann.altitude == 43
 
 
@@ -237,8 +230,7 @@ def test_country_to_slug_matches_countries_enum_spelling():
 
 
 def test_country_to_slug_strips_parentheses_for_flag_urls():
-    """Regression: get_country_flag(airport.country) 404'd for these while the
-    slug was built with a plain space-to-hyphen replacement."""
+    """These 404'd while the slug was a plain space-to-hyphen replacement."""
     assert country_to_slug("Myanmar (Burma)") == "myanmar-burma"
     assert country_to_slug("Cocos (Keeling) Islands") == "cocos-keeling-islands"
     assert country_to_slug("Falkland Islands (Malvinas)") == "falkland-islands-malvinas"

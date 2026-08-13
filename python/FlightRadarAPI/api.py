@@ -207,12 +207,9 @@ class FlightRadar24API:
         slugs: Optional[List[str]] = None
 
         if wanted is not None:
-            # Accepts Countries members and plain slug strings alike.
             slugs = [str(getattr(country, "value", country)) for country in wanted]
 
-        # get_content() rather than get_json_content(): a non-JSON body (an
-        # interstitial served as text/html) then reaches the parser, which warns
-        # and returns [] instead of raising, matching the Node port.
+        # get_content(), not get_json_content(): a non-JSON body must reach the guard.
         return parse_airports_json(response.get_content(), slugs)
 
     def get_bookmarks(self) -> Dict:
@@ -304,9 +301,7 @@ class FlightRadar24API:
 
         :param country: Country name
         """
-        # Slugified the same way as the airports feed, so the `country` of an
-        # Airport can be handed straight back here: FR24 spells some names with
-        # parentheses ("Myanmar (Burma)") that must not reach the URL.
+        # Same slugifier as the feed, which spells some names "Myanmar (Burma)".
         flag_url = Core.country_flag_url.format(country_to_slug(country))
         headers = Core.image_headers.copy()
 

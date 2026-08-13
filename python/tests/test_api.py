@@ -62,16 +62,12 @@ def test_get_airports_without_countries(expect=1800):
     assert len(results) > expect
     assert len({airport.country for airport in results}) > 2
 
-    # Regression: FR24 spells some countries with characters that used to reach
-    # the flag URL verbatim ("Myanmar (Burma)"). Picked from the response rather
-    # than hard-coded, so the guard survives a rename.
+    # Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
     tricky = next((a for a in results if re.search(r"[^a-zA-Z ]", a.country)), results[0])
     assert fr_api.get_country_flag(tricky.country) is not None, tricky.country
 
-    # The filter matches a slug derived from the feed's display name ("United
-    # States") against the enum's URL slugs ("united-states"). Those are two
-    # different FR24 vocabularies that happen to agree, so pin it: a rename on
-    # either side silently empties one country.
+    # Two FR24 vocabularies that happen to agree; a rename on either side
+    # silently empties one country.
     feed = {country_to_slug(a.country) for a in results}
     values = {c.value for c in Countries}
 

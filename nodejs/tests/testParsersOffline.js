@@ -16,9 +16,7 @@ const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("../Flig
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
 
-// Every case here caught a real bug or pins a stated invariant. Keep it in step
-// with the same list in python/tests/test_parsers_offline.py: the two ports have
-// drifted apart on exactly these inputs before.
+// Keep in step with the same list in python/tests/test_parsers_offline.py.
 const NUMERIC_CASES = [
     ["whitespace", " ", null],
     ["an array holding a number", [43], null],
@@ -126,7 +124,6 @@ describe("parseAirportsJson (offline)", function() {
 
         expect(ann.country).to.equal("Myanmar (Burma)");
         expect(countryToSlug(ann.country)).to.equal("myanmar-burma");
-        // Feed sends `alt` as a string on a few rows; it must read as a number.
         expect(ann.altitude).to.equal(43);
     });
 
@@ -143,18 +140,14 @@ describe("parseAirportsJson (offline)", function() {
         }] });
         const [airport] = parseAirportsJson(payload);
 
-        // One unusable coordinate drops the whole position: half a position
-        // would read as located to anything gating on `latitude`.
+        // One bad coordinate drops both; altitude is independent and survives.
         expect(airport.latitude).to.equal(null);
         expect(airport.longitude).to.equal(null);
-        // Altitude is independent of the position and survives.
         expect(airport.altitude).to.equal(-1);
     });
 
     it("agrees with the Python port on Unicode digits and stray control bytes", function() {
-        // Python's \d matches "٤٣" and str.strip() drops U+001C, while
-        // String.trim() drops U+FEFF -- each port used to accept what the other
-        // rejected. Only ASCII digits and an explicit space set are allowed now.
+        // Each port used to accept what the other rejected.
         const read = (value) => {
             const payload = JSON.stringify({ rows: [{
                 name: "X", iata: "XXX", icao: "XXXX", country: "Spain", lat: value, lon: value, alt: value,
@@ -173,9 +166,7 @@ describe("parseAirportsJson (offline)", function() {
     });
 
     it("survives numbers written raw in the JSON that no double can hold", function() {
-        // Built as text on purpose: a JS number literal is already rounded (or
-        // Infinity) before it can reach the payload, so only raw JSON exercises
-        // this. Python reaches it as an unbounded int, where float() overflows.
+        // Written as text: a JS literal is already rounded before it reaches here.
         for (const literal of ["1".repeat(400), "9007199254740993", "-1".concat("1".repeat(399))]) {
             const payload = `{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain","lat":${literal},"lon":1,"alt":2}]}`;
             const [airport] = parseAirportsJson(payload);
@@ -187,8 +178,7 @@ describe("parseAirportsJson (offline)", function() {
     });
 
     it("keeps text fields as strings whatever the feed sends", function() {
-        // Anything else breaks callers that treat these as strings, e.g.
-        // getCountryFlag(airport.country) slugifying an object.
+        // Anything else breaks getCountryFlag(airport.country).
         for (const literal of ["null", "0", "false", "true", "[]", "{}", "123"]) {
             const payload = `{"rows":[{"name":${literal},"iata":${literal},"icao":${literal},` +
                 `"country":${literal},"lat":1,"lon":2,"alt":3}]}`;
@@ -200,8 +190,7 @@ describe("parseAirportsJson (offline)", function() {
     });
 
     it("parses a body that arrived as raw bytes", function() {
-        // request() returns an ArrayBuffer when the response carries an
-        // unexpected content-type; the JSON inside is still good.
+        // request() returns an ArrayBuffer on an unexpected content-type.
         const json = load("airports.json");
 
         for (const payload of [Buffer.from(json), new TextEncoder().encode(json), new TextEncoder().encode(json).buffer]) {
@@ -244,8 +233,7 @@ describe("countryToSlug (offline)", function() {
     });
 
     it("strips the parentheses FR24 uses, keeping country flag URLs valid", function() {
-        // Regression: `getCountryFlag(airport.country)` 404'd for these while the
-        // slug was built with a plain space-to-hyphen replacement.
+        // These 404'd while the slug was a plain space-to-hyphen replacement.
         expect(countryToSlug("Myanmar (Burma)")).to.equal("myanmar-burma");
         expect(countryToSlug("Cocos (Keeling) Islands")).to.equal("cocos-keeling-islands");
         expect(countryToSlug("Falkland Islands (Malvinas)")).to.equal("falkland-islands-malvinas");

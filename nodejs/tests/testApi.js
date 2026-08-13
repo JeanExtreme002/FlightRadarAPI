@@ -57,18 +57,14 @@ describe("Testing FlightRadarAPI version " + version, function() {
             expect(results.length).to.be.above(expected);
             expect(new Set(results.map((airport) => airport.country)).size).to.be.above(countries.length);
 
-            // Regression: FR24 spells some countries with characters that used to
-            // reach the flag URL verbatim ("Myanmar (Burma)"). Picked from the
-            // response rather than hard-coded, so the guard survives a rename.
+            // Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
             const tricky = results.find((airport) => /[^a-z ]/i.test(airport.country)) ?? results[0];
             expect(await frApi.getCountryFlag(tricky.country), tricky.country).to.not.equal(null);
         });
 
         it("Expected the Countries enum and the feed to name the same countries.", async function() {
-            // The filter matches a slug derived from the feed's display name
-            // ("United States") against the enum's URL slugs ("united-states").
-            // Those are two different FR24 vocabularies that happen to agree, so
-            // pin it: a rename on either side silently empties one country.
+            // Two FR24 vocabularies that happen to agree; a rename on either side
+            // silently empties one country.
             const feed = new Set((await frApi.getAirports()).map((airport) => countryToSlug(airport.country)));
             const values = Object.values(Countries);
 

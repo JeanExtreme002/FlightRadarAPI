@@ -78,20 +78,16 @@ function parseAirlinesHtml(html) {
  * @return {string} URL-friendly form matching the Countries enum (e.g. "united-states")
  */
 function countryToSlug(country) {
-    // The feed is ASCII today ("Curacao"); stripping diacritics keeps the match
-    // working if that ever changes.
+    // Diacritics stripped so a future "Curaçao" still matches "curacao".
     return String(country ?? "")
         .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
         .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-// ASCII decimal numbers only, so both ports accept and reject exactly the same
-// strings. `Number` on its own would take "0x10" and "" (as 0) where Python's
-// `float` refuses them, and `parseFloat` would read "43.30 N" as 43.3.
+// ASCII decimals only, so both ports accept and reject the same strings.
 const NUMERIC_PATTERN = /^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
 
-// Trimmed explicitly: String.trim() also strips U+FEFF, which Python's
-// str.strip() keeps, while str.strip() drops U+001C-U+001F, which trim() keeps.
+// trim() and str.strip() disagree on U+FEFF and U+001C-U+001F: pick one set.
 const SURROUNDING_SPACE = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
 
 /**
@@ -105,8 +101,7 @@ const SURROUNDING_SPACE = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
  */
 function toNumber(value) {
     if (typeof value === "number") return Number.isFinite(value) ? value : null;
-    // Only strings are worth parsing. Stringifying anything else would let
-    // `[43]` through as 43, which Python's `float` rejects.
+    // Not stringified: String([43]) would pass as 43.
     if (typeof value !== "string") return null;
 
     const text = value.replace(SURROUNDING_SPACE, "");
@@ -192,8 +187,7 @@ function parseAirportsJson(payload, countries = null) {
         let latitude = toNumber(row["lat"]);
         let longitude = toNumber(row["lon"]);
 
-        // Half a position is not a position: a consumer gating on `latitude`
-        // would treat the airport as located and read a null longitude.
+        // One bad coordinate drops both: half a position reads as located.
         if (latitude === null || longitude === null) {
             latitude = null;
             longitude = null;
@@ -211,8 +205,7 @@ function parseAirportsJson(payload, countries = null) {
         }));
     }
 
-    // Summarised rather than logged per row: the feed carries every airport, so
-    // a degraded response would otherwise print hundreds of lines per call.
+    // One line, not one per row: the feed carries every airport.
     if (unpositioned.length > 0) {
         const sample = unpositioned.slice(0, 3).map((name) => `"${name}"`).join(", ");
         console.warn(
