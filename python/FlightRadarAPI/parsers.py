@@ -5,6 +5,7 @@ import logging
 import math
 import re
 import unicodedata
+from enum import Enum
 from typing import Dict, List, Optional, Union
 
 from bs4 import BeautifulSoup
@@ -92,7 +93,9 @@ def country_to_slug(country: Optional[str]) -> str:
     # "Countries.BRAZIL". Diacritics are stripped so a future "Curaçao" still
     # matches "curacao"; `is None` rather than truthiness because str(0 or "") is
     # "" here while String(0 ?? "") is "0" in Node.
-    country = getattr(country, "value", country)
+    if isinstance(country, Enum):
+        country = country.value
+
     decomposed = unicodedata.normalize("NFKD", "" if country is None else str(country))
     ascii_only = "".join(char for char in decomposed if not unicodedata.combining(char))
     return re.sub(r"[^a-z0-9]+", "-", ascii_only.lower()).strip("-")
