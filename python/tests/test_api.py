@@ -62,9 +62,12 @@ def test_get_airports_without_countries(expect=1800):
     assert len(results) > expect
     assert len({airport.country for airport in results}) > 2
 
-    # Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
-    tricky = next((a for a in results if re.search(r"[^a-zA-Z ]", a.country)), results[0])
-    assert fr_api.get_country_flag(tricky.country) is not None, tricky.country
+    # Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)". Sorted
+    # so the pick does not depend on the order the feed happens to list airports in.
+    punctuated = sorted(a.country for a in results if re.search(r"[^a-zA-Z ]", a.country))
+    tricky = punctuated[0] if punctuated else results[0].country
+
+    assert fr_api.get_country_flag(tricky) is not None, tricky
 
     # The enum's URL slugs and the feed's display names are two FR24 vocabularies;
     # a rename silently empties that country's filter. The reverse direction is not

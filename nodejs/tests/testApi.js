@@ -62,8 +62,12 @@ describe("Testing FlightRadarAPI version " + version, function() {
             expect(new Set(everyAirport.map((airport) => airport.country)).size).to.be.above(countries.length);
 
             // Discovered, not hard-coded: FR24 spells some names "Myanmar (Burma)".
-            const tricky = everyAirport.find((airport) => /[^a-z ]/i.test(airport.country)) ?? everyAirport[0];
-            expect(await frApi.getCountryFlag(tricky.country), tricky.country).to.not.equal(null);
+            // Sorted so the pick does not depend on the order the feed happens to
+            // list airports in.
+            const punctuated = everyAirport.map((airport) => airport.country).filter((name) => /[^a-z ]/i.test(name));
+            const tricky = punctuated.sort()[0] ?? everyAirport[0].country;
+
+            expect(await frApi.getCountryFlag(tricky), tricky).to.not.equal(null);
         });
 
         it("Expected every Countries value to name a country the feed knows.", async function() {

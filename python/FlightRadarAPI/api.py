@@ -309,7 +309,12 @@ class FlightRadar24API:
         :param country: Country name
         """
         # Same slugifier as the feed, which spells some names "Myanmar (Burma)".
-        flag_url = Core.country_flag_url.format(country_to_slug(country))
+        slug = country_to_slug(country)
+
+        if not slug:
+            return None
+
+        flag_url = Core.country_flag_url.format(slug)
         headers = Core.image_headers.copy()
 
         headers.pop("origin", None)  # Does not work for this request.

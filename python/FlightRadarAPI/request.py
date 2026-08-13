@@ -234,8 +234,11 @@ class APIRequest:
             content = decode(content)
         except Exception as err:
             # Decided by the body, not the header: undecodable text is genuinely
-            # broken and must warn, while binary bodies carry no such tell.
-            if content_type.startswith(("application/json", "text/")):
+            # broken and must warn, while binary bodies carry no such tell. Nothing
+            # here may raise, or it would replace `err` with its own failure.
+            if not isinstance(content, bytes):
+                transport_decoded = True
+            elif content_type.startswith(("application/json", "text/")):
                 try:
                     content.decode("utf-8")
                     transport_decoded = True

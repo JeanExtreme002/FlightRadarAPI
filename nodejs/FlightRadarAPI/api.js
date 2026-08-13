@@ -327,7 +327,11 @@ class FlightRadar24API {
      */
     async getCountryFlag(country) {
         // Same slugifier as the feed, which spells some names "Myanmar (Burma)".
-        const flagUrl = Core.countryFlagUrl(countryToSlug(country));
+        const slug = countryToSlug(country);
+
+        if (!slug) return null;
+
+        const flagUrl = Core.countryFlagUrl(slug);
 
         const headers = { ...Core.imageHeaders };
         delete headers["origin"];
