@@ -201,3 +201,102 @@ describe("Timeout rewrap (transport)", function() {
         }
     });
 });
+
+
+describe("Session cookie jar scope (offline)", function() {
+    const { Session } = require("../FlightRadarAPI/request");
+
+    let mockAgent;
+    let sitePool;
+    let cdnPool;
+    let session;
+
+    /**
+     * @param {object|Array<string>} headers - headers as the stub received them
+     * @return {string|undefined} the Cookie header, if any
+     */
+    const cookieHeaderOf = (headers) => (Array.isArray(headers) ?
+        headers.find((h) => h.toLowerCase().startsWith("cookie:")) :
+        (headers?.cookie || headers?.Cookie));
+
+    beforeEach(function() {
+        mockAgent = new MockAgent();
+        mockAgent.disableNetConnect();
+        sitePool = mockAgent.get("https://www.flightradar24.com");
+        cdnPool = mockAgent.get("https://cdn.flightradar24.com");
+        session = new Session({ dispatcher: mockAgent });
+    });
+
+    afterEach(async function() {
+        await mockAgent.close();
+    });
+
+    /**
+     * @param {Array<string>} setCookie - Set-Cookie headers the login stub replies with
+     * @return {Promise<void>}
+     */
+    async function login(setCookie) {
+        sitePool.intercept({ path: "/user/login" }).reply(200, { success: true }, {
+            headers: { "content-type": "application/json", "set-cookie": setCookie },
+        });
+        await session.request("https://www.flightradar24.com/user/login");
+    }
+
+    it("keeps a token whose value contains '='", async function() {
+        await login(["_frPl=sess.token.with==padding; Path=/; Secure"]);
+
+        expect(session.getCookie("_frPl")).to.equal("sess.token.with==padding");
+    });
+
+    it("does not replay a www cookie to the cdn host", async function() {
+        await login(["_frPl=login-token; Path=/; Secure"]);
+
+        let received = null;
+        cdnPool.intercept({ path: "/assets/airlines/logotypes/AA_AAL.png" }).reply((opts) => {
+            received = opts.headers;
+            return { statusCode: 200, data: "" };
+        });
+        await session.request("https://cdn.flightradar24.com/assets/airlines/logotypes/AA_AAL.png");
+
+        expect(cookieHeaderOf(received)).to.equal(undefined);
+    });
+
+    it("sends the cookie back to the host that set it", async function() {
+        await login(["_frPl=login-token; Path=/; Secure"]);
+
+        let received = null;
+        sitePool.intercept({ path: "/webapi/v1/bookmarks" }).reply((opts) => {
+            received = opts.headers;
+            return { statusCode: 200, data: "{}" };
+        });
+        await session.request("https://www.flightradar24.com/webapi/v1/bookmarks");
+
+        expect(String(cookieHeaderOf(received))).to.include("_frPl=login-token");
+    });
+
+    it("treats Max-Age=0 as a deletion", async function() {
+        await login(["_frPl=login-token; Path=/", "AWSALB=sticky; Path=/"]);
+        expect(session.getCookie("AWSALB")).to.equal("sticky");
+
+        sitePool.intercept({ path: "/logout" }).reply(200, {}, {
+            headers: { "content-type": "application/json", "set-cookie": ["AWSALB=; Path=/; Max-Age=0"] },
+        });
+        await session.request("https://www.flightradar24.com/logout");
+
+        expect(session.getCookie("AWSALB")).to.equal(undefined);
+        expect(session.getCookie("_frPl")).to.equal("login-token");
+    });
+
+    it("respects the Path attribute", async function() {
+        await login(["scoped=yes; Path=/data"]);
+
+        let received = null;
+        sitePool.intercept({ path: "/flights/most-tracked" }).reply((opts) => {
+            received = opts.headers;
+            return { statusCode: 200, data: "{}" };
+        });
+        await session.request("https://www.flightradar24.com/flights/most-tracked");
+
+        expect(cookieHeaderOf(received)).to.equal(undefined);
+    });
+});

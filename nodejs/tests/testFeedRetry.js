@@ -119,7 +119,10 @@ describe("Session.deleteCookie (offline)", function() {
         const { Session } = require("../FlightRadarAPI/request");
         const session = new Session();
 
-        session.__cookies = { AWSALB: "sticky", _frPl: "login-token" };
+        session.__storeCookies("https://data-cloud.flightradar24.com/zones/fcgi/feed.js", [
+            "AWSALB=sticky; Path=/",
+            "_frPl=login-token; Path=/",
+        ]);
         session.deleteCookie("AWSALB");
 
         expect(session.getCookie("AWSALB")).to.equal(undefined);

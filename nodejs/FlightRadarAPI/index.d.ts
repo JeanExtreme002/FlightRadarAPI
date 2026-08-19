@@ -25,12 +25,12 @@ export interface ImpersonateOptions {
  */
 export class APIClient {
     constructor(options?: { impersonate?: ImpersonateOptions; retry?: RetryPolicy });
-    request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
+    request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>; rawCookies: string[]}>;
     /**
      * Make a stateless request that bypasses the shared cookie jar. Safe to
      * call from concurrent fan-outs.
      */
-    requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
+    requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>; rawCookies: string[]}>;
     getCookie(name: string): string | undefined;
     clearCookies(): void;
     /** Drop a single cookie, leaving the rest of the jar intact. */

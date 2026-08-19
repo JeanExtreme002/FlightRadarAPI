@@ -139,6 +139,97 @@ async function runWithRetry(fn, retry) {
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
+ * Parse one `Set-Cookie` header into a cookie record.
+ *
+ * The name/value pair is split on the FIRST `=` only: session tokens are
+ * routinely base64 and end in `=` padding, which a greedy split truncates.
+ *
+ * @param {string} header - a single Set-Cookie value
+ * @param {URL} url - the URL the header arrived from, for the default scope
+ * @return {object|null} `{name, value, domain, path, secure, hostOnly, expires}`, or null if unparsable
+ */
+function parseSetCookie(header, url) {
+    const [pair, ...attributeParts] = String(header).split(";");
+    const separator = pair.indexOf("=");
+
+    if (separator < 1) return null;
+
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+
+    if (!name) return null;
+
+    const cookie = {
+        name,
+        value,
+        domain: url.hostname,
+        path: defaultPath(url.pathname),
+        secure: false,
+        hostOnly: true,
+        expires: null,
+    };
+
+    for (const part of attributeParts) {
+        const index = part.indexOf("=");
+        const key = (index < 0 ? part : part.slice(0, index)).trim().toLowerCase();
+        const attributeValue = index < 0 ? "" : part.slice(index + 1).trim();
+
+        if (key === "secure") cookie.secure = true;
+        else if (key === "path" && attributeValue.startsWith("/")) cookie.path = attributeValue;
+        else if (key === "expires" && cookie.expires === null) {
+            const parsed = Date.parse(attributeValue);
+            if (!Number.isNaN(parsed)) cookie.expires = parsed;
+        }
+        else if (key === "max-age") {
+            const seconds = Number(attributeValue);
+            // Max-Age wins over Expires, and <= 0 means "delete now".
+            if (Number.isFinite(seconds)) cookie.expires = Date.now() + seconds * 1000;
+        }
+        else if (key === "domain" && attributeValue) {
+            const domain = attributeValue.replace(/^\./, "").toLowerCase();
+            if (domainMatches(url.hostname, domain)) {
+                cookie.domain = domain;
+                cookie.hostOnly = false;
+            }
+        }
+    }
+
+    return cookie;
+}
+
+/**
+ * RFC 6265 default-path: the request path up to, but not including, the rightmost `/`.
+ *
+ * @param {string} pathname
+ * @return {string}
+ */
+function defaultPath(pathname) {
+    if (!pathname.startsWith("/")) return "/";
+    const lastSlash = pathname.lastIndexOf("/");
+    return lastSlash < 1 ? "/" : pathname.slice(0, lastSlash);
+}
+
+/**
+ * @param {string} host - request hostname
+ * @param {string} domain - cookie domain, without a leading dot
+ * @return {boolean} whether the cookie's domain covers this host
+ */
+function domainMatches(host, domain) {
+    return host === domain || host.endsWith("." + domain);
+}
+
+/**
+ * @param {string} requestPath
+ * @param {string} cookiePath
+ * @return {boolean}
+ */
+function pathMatches(requestPath, cookiePath) {
+    if (requestPath === cookiePath) return true;
+    if (!requestPath.startsWith(cookiePath)) return false;
+    return cookiePath.endsWith("/") || requestPath[cookiePath.length] === "/";
+}
+
+/**
  * Detect Cloudflare-level blocks.
  *
  * FR24 fronts the public site with Cloudflare, so a `Server: cloudflare`
@@ -248,21 +339,28 @@ async function request(url, {
         content = await response.arrayBuffer();
     }
 
-    const rawCookies = response.headers.getSetCookie();
+    const rawCookies = response.headers.getSetCookie() ?? [];
     const responseCookies = {};
 
-    if (rawCookies?.length > 0) {
-        rawCookies.forEach((string) => {
-            const keyAndValue = string.split(";")[0].split("=");
-            responseCookies[keyAndValue[0]] = keyAndValue[1];
-        });
+    for (const header of rawCookies) {
+        const pair = String(header).split(";")[0];
+        const separator = pair.indexOf("=");
+
+        // Split on the first `=` only, so base64 padding survives.
+        if (separator > 0) responseCookies[pair.slice(0, separator).trim()] = pair.slice(separator + 1).trim();
     }
 
-    return { content, statusCode, cookies: responseCookies };
+    return { content, statusCode, cookies: responseCookies, rawCookies };
 }
 
 /**
  * HTTP session that automatically manages cookies across requests.
+ *
+ * The jar honours the scope FR24 sets on each cookie: a cookie stored by
+ * `www.flightradar24.com` is not replayed to `cdn.`/`api.`/`data-live.`, and
+ * `Path`, `Secure` and expiry are respected. A Map keyed by name/domain/path
+ * keeps same-named cookies from different hosts apart, and keeps a cookie
+ * called `__proto__` from reaching Object.prototype.
  */
 class Session {
     /**
@@ -270,29 +368,32 @@ class Session {
      * @param {object} [options.dispatcher] - undici Agent to use for every request.
      */
     constructor({ dispatcher = null } = {}) {
-        this.__cookies = {};
+        this.__jar = new Map();
         this.__dispatcher = dispatcher;
     }
 
     /**
-     * Return the value of a stored cookie by name.
+     * Return the value of a stored cookie by name, ignoring scope.
      *
      * @param {string} name
      * @return {string|undefined}
      */
     getCookie(name) {
-        return this.__cookies[name];
+        for (const cookie of this.__jar.values()) {
+            if (cookie.name === name && !this.__isExpired(cookie)) return cookie.value;
+        }
+        return undefined;
     }
 
     /**
      * Clear all stored cookies.
      */
     clearCookies() {
-        this.__cookies = {};
+        this.__jar.clear();
     }
 
     /**
-     * Drop a single stored cookie, leaving the rest of the jar intact.
+     * Drop every stored cookie with this name, leaving the rest of the jar intact.
      *
      * Sheds load-balancer stickiness without discarding the login session,
      * which lives in the same jar.
@@ -300,12 +401,73 @@ class Session {
      * @param {string} name
      */
     deleteCookie(name) {
-        delete this.__cookies[name];
+        for (const [key, cookie] of this.__jar) {
+            if (cookie.name === name) this.__jar.delete(key);
+        }
     }
 
     /**
-     * Make an HTTP request, automatically sending stored cookies and storing
-     * any cookies returned by the response.
+     * @param {object} cookie
+     * @return {boolean}
+     */
+    __isExpired(cookie) {
+        return cookie.expires !== null && cookie.expires <= Date.now();
+    }
+
+    /**
+     * Store the `Set-Cookie` headers a response arrived with.
+     *
+     * @param {string} url - the URL that produced the response
+     * @param {Array<string>} rawCookies
+     */
+    __storeCookies(url, rawCookies) {
+        const target = new URL(url);
+
+        for (const header of rawCookies ?? []) {
+            const cookie = parseSetCookie(header, target);
+
+            if (cookie === null) continue;
+
+            const key = `${cookie.name};${cookie.domain};${cookie.path}`;
+
+            // An expiry in the past is a deletion instruction, not a value.
+            if (this.__isExpired(cookie)) this.__jar.delete(key);
+            else this.__jar.set(key, cookie);
+        }
+    }
+
+    /**
+     * Select the stored cookies that are in scope for a URL.
+     *
+     * @param {string} url
+     * @return {object} name/value pairs to send
+     */
+    __cookiesFor(url) {
+        const target = new URL(url);
+        const isSecure = target.protocol === "https:";
+        const selected = {};
+
+        for (const [key, cookie] of this.__jar) {
+            if (this.__isExpired(cookie)) {
+                this.__jar.delete(key);
+                continue;
+            }
+            if (cookie.secure && !isSecure) continue;
+            if (!pathMatches(target.pathname, cookie.path)) continue;
+
+            const hostInScope = cookie.hostOnly ?
+                target.hostname === cookie.domain :
+                domainMatches(target.hostname, cookie.domain);
+
+            if (hostInScope) selected[cookie.name] = cookie.value;
+        }
+
+        return selected;
+    }
+
+    /**
+     * Make an HTTP request, automatically sending the cookies that are in
+     * scope for the URL and storing any cookies the response returns.
      *
      * Accepts the same parameters as the module-level {@link request} function.
      *
@@ -315,7 +477,7 @@ class Session {
      */
     async request(url, options = {}) {
         const { cookies: extraCookies, ...rest } = options;
-        const merged = { ...this.__cookies, ...(extraCookies ?? {}) };
+        const merged = { ...this.__cookiesFor(url), ...(extraCookies ?? {}) };
         const cookies = Object.keys(merged).length > 0 ? merged : null;
 
         const result = await request(url, {
@@ -324,9 +486,7 @@ class Session {
             cookies,
         });
 
-        if (result.cookies && Object.keys(result.cookies).length > 0) {
-            Object.assign(this.__cookies, result.cookies);
-        }
+        this.__storeCookies(url, result.rawCookies);
 
         return result;
     }
