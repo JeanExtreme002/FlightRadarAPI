@@ -16,10 +16,15 @@ class CloudflareError extends FlightRadarError {
     /**
      * @param {string} message
      * @param {object} response
+     * @param {string} [body] - the challenge page, already read off `response`
      */
-    constructor(message, response) {
+    constructor(message, response, body) {
         super(message);
         this.response = response;
+        // `response.bodyUsed` is true by the time this is thrown: the body has
+        // to be drained for the connection to survive. Carry it so the page is
+        // still readable, which is the point of exposing the response at all.
+        this.body = body;
     }
 }
 

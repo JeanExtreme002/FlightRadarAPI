@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/JeanExtreme002/FlightRadarAPI#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=18.17"
   },
   "dependencies": {
     "node-html-parser": "^6.1.13",

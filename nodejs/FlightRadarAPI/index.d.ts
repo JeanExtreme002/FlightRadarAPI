@@ -517,7 +517,9 @@ export class AirportNotFoundError extends FlightRadarError {
 
 export class CloudflareError extends FlightRadarError {
     response: any;
-    constructor(message?: string, response?: any);
+    /** The challenge page, read off `response` before it was consumed. */
+    body?: string;
+    constructor(message?: string, response?: any, body?: string);
 }
 
 export class DecompressionLimitError extends FlightRadarError {

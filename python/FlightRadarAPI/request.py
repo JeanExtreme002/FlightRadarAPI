@@ -82,6 +82,15 @@ def _decompress_deflate(data: bytes, limit: int = MAX_RESPONSE_BYTES) -> bytes:
             )
 
         if decompressor.eof:
+            # Raw deflate carries neither a header nor a checksum, so a body
+            # that is not deflate at all can still inflate to plausible bytes;
+            # requiring the whole input to be consumed is the only tell there
+            # is. The zlib wrapper has an adler32 and validates itself, so
+            # applying the same rule there would only reject a legitimate body
+            # that arrived with trailing padding.
+            if wbits == _RAW_DEFLATE_WBITS and decompressor.unused_data:
+                continue
+
             return output
 
     raise zlib.error("body is not a complete deflate stream")
@@ -362,9 +371,11 @@ class APIRequest:
 
         received = self.__response.content
 
-        # Backstop only: `_bound_download` makes libcurl abort first, so this
-        # is unreachable unless a transport ignores MAXFILESIZE. Kept because
-        # it costs one comparison and the alternative is an unbounded read.
+        # Three checks guard the size, each covering what the others cannot:
+        # MAXFILESIZE_LARGE stops the download at the socket, the decoders stop
+        # an expansion as it happens, and this one is the backstop for a
+        # transport that honours neither. Unreachable today, kept because it
+        # costs one comparison.
         if len(received) > max_download_bytes:
             raise DecompressionLimitError(
                 f"Response body from {self.url} is {len(received)} bytes, "
@@ -372,6 +383,15 @@ class APIRequest:
             )
 
         self.__content = self.__decode_body(received)
+
+        # The decoders enforce the budget as they expand, but identity bodies
+        # and encodings with no decoder never reach one. Checked here so the
+        # budget means the same thing whatever arrived.
+        if len(self.__content) > max_response_bytes:
+            raise DecompressionLimitError(
+                f"Response body from {self.url} is {len(self.__content)} bytes, "
+                f"past the {max_response_bytes} byte limit."
+            )
 
         # `get_response_object()` and `CloudflareError.response` are public, and
         # a challenge page is the first thing anyone reads when debugging a

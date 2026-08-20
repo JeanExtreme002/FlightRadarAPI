@@ -557,3 +557,102 @@ describe("Cookie read paths agree (offline)", function() {
         expect(selected.constructor).to.equal(undefined);
     });
 });
+
+
+describe("Error responses and slow bodies (offline)", function() {
+    const http = require("http");
+    const { request } = require("../FlightRadarAPI/request");
+    const { CloudflareError } = require("../FlightRadarAPI/errors");
+
+    // A real server: MockAgent neither pools connections nor trickles a body.
+    /**
+     * @param {Function} handler - node request handler
+     * @return {Promise<object>} the listening server
+     */
+    function serve(handler) {
+        return new Promise((resolve) => {
+            const server = http.createServer(handler);
+            server.listen(0, "127.0.0.1", () => resolve(server));
+        });
+    }
+
+    it("keeps the connection alive across error responses", async function() {
+        // Regression: throwing before reading left the body unconsumed, so
+        // undici destroyed the socket and every error cost a new handshake.
+        const payload = "x".repeat(200_000);
+        const connections = new Set();
+        const server = await serve((req, res) => {
+            res.writeHead(500, {
+                "content-type": "application/json",
+                "content-length": String(payload.length),
+            });
+            res.end(payload);
+        });
+        server.on("connection", (socket) => connections.add(socket.remotePort));
+
+        try {
+            for (let i = 0; i < 5; i++) {
+                await request(`http://127.0.0.1:${server.address().port}/`).catch(() => {});
+            }
+            expect(connections.size).to.be.lessThan(3);
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it("times out a body that trickles in under the cap", async function() {
+        // The budget alone cannot stop this: the body never exceeds it.
+        const server = await serve((req, res) => {
+            res.writeHead(200, { "content-type": "text/plain", "content-length": "20" });
+            let sent = 0;
+            const timer = setInterval(() => {
+                if (sent++ >= 20) {
+                    clearInterval(timer);
+                    res.end();
+                    return;
+                }
+                res.write("x");
+            }, 200);
+        });
+
+        try {
+            await request(`http://127.0.0.1:${server.address().port}/`, { timeout: 300 });
+            expect.fail("should have timed out");
+        }
+        catch (err) {
+            expect(err.name).to.equal("TimeoutError");
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it("carries the challenge page on CloudflareError", async function() {
+        const challenge = "<html>Attention Required! Cloudflare</html>";
+        const server = await serve((req, res) => {
+            res.writeHead(403, {
+                "cf-mitigated": "challenge",
+                "content-type": "text/html",
+                "content-length": String(challenge.length),
+            });
+            res.end(challenge);
+        });
+
+        try {
+            await request(`http://127.0.0.1:${server.address().port}/`);
+            expect.fail("should have raised CloudflareError");
+        }
+        catch (err) {
+            // response.bodyUsed is true by then, so the error has to carry it.
+            expect(err).to.be.instanceOf(CloudflareError);
+            expect(err.body).to.equal(challenge);
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+});

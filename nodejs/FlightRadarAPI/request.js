@@ -365,8 +365,23 @@ async function request(url, {
     settings.signal = controller.signal;
 
     let response;
+    let body;
+
     try {
         response = await fetch(url, settings);
+
+        // Read before the status checks below, for two reasons: an abandoned
+        // body leaves undici no choice but to destroy the connection, so every
+        // error response would cost a fresh TLS handshake; and a Cloudflare
+        // challenge page is the one thing worth having when a block happens.
+        // Inside the try so the timeout still covers the read — the abort
+        // signal is what stops a trickled body holding the call open.
+        //
+        // The cost is that an error response is read before it is raised, so a
+        // large one is paid for in full (bounded by the budget), and a body
+        // over budget surfaces as DecompressionLimitError rather than as the
+        // status or Cloudflare error behind it.
+        body = await readBoundedBody(response, maxResponseBytes, url);
     }
     catch (err) {
         if (err.name === "AbortError") {
@@ -386,6 +401,7 @@ async function request(url, {
             "Blocked by Cloudflare. Perhaps you are making too many calls, " +
             "or the TLS impersonation needs to be updated.",
             response,
+            body.toString("utf-8"),
         );
     }
 
@@ -394,7 +410,6 @@ async function request(url, {
     }
 
     const contentType = response.headers.get("content-type") ?? "";
-    const body = await readBoundedBody(response, maxResponseBytes, url);
     let content;
 
     if (contentType.includes("application/json")) {
@@ -546,8 +561,10 @@ class Session {
 
         // Oldest first, so the newest of a same-named pair wins — the rule
         // getCookie() uses, because a re-issued token supersedes the one it
-        // replaces. Path length only breaks a tie within one response.
-        matches.sort((a, b) => (a.storedAt - b.storedAt) || (a.path.length - b.path.length));
+        // replaces. `storedAt` is unique per cookie, so no tie is possible.
+        // Collapsing to one is a deliberate limit of building the header from
+        // a flat map; RFC 6265 would send both, most-specific path first.
+        matches.sort((a, b) => a.storedAt - b.storedAt);
 
         const selected = Object.create(null);
 

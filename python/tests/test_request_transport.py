@@ -649,3 +649,90 @@ class TestAdvertisedEncodings:
             assert table[name] is not table[""]
 
         assert APIRequest.supported_encodings == "gzip, deflate, br"
+
+
+class TestBudgetCoversEveryEncoding:
+    """The expansion budget must not depend on which decoder ran."""
+
+    def test_an_uncompressed_body_is_still_bounded(self):
+        """Regression: identity bodies reached no decoder, so nothing checked
+        them once the download bound was raised separately."""
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import APIClient
+
+        big = b'{"x": "' + b"A" * (2 * 1024 * 1024) + b'"}'
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(big)))
+                self.end_headers()
+                self.wfile.write(big)
+
+            def log_message(self, *args: object) -> None:
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.daemon_threads = True
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        try:
+            with pytest.raises(DecompressionLimitError):
+                APIClient().request(
+                    f"http://127.0.0.1:{server.server_port}/",
+                    max_response_bytes=1024,
+                    max_download_bytes=10 * 1024 * 1024,
+                )
+        finally:
+            server.shutdown()
+
+
+class TestDeflateIntegrity:
+    """Raw deflate has no header and no checksum to fail on."""
+
+    def test_a_body_that_is_not_deflate_raises_rather_than_inflating_to_garbage(self):
+        from FlightRadarAPI.request import _decompress_deflate
+
+        # Requiring the whole input to be consumed is the only tell available,
+        # so this cannot be airtight — but a plain JSON body must not pass.
+        for body in (b'{"rows": []}', b"<html><body>hello</body></html>", b"plain text"):
+            with pytest.raises(Exception):
+                _decompress_deflate(body)
+
+    def test_trailing_bytes_do_not_break_a_zlib_wrapped_body(self):
+        """The integrity guard belongs only where there is no checksum.
+
+        Requiring the whole input to be consumed gives raw deflate the tell it
+        lacks, but the zlib wrapper validates itself with an adler32 — applying
+        the rule there rejected legitimate bodies that arrived with padding.
+        """
+        import zlib as zlib_module
+
+        from FlightRadarAPI.request import _decompress_deflate
+
+        body = b'{"rows": [{"name": "Guarulhos"}]}' * 20
+
+        for trailer in (b"\n", b"\x00\x00"):
+            assert _decompress_deflate(zlib_module.compress(body) + trailer) == body
+
+    @pytest.mark.parametrize("shape", ["zlib-wrapped", "raw"])
+    def test_both_deflate_shapes_still_round_trip(self, shape):
+        import zlib as zlib_module
+
+        from FlightRadarAPI.request import _decompress_deflate
+
+        body = b'{"rows": [{"name": "Guarulhos"}]}' * 50
+
+        if shape == "zlib-wrapped":
+            blob = zlib_module.compress(body)
+        else:
+            compressor = zlib_module.compressobj(wbits=-15)
+            blob = compressor.compress(body) + compressor.flush()
+
+        assert _decompress_deflate(blob) == body
