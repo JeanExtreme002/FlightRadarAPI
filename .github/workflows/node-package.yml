@@ -27,9 +27,9 @@ jobs:
       matrix:
         node-version: ['18.x', '20.x', '22.x']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Set up NodeJS ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install dependencies
@@ -41,16 +41,15 @@ jobs:
       - name: Offline tests (PR gate)
         run: npm run test:offline
       - name: Integration tests (live FR24)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08  # v3
         with:
           timeout_minutes: 10
           max_attempts: 3
           command: cd nodejs && npm run test:integration
         continue-on-error: ${{ github.event_name == 'push' }}
-      - name: Dependency audit (informational)
-        # Informational only: surfaces high-severity advisories as a soft-fail
-        # without blocking PRs. Re-enable enforcement (drop continue-on-error)
-        # once the audit baseline is clean.
+      - name: Dependency audit (shipped dependencies)
+        # Enforced, and no `cd`: this job already defaults into ./nodejs, so the
+        # old `cd nodejs` failed every run and continue-on-error hid it, which
+        # is how the undici floor stayed vulnerable unnoticed.
         if: matrix.node-version == '22.x'
-        continue-on-error: true
-        run: cd nodejs && npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
