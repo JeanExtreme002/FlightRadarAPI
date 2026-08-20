@@ -763,3 +763,76 @@ describe("Public shapes and the error path (offline)", function() {
         }
     });
 });
+
+
+describe("Cookies attached to errors (offline)", function() {
+    const http = require("http");
+    const { Session } = require("../FlightRadarAPI/request");
+
+    it("credits a cookie from a failed response to the host that answered", async function() {
+        // Regression: the error path attributed it to the requested URL, so a
+        // cookie set after a redirect was replayed to a host that never set it
+        // — the same bug the success path was fixed for earlier in this branch.
+        let port;
+        const server = http.createServer((req, res) => {
+            if (req.url === "/start") {
+                res.writeHead(302, { Location: `http://localhost:${port}/blocked` });
+                res.end();
+                return;
+            }
+            res.writeHead(403, {
+                "cf-mitigated": "challenge",
+                "set-cookie": "cf_clearance=token; Path=/",
+                "content-type": "text/html",
+                "content-length": "2",
+            });
+            res.end("hi");
+        });
+        await new Promise((ready) => server.listen(0, () => {
+            port = server.address().port;
+            ready();
+        }));
+
+        try {
+            const session = new Session();
+            await session.request(`http://127.0.0.1:${port}/start`).catch(() => {});
+
+            expect(session.__cookiesFor(`http://localhost:${port}/`)).to.deep.equal({ cf_clearance: "token" });
+            expect(session.__cookiesFor(`http://127.0.0.1:${port}/`)).to.deep.equal({});
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it("keeps those cookies out of anything that serialises the error", async function() {
+        // An enumerable property would put session credentials into
+        // JSON.stringify(err) and any log line that dumps the error.
+        const server = http.createServer((req, res) => {
+            res.writeHead(403, {
+                "cf-mitigated": "challenge",
+                "set-cookie": "cf_clearance=secret; Path=/",
+                "content-type": "text/html",
+                "content-length": "2",
+            });
+            res.end("hi");
+        });
+        await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+
+        try {
+            await new Session().request(`http://127.0.0.1:${server.address().port}/`);
+            expect.fail("should have raised");
+        }
+        catch (err) {
+            expect(Object.keys(err)).to.not.include("rawCookies");
+            expect(JSON.stringify(err)).to.not.include("secret");
+            // Still reachable for the jar.
+            expect(err.rawCookies).to.be.an("array");
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+});

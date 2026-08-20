@@ -403,10 +403,25 @@ async function request(url, {
     const statusCode = response.status;
     const rawCookies = response.headers.getSetCookie() ?? [];
 
-    // Attached to the errors below so the session can still bank them: a
-    // Cloudflare 403 is exactly the response that carries `cf_clearance`, and
-    // discarding it makes the retry replay the same blocked request.
-    const withCookies = (error) => Object.assign(error, { rawCookies });
+    /**
+     * Attach the response's cookies to an error so the session can still bank
+     * them: a Cloudflare 403 is exactly the response that carries
+     * `cf_clearance`, and discarding it makes the retry replay the same
+     * blocked request.
+     *
+     * Non-enumerable, and that is the point: an enumerable property puts the
+     * cookie values into `JSON.stringify(err)` and `util.inspect(err)`, so
+     * anything that logs the error would print the session credentials.
+     *
+     * @param {Error} error
+     * @return {Error} the same error
+     */
+    const withCookies = (error) => Object.defineProperties(error, {
+        rawCookies: { value: rawCookies, enumerable: false },
+        // The host that answered, which after a redirect is not the host that
+        // was asked — the jar has to credit the cookie to the right one.
+        cookieOrigin: { value: response.url || url, enumerable: false },
+    });
 
     // Cloudflare detection only when the caller did not opt-in to this status code.
     // `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
@@ -618,7 +633,7 @@ class Session {
         catch (err) {
             // Banked even on failure: the response that blocks a request is
             // the one that hands out the cookie needed to pass next time.
-            if (err.rawCookies) this.__storeCookies(url, err.rawCookies);
+            if (err.rawCookies) this.__storeCookies(err.cookieOrigin || url, err.rawCookies);
             throw err;
         }
 
