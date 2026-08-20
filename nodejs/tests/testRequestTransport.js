@@ -397,13 +397,17 @@ describe("Cookie attribution across redirects (offline)", function() {
             res.setHeader("Content-Type", "application/json");
             res.end("{}");
         });
-        server.listen(0, "127.0.0.1", () => {
+        // Bound dual-stack, not to 127.0.0.1: Node 18 resolves `localhost` to
+        // ::1 first, and a v4-only listener refuses that connection.
+        server.listen(0, () => {
             port = server.address().port;
             done();
         });
     });
 
     afterEach(function(done) {
+        // The undici agent keeps sockets alive, and close() waits for them.
+        server.closeAllConnections?.();
         server.close(done);
     });
 
