@@ -19,10 +19,18 @@ _logger = logging.getLogger(__name__)
 DEFAULT_IMPERSONATE = "chrome136"
 
 # A compressed body is trusted only as far as its expanded size: brotli reaches
-# ratios high enough to exhaust memory from a few kilobytes on the wire. The
-# body is streamed against this budget, because curl_cffi decompresses in the
-# transport — by the time a buffered `.content` exists, the bomb has already
-# gone off. FR24's largest payload (the airports feed) is far under this.
+# ratios high enough to exhaust memory from a few kilobytes on the wire.
+#
+# The reach of this budget differs from the Node port's, and not by choice.
+# curl_cffi decompresses inside libcurl, so a buffered read hands us a body
+# that has already expanded. Intercepting earlier means `stream=True`, which in
+# curl_cffi 0.16 costs two things measured to be worse than the bomb it would
+# stop: `timeout` degrades from a wall-clock cap to a >=1 byte/sec liveness
+# check (a tarpit held a `timeout=2` request for 23.8s), and the session stops
+# reusing connections (5 handshakes across 5 requests instead of 1), which is
+# the very fingerprint the TLS impersonation exists to avoid. So here the
+# budget bounds what reaches the parser, and the helpers below bound the cases
+# where the transport hands back bytes it did not decode.
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 _GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
 
@@ -245,60 +253,47 @@ class APIRequest:
         :param impersonate: curl_cffi browser profile (only used when no session is provided)
         :param max_response_bytes: reject a body that streams past this many bytes
         """
+        if max_response_bytes < 1:
+            raise ValueError("max_response_bytes must be >= 1")
+
         self.url = url
-        self.__max_response_bytes = max_response_bytes
 
         if params: url += "?" + urlencode(params)
 
-        # Streamed, so the budget below can stop a decompression bomb while it
-        # is still arriving. A buffered read would expand it in full first.
         if session is not None:
             request_method = session.get if data is None else session.post
-            self.__response = request_method(url, headers=headers, data=data, timeout=timeout, stream=True)
+            self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
         else:
             request_method = requests.get if data is None else requests.post
             self.__response = request_method(
-                url, headers=headers, data=data, timeout=timeout, stream=True,
+                url, headers=headers, data=data, timeout=timeout,
                 impersonate=impersonate  # type: ignore[arg-type]
             )
 
-        try:
-            # Cloudflare detection only when the caller did not opt-in to this status code.
-            # `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
-            if (self.get_status_code() not in (allowed_error_codes or [])
-                    and self.__is_cloudflare_block()):
-                raise CloudflareError(
-                    message="Blocked by Cloudflare. Perhaps you are making too many calls, "
-                            "or the TLS impersonation needs to be updated.",
-                    response=self.__response
-                )
+        # Cloudflare detection only when the caller did not opt-in to this status code.
+        # `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
+        if (self.get_status_code() not in (allowed_error_codes or [])
+                and self.__is_cloudflare_block()):
+            raise CloudflareError(
+                message="Blocked by Cloudflare. Perhaps you are making too many calls, "
+                        "or the TLS impersonation needs to be updated.",
+                response=self.__response
+            )
 
-            if self.get_status_code() not in (allowed_error_codes or []):
-                self.__response.raise_for_status()
+        if self.get_status_code() not in (allowed_error_codes or []):
+            self.__response.raise_for_status()
 
-            self.__content = self.__read_bounded_body()
-        finally:
-            close = getattr(self.__response, "close", None)
+        self.__content = self.__response.content
 
-            if close is not None:
-                close()
-
-    def __read_bounded_body(self) -> bytes:
-        """Collect the response body, refusing one that streams past the budget."""
-        limit = self.__max_response_bytes
-        chunks: List[bytes] = []
-        total = 0
-
-        for chunk in self.__response.iter_content():
-            total += len(chunk)
-
-            if total > limit:
-                raise DecompressionLimitError(
-                    f"Response body from {self.url} exceeds the {limit} byte limit."
-                )
-            chunks.append(chunk)
-
-        return b"".join(chunks)
+        # The transport already expanded this, so the check cannot undo the peak.
+        # What it does stop is the far larger second cost: parsing a body of that
+        # size into Python objects. See the module note on why streaming — the
+        # only way to intervene earlier — is not used here.
+        if len(self.__content) > max_response_bytes:
+            raise DecompressionLimitError(
+                f"Response body from {self.url} is {len(self.__content)} bytes, "
+                f"past the {max_response_bytes} byte limit."
+            )
 
     def __is_cloudflare_block(self) -> bool:
         """

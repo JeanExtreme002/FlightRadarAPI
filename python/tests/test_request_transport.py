@@ -183,15 +183,9 @@ class TestDecompressionLimit:
         assert _decompress_brotli(brotli.compress(b"")) == b""
         assert _decompress_gzip(gzip.compress(b"")) == b""
 
-    def test_the_budget_is_enforced_on_the_streamed_body(self):
-        """The budget that matters is the one on the wire.
-
-        curl_cffi decompresses in the transport, so a helper that inspects
-        `.content` never sees a bomb before it has already expanded. Only the
-        streaming read can refuse one, so that is what this pins.
-        """
+    def test_a_body_past_the_budget_is_refused(self):
         from FlightRadarAPI.errors import DecompressionLimitError
-        from FlightRadarAPI.request import MAX_RESPONSE_BYTES, APIRequest
+        from FlightRadarAPI.request import MAX_RESPONSE_BYTES
 
         session = StubSession(FakeResponse(
             status_code=200,
@@ -205,8 +199,6 @@ class TestDecompressionLimit:
         assert MAX_RESPONSE_BYTES == 64 * 1024 * 1024
 
     def test_a_body_at_the_budget_is_accepted(self):
-        from FlightRadarAPI.request import APIRequest
-
         session = StubSession(FakeResponse(
             status_code=200,
             headers={"Content-Type": "application/octet-stream"},
@@ -216,38 +208,54 @@ class TestDecompressionLimit:
 
         assert request.get_bytes_content() == b"x" * 1024
 
-    def test_an_already_decoded_body_survives_the_encoding_header(self):
-        """curl_cffi decompresses for us, so `Content-Encoding` outlives the encoding.
+    def test_a_nonsensical_budget_is_rejected_at_the_call(self):
+        """Better than turning every response into a confusing limit error."""
+        session = StubSession(FakeResponse(status_code=200, content=b"ok"))
 
-        get_content() must hand back the decoded bytes rather than failing on
-        them — this is the path every real FR24 response takes.
+        for bad in (0, -1):
+            with pytest.raises(ValueError):
+                APIRequest("https://x.test/", session=session, max_response_bytes=bad)  # type: ignore[arg-type]
+
+    def test_the_body_is_not_requested_as_a_stream(self):
+        """Pins a deliberate trade-off, not an oversight.
+
+        `stream=True` would let the budget act before the body expands, but in
+        curl_cffi 0.16 it degrades `timeout` from a wall-clock cap to a
+        >=1 byte/sec liveness check, and stops the session reusing connections
+        — a fresh TLS handshake per request, which is the fingerprint the
+        impersonation exists to avoid. Measured both before choosing.
         """
-        from FlightRadarAPI.request import APIRequest
-
         session = StubSession(FakeResponse(
             status_code=200,
-            headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
-            content=b'{"rows": []}',
+            headers={"Content-Type": "application/json"},
+            content=b"{}",
+        ))
+        APIRequest("https://x.test/", session=session)  # type: ignore[arg-type]
+
+        assert session.calls[0].get("stream") is None
+
+    def test_the_response_body_stays_readable_for_callers(self):
+        """get_response_object() and CloudflareError.response are public.
+
+        A streamed response leaves `.content` empty, so anyone inspecting a
+        Cloudflare challenge body would get nothing back.
+        """
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b'{"a": 1}',
         ))
         request = APIRequest("https://x.test/", session=session)  # type: ignore[arg-type]
 
-        assert request.get_json_content() == {"rows": []}
+        assert request.get_response_object().content == b'{"a": 1}'
 
-    def test_the_response_is_closed_even_when_the_body_is_refused(self):
-        from FlightRadarAPI.errors import DecompressionLimitError
-        from FlightRadarAPI.request import APIRequest
+    def test_the_encoding_table_uses_the_bounded_helpers(self):
+        from FlightRadarAPI.request import _decompress_brotli, _decompress_gzip
 
-        response = FakeResponse(
-            status_code=200,
-            headers={"Content-Type": "application/json"},
-            content=b"x" * 5000,
-        )
-        session = StubSession(response)
+        table = getattr(APIRequest, "_APIRequest__content_encodings")
 
-        with pytest.raises(DecompressionLimitError):
-            APIRequest("https://x.test/", session=session, max_response_bytes=10)  # type: ignore[arg-type]
-
-        assert getattr(response, "closed", False) is True
+        assert table["br"] is _decompress_brotli
+        assert table["gzip"] is _decompress_gzip
 
 
 class TestDecompressionIntegrity:
