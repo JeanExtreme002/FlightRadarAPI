@@ -180,14 +180,16 @@ function parseSetCookie(header, url) {
             const parsed = Date.parse(attributeValue);
             if (!Number.isNaN(parsed)) cookie.expires = parsed;
         }
-        else if (key === "max-age") {
-            const seconds = Number(attributeValue);
-            // Max-Age wins over Expires, and <= 0 means "delete now".
-            if (Number.isFinite(seconds)) cookie.expires = Date.now() + seconds * 1000;
+        else if (key === "max-age" && /^-?\d+$/.test(attributeValue)) {
+            // Max-Age wins over Expires, and <= 0 means "delete now". A malformed
+            // value must be ignored, not read as 0 — that would delete the cookie.
+            cookie.expires = Date.now() + Number(attributeValue) * 1000;
         }
         else if (key === "domain" && attributeValue) {
             const domain = attributeValue.replace(/^\./, "").toLowerCase();
-            if (domainMatches(url.hostname, domain)) {
+            // A dotless domain is a TLD: `Domain=com` would scope the cookie to
+            // every .com host the caller later requests.
+            if (domain.includes(".") && domainMatches(url.hostname, domain)) {
                 cookie.domain = domain;
                 cookie.hostOnly = false;
             }
@@ -350,7 +352,8 @@ async function request(url, {
         if (separator > 0) responseCookies[pair.slice(0, separator).trim()] = pair.slice(separator + 1).trim();
     }
 
-    return { content, statusCode, cookies: responseCookies, rawCookies };
+    // `response.url` is the URL after redirects — the host that actually set the cookies.
+    return { content, statusCode, cookies: responseCookies, rawCookies, url: response.url || url };
 }
 
 /**
@@ -369,6 +372,7 @@ class Session {
      */
     constructor({ dispatcher = null } = {}) {
         this.__jar = new Map();
+        this.__sequence = 0;
         this.__dispatcher = dispatcher;
     }
 
@@ -379,10 +383,17 @@ class Session {
      * @return {string|undefined}
      */
     getCookie(name) {
+        let match = null;
+
         for (const cookie of this.__jar.values()) {
-            if (cookie.name === name && !this.__isExpired(cookie)) return cookie.value;
+            if (cookie.name !== name || this.__isExpired(cookie)) continue;
+            // The same name can live under several scopes at once. Take the
+            // newest: a re-issued token supersedes the one it replaces, even
+            // when the old one sat at a more specific path.
+            if (match === null || cookie.storedAt > match.storedAt) match = cookie;
         }
-        return undefined;
+
+        return match === null ? undefined : match.value;
     }
 
     /**
@@ -430,6 +441,8 @@ class Session {
 
             const key = `${cookie.name};${cookie.domain};${cookie.path}`;
 
+            cookie.storedAt = ++this.__sequence;
+
             // An expiry in the past is a deletion instruction, not a value.
             if (this.__isExpired(cookie)) this.__jar.delete(key);
             else this.__jar.set(key, cookie);
@@ -445,7 +458,7 @@ class Session {
     __cookiesFor(url) {
         const target = new URL(url);
         const isSecure = target.protocol === "https:";
-        const selected = {};
+        const matches = [];
 
         for (const [key, cookie] of this.__jar) {
             if (this.__isExpired(cookie)) {
@@ -459,8 +472,16 @@ class Session {
                 target.hostname === cookie.domain :
                 domainMatches(target.hostname, cookie.domain);
 
-            if (hostInScope) selected[cookie.name] = cookie.value;
+            if (hostInScope) matches.push(cookie);
         }
+
+        // Shortest path first, so a more specific cookie overwrites a broader
+        // one of the same name rather than losing to insertion order.
+        matches.sort((a, b) => a.path.length - b.path.length);
+
+        const selected = {};
+
+        for (const cookie of matches) selected[cookie.name] = cookie.value;
 
         return selected;
     }
@@ -486,7 +507,7 @@ class Session {
             cookies,
         });
 
-        this.__storeCookies(url, result.rawCookies);
+        this.__storeCookies(result.url || url, result.rawCookies);
 
         return result;
     }

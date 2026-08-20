@@ -18,9 +18,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-  # Floors are security minimums, not feature minimums: Brotli < 1.2.0 has no
-  # decompression-bomb mitigation (GHSA-2qfp-q593-8484) and curl_cffi < 0.15.0
-  # follows redirects into internal networks (GHSA-qw2m-4pqf-rmpp).
+  # Security floors: curl_cffi 0.15.0 fixes redirect-based SSRF (GHSA-qw2m-4pqf-rmpp).
   "Brotli>=1.2.0",
   "beautifulsoup4>=4.12.0",
   "curl_cffi>=0.15.0",

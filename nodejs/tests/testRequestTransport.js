@@ -258,6 +258,7 @@ describe("Session cookie jar scope (offline)", function() {
         });
         await session.request("https://cdn.flightradar24.com/assets/airlines/logotypes/AA_AAL.png");
 
+        expect(received, "the cdn interceptor never fired").to.not.equal(null);
         expect(cookieHeaderOf(received)).to.equal(undefined);
     });
 
@@ -297,6 +298,41 @@ describe("Session cookie jar scope (offline)", function() {
         });
         await session.request("https://www.flightradar24.com/flights/most-tracked");
 
+        expect(received, "the interceptor never fired").to.not.equal(null);
         expect(cookieHeaderOf(received)).to.equal(undefined);
+    });
+
+    it("ignores a malformed Max-Age instead of reading it as a deletion", async function() {
+        await login(["_frPl=login-token; Path=/; Max-Age"]);
+
+        expect(session.getCookie("_frPl")).to.equal("login-token");
+    });
+
+    it("refuses a Domain attribute naming a bare TLD", async function() {
+        await login(["evil=1; Domain=com; Path=/"]);
+
+        expect(session.__cookiesFor("https://example.com/")).to.deep.equal({});
+    });
+
+    it("prefers the re-issued cookie over the one it supersedes", async function() {
+        await login(["_frPl=old-token"]);
+        sitePool.intercept({ path: "/user/login" }).reply(200, { success: true }, {
+            headers: {
+                "content-type": "application/json",
+                "set-cookie": ["_frPl=new-token; Domain=.flightradar24.com; Path=/"],
+            },
+        });
+        await session.request("https://www.flightradar24.com/user/login");
+
+        expect(session.getCookie("_frPl")).to.equal("new-token");
+    });
+
+    it("scopes a Path-less cookie to the directory that set it", async function() {
+        // FR24 sends `path=/` on every cookie observed, so this documents the
+        // RFC 6265 default rather than a path the SDK relies on.
+        await login(["scoped=yes"]);
+
+        expect(session.__cookiesFor("https://www.flightradar24.com/user/settings")).to.deep.equal({ scoped: "yes" });
+        expect(session.__cookiesFor("https://www.flightradar24.com/webapi/v1/bookmarks")).to.deep.equal({});
     });
 });
