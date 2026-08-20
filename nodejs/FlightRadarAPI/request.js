@@ -144,6 +144,10 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  * The name/value pair is split on the FIRST `=` only: session tokens are
  * routinely base64 and end in `=` padding, which a greedy split truncates.
  *
+ * Not delegated to undici's `getSetCookies`: it drops a negative `Max-Age`
+ * instead of treating it as a deletion, accepts an empty cookie name, and
+ * widens a relative `Path` to `/`. See the parser tests.
+ *
  * @param {string} header - a single Set-Cookie value
  * @param {URL} url - the URL the header arrived from, for the default scope
  * @return {object|null} `{name, value, domain, path, secure, hostOnly, expires}`, or null if unparsable
@@ -167,6 +171,7 @@ function parseSetCookie(header, url) {
         secure: false,
         hostOnly: true,
         expires: null,
+        storedAt: 0,
     };
 
     for (const part of attributeParts) {
@@ -438,6 +443,7 @@ class Session {
             const cookie = parseSetCookie(header, target);
 
             if (cookie === null) continue;
+            if (cookie.secure && target.protocol !== "https:") continue;
 
             const key = `${cookie.name};${cookie.domain};${cookie.path}`;
 

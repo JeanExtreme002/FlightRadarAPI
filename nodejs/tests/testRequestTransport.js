@@ -336,3 +336,83 @@ describe("Session cookie jar scope (offline)", function() {
         expect(session.__cookiesFor("https://www.flightradar24.com/webapi/v1/bookmarks")).to.deep.equal({});
     });
 });
+
+
+describe("Set-Cookie parsing edge cases (offline)", function() {
+    const { Session } = require("../FlightRadarAPI/request");
+
+    const jarAfter = (header, url = "https://www.flightradar24.com/user/login") => {
+        const session = new Session();
+        session.__storeCookies(url, [header]);
+        return session;
+    };
+
+    // These three are why the parser is hand-rolled rather than delegated to
+    // undici's getSetCookies, which gets each of them wrong.
+    it("treats a negative Max-Age as a deletion", function() {
+        expect(jarAfter("a=1; Path=/; Max-Age=-5").getCookie("a")).to.equal(undefined);
+    });
+
+    it("rejects a cookie with an empty name", function() {
+        const session = jarAfter("=9; Path=/");
+        expect(session.__cookiesFor("https://www.flightradar24.com/")).to.deep.equal({});
+    });
+
+    it("ignores a relative Path instead of widening the cookie to /", function() {
+        const session = jarAfter("a=1; Path=relative");
+        expect(session.__cookiesFor("https://www.flightradar24.com/user/settings")).to.deep.equal({ a: "1" });
+        expect(session.__cookiesFor("https://www.flightradar24.com/webapi/v1/bookmarks")).to.deep.equal({});
+    });
+
+    it("does not store a Secure cookie arriving over a plaintext connection", function() {
+        const session = jarAfter("a=1; Path=/; Secure", "http://insecure.example.com/");
+        expect(session.getCookie("a")).to.equal(undefined);
+    });
+
+    it("keeps an Expires date in the past as a deletion", function() {
+        expect(jarAfter("a=1; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT").getCookie("a")).to.equal(undefined);
+    });
+});
+
+
+describe("Cookie attribution across redirects (offline)", function() {
+    const http = require("http");
+    const { Session } = require("../FlightRadarAPI/request");
+
+    let server;
+    let port;
+
+    beforeEach(function(done) {
+        // A real server, because MockAgent does not follow redirects.
+        // 127.0.0.1 and localhost are distinct origins to fetch.
+        server = http.createServer((req, res) => {
+            if (req.url === "/start") {
+                res.writeHead(302, { Location: `http://localhost:${port}/landed` });
+                res.end();
+                return;
+            }
+            if (req.url === "/landed") {
+                res.setHeader("Set-Cookie", "planted=yes; Path=/");
+            }
+            res.setHeader("Content-Type", "application/json");
+            res.end("{}");
+        });
+        server.listen(0, "127.0.0.1", () => {
+            port = server.address().port;
+            done();
+        });
+    });
+
+    afterEach(function(done) {
+        server.close(done);
+    });
+
+    it("credits a cookie to the host that ended the redirect chain", async function() {
+        const session = new Session();
+        await session.request(`http://127.0.0.1:${port}/start`);
+
+        // Set by localhost after the hop, so it must not be replayed to 127.0.0.1.
+        expect(session.__cookiesFor(`http://localhost:${port}/`)).to.deep.equal({ planted: "yes" });
+        expect(session.__cookiesFor(`http://127.0.0.1:${port}/`)).to.deep.equal({});
+    });
+});
