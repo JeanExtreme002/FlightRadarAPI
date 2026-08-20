@@ -232,6 +232,8 @@ function parseSetCookie(header, url) {
         storedAt: 0,
     };
 
+    let rejected = false;
+
     for (const part of attributeParts) {
         const index = part.indexOf("=");
         const key = (index < 0 ? part : part.slice(0, index)).trim().toLowerCase();
@@ -250,16 +252,22 @@ function parseSetCookie(header, url) {
         }
         else if (key === "domain" && attributeValue) {
             const domain = attributeValue.replace(/^\./, "").toLowerCase();
+
             // A dotless domain is a TLD: `Domain=com` would scope the cookie to
             // every .com host the caller later requests.
             if (domain.includes(".") && domainMatches(url.hostname, domain)) {
                 cookie.domain = domain;
                 cookie.hostOnly = false;
             }
+            else {
+                // RFC 6265 5.3.6: a Domain that does not cover the host means
+                // the cookie is discarded, not narrowed back to the host.
+                rejected = true;
+            }
         }
     }
 
-    return cookie;
+    return rejected ? null : cookie;
 }
 
 /**

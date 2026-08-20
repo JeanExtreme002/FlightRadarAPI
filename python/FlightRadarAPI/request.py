@@ -22,7 +22,7 @@ DEFAULT_IMPERSONATE = "chrome136"
 # ratios high enough to exhaust memory from a few kilobytes on the wire.
 #
 # Enforcing that needs the compressed bytes, which means taking content decoding
-# away from libcurl (see `_new_curl_handle`): left to itself it expands the body
+# away from libcurl (see `_keep_body_encoded`): left to itself it expands the body
 # before any of this code runs, and the only other way to intervene —
 # `stream=True` — was measured to cost more than the bomb it stops: `timeout`
 # degrades to a >=1 byte/sec liveness check, which alone rules it out, and the
@@ -34,6 +34,7 @@ MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 _ZLIB_WBITS = 15         # zlib-wrapped deflate, as RFC 9110 specifies
 _RAW_DEFLATE_WBITS = -15  # raw deflate, as many servers actually send
 _GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
+_GZIP_MAGIC = b"\x1f\x8b"
 
 
 def _bound_download(session: Session, limit: int) -> None:
@@ -120,7 +121,11 @@ def _decompress_gzip(data: bytes, limit: int = MAX_RESPONSE_BYTES) -> bytes:
         if not decompressor.eof:
             raise zlib.error("gzip stream ended mid-member")
 
-        remaining = decompressor.unused_data
+        # Another member only when the tail looks like one. Trailing padding is
+        # not an error: libcurl stopped at the stream end and ignored it, and
+        # the deflate helper tolerates the same thing.
+        tail = decompressor.unused_data
+        remaining = tail if tail.startswith(_GZIP_MAGIC) else b""
 
     return output
 
@@ -446,26 +451,40 @@ class APIRequest:
     def __decode_body(self, content: bytes) -> bytes:
         """Undo the `Content-Encoding` this response arrived with.
 
-        Header values are case-insensitive and may carry whitespace, so the
-        token is normalised before lookup: an exact match would send `GZIP`
-        down the identity path and return compressed bytes as if they were
-        content. An encoding this class does not implement warns rather than
-        passing silently, since nothing downstream can act on the result.
+        The header may stack encodings ("gzip, br" means gzip then brotli), so
+        they are undone in reverse. Values are case-insensitive and may carry
+        whitespace, so each token is normalised: an exact match would send
+        `GZIP` down the identity path and return compressed bytes as content.
+        A token with no decoder warns rather than passing silently, since
+        nothing downstream can act on the result.
         """
         content_encoding = self.__response.headers.get("Content-Encoding", "") or ""
-        encoding = content_encoding.strip().lower()
-        decode = self.__content_encodings.get(encoding)
+        tokens = [token.strip().lower() for token in content_encoding.split(",")]
+        applied = [token for token in tokens if token and token != "identity"]
 
-        if decode is None:
-            _logger.warning(
-                "APIRequest: no decoder for Content-Encoding=%r on %s. Returning the body "
-                "as received, which callers will not be able to read.",
-                content_encoding, self.url,
-            )
+        if not applied:
             return content
 
+        decoders = []
+
+        for token in applied:
+            decode = self.__content_encodings.get(token)
+
+            if decode is None:
+                _logger.warning(
+                    "APIRequest: no decoder for Content-Encoding=%r on %s. Returning the body "
+                    "as received, which callers will not be able to read.",
+                    content_encoding, self.url,
+                )
+                return content
+
+            decoders.append(decode)
+
         try:
-            return decode(content, self.__max_response_bytes)
+            for decode in reversed(decoders):
+                content = decode(content, self.__max_response_bytes)
+
+            return content
         except DecompressionLimitError:
             raise
         except Exception as err:
@@ -485,8 +504,8 @@ class APIRequest:
                 except UnicodeDecodeError:
                     transport_decoded = False
             else:
-                corrupt_gzip = encoding == "gzip" and content.startswith(b"\x1f\x8b")
-                transport_decoded = encoding in ("gzip", "br", "deflate") and not corrupt_gzip
+                corrupt_gzip = applied[-1] == "gzip" and content.startswith(_GZIP_MAGIC)
+                transport_decoded = applied[-1] in ("gzip", "br", "deflate") and not corrupt_gzip
 
             _logger.log(
                 logging.DEBUG if transport_decoded else logging.WARNING,

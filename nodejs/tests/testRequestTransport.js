@@ -656,3 +656,22 @@ describe("Error responses and slow bodies (offline)", function() {
         }
     });
 });
+
+
+describe("Rejected Set-Cookie attributes (offline)", function() {
+    const { Session } = require("../FlightRadarAPI/request");
+
+    it("discards a cookie whose Domain does not cover the host", function() {
+        // RFC 6265 5.3.6 says ignore it, not narrow it back to the host —
+        // narrowing left the cookie replayed on every later request.
+        const session = new Session();
+        session.__storeCookies("https://cdn.flightradar24.com/x", [
+            "evil=1; Domain=evil.example.com; Path=/",
+            "tld=1; Domain=com; Path=/",
+            "kept=1; Domain=flightradar24.com; Path=/",
+        ]);
+
+        expect(session.__cookiesFor("https://cdn.flightradar24.com/"))
+            .to.deep.equal({ kept: "1" });
+    });
+});

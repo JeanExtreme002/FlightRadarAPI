@@ -736,3 +736,58 @@ class TestDeflateIntegrity:
             blob = compressor.compress(body) + compressor.flush()
 
         assert _decompress_deflate(blob) == body
+
+
+class TestStackedAndPaddedEncodings:
+    """libcurl handled both before this module took decoding over."""
+
+    def _serve(self, blob: bytes, encoding: str):
+        return TestBudgetAgainstARealTransport._serve(blob, encoding)
+
+    @pytest.mark.parametrize("header", ["gzip, br", " gzip ,  br ", "gzip, deflate, br"])
+    def test_stacked_encodings_are_undone_in_reverse(self, header):
+        import gzip as gzip_module
+        import json
+        import zlib as zlib_module
+
+        import brotli
+
+        from FlightRadarAPI.request import APIClient
+
+        payload = {"rows": [{"n": "GRU"}] * 20}
+        blob = gzip_module.compress(json.dumps(payload).encode())
+
+        if "deflate" in header:
+            blob = zlib_module.compress(blob)
+
+        blob = brotli.compress(blob)
+        server = self._serve(blob, header)
+
+        try:
+            response = APIClient().request(
+                f"http://127.0.0.1:{server.server_port}/",
+                headers={"accept-encoding": "gzip, deflate, br"},
+            )
+            assert response.get_json_content() == payload
+        finally:
+            server.shutdown()
+
+    def test_padding_after_the_gzip_trailer_is_ignored(self):
+        """A stray tail must not restart a member and fail the whole body.
+
+        The deflate helper already tolerated this for the zlib shape, so the
+        gzip helper being strict was an inconsistency, not a policy.
+        """
+        import gzip as gzip_module
+
+        from FlightRadarAPI.request import _decompress_gzip
+
+        body = b'{"rows": []}'
+
+        for trailer in (b"\x00\x00\x00", b"\n"):
+            assert _decompress_gzip(gzip_module.compress(body) + trailer) == body
+
+        # Still reads a genuine second member rather than stopping at the first.
+        assert _decompress_gzip(
+            gzip_module.compress(b"first") + gzip_module.compress(b"second"),
+        ) == b"firstsecond"
