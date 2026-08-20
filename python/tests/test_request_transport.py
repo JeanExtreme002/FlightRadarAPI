@@ -183,7 +183,14 @@ class TestDecompressionLimit:
         assert _decompress_brotli(brotli.compress(b"")) == b""
         assert _decompress_gzip(gzip.compress(b"")) == b""
 
-    def test_a_body_past_the_budget_is_refused(self):
+    def test_the_post_hoc_size_check_still_refuses_an_oversized_body(self):
+        """Covers the backstop, not the mechanism.
+
+        In production `_bound_download` makes libcurl abort first, so this
+        comparison is unreachable — a stub session is the only way to reach it,
+        because `setopt` on the double is inert. `TestDownloadBound` is what
+        proves the real bound.
+        """
         from FlightRadarAPI.errors import DecompressionLimitError
         from FlightRadarAPI.request import MAX_RESPONSE_BYTES
 
@@ -590,3 +597,55 @@ class TestDownloadBound:
                 )
         finally:
             server.shutdown()
+
+
+class TestSeparateLimits:
+    """The wire size and the expanded size are different budgets."""
+
+    def test_the_download_bound_defaults_to_the_expansion_budget(self):
+        from curl_cffi import CurlOpt
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b"{}",
+        ))
+        APIRequest("https://x.test/", session=session, max_response_bytes=2048)  # type: ignore[arg-type]
+
+        assert (CurlOpt.MAXFILESIZE_LARGE, 2048) in session.curl.options
+
+    def test_the_download_bound_can_be_set_apart(self):
+        """Compression grows incompressible data, so a body that expands to
+        just under the budget can still arrive slightly over it."""
+        from curl_cffi import CurlOpt
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b"{}",
+        ))
+        APIRequest(  # type: ignore[arg-type]
+            "https://x.test/", session=session,
+            max_response_bytes=2048, max_download_bytes=4096,
+        )
+
+        assert (CurlOpt.MAXFILESIZE_LARGE, 4096) in session.curl.options
+
+    def test_a_nonsensical_download_bound_is_rejected(self):
+        session = StubSession(FakeResponse(status_code=200, content=b"ok"))
+
+        with pytest.raises(ValueError):
+            APIRequest("https://x.test/", session=session, max_download_bytes=0)  # type: ignore[arg-type]
+
+
+class TestAdvertisedEncodings:
+    def test_every_advertised_encoding_has_a_decoder(self):
+        """Derived from the table, so this cannot drift — pinned anyway,
+        because advertising zstd without a decoder is the bug it prevents."""
+        table = getattr(APIRequest, "_APIRequest__content_encodings")
+
+        for name in APIRequest.supported_encodings.split(", "):
+            assert name in table
+            assert table[name] is not table[""]
+
+        assert APIRequest.supported_encodings == "gzip, deflate, br"

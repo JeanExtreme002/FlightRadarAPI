@@ -24,8 +24,10 @@ DEFAULT_IMPERSONATE = "chrome136"
 # Enforcing that needs the compressed bytes, which means taking content decoding
 # away from libcurl (see `_new_curl_handle`): left to itself it expands the body
 # before any of this code runs, and the only other way to intervene —
-# `stream=True` — was measured to cost more than the bomb it stops (`timeout`
-# degrades to a >=1 byte/sec liveness check, and connection reuse disappears).
+# `stream=True` — was measured to cost more than the bomb it stops: `timeout`
+# degrades to a >=1 byte/sec liveness check, which alone rules it out, and the
+# session stops reusing connections (the standalone path already opens one per
+# call, so that second cost lands on the session path only).
 # Owning the decoding is why `deflate` is implemented below rather than left to
 # the transport: whatever `accept-encoding` advertises, this module must decode.
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
@@ -272,19 +274,24 @@ class APIRequest:
     """
     Class to make requests to the FlightRadar24.
     """
+    # Ordered as Chrome sends them, since this is what `Accept-Encoding`
+    # advertises. "" and "identity" mean "no encoding", not a decoder.
     __content_encodings = {
         "": lambda data, limit: data,
         "identity": lambda data, limit: data,
-        "br": _decompress_brotli,
         "gzip": _decompress_gzip,
         "deflate": _decompress_deflate,
+        "br": _decompress_brotli,
     }
 
     #: Advertised on every request, because taking decoding from libcurl means
-    #: only asking for what `__content_encodings` can decode. curl_cffi's
-    #: impersonation otherwise defaults to "gzip, deflate, br, zstd", and a zstd
-    #: reply would arrive as bytes nothing here can read.
-    supported_encodings = "gzip, deflate, br"
+    #: only asking for what can be decoded here. curl_cffi's impersonation
+    #: otherwise defaults to "gzip, deflate, br, zstd", and a zstd reply would
+    #: arrive as bytes nothing here can read. Derived rather than written out,
+    #: so advertising an encoding without a decoder is not expressible.
+    supported_encodings = ", ".join(
+        name for name in __content_encodings if name not in ("", "identity")
+    )
 
     def __init__(
         self,
@@ -298,6 +305,7 @@ class APIRequest:
         allowed_error_codes: Optional[List[int]] = None,
         impersonate: str = DEFAULT_IMPERSONATE,
         max_response_bytes: int = MAX_RESPONSE_BYTES,
+        max_download_bytes: Optional[int] = None,
     ):
         """
         Constructor of the APIRequest class.
@@ -309,10 +317,19 @@ class APIRequest:
         :param data: data for the request. If "data" is None, request will be a GET. Otherwise, it will be a POST
         :param allowed_error_codes: status codes that should not raise an error
         :param impersonate: curl_cffi browser profile (only used when no session is provided)
-        :param max_response_bytes: reject a body that streams past this many bytes
+        :param max_response_bytes: reject a body that expands past this many bytes
+        :param max_download_bytes: reject a body larger than this on the wire.
+            Defaults to ``max_response_bytes``. Separate because compression can
+            grow incompressible data, so a body that expands to just under the
+            budget may still arrive slightly over it.
         """
         if max_response_bytes < 1:
             raise ValueError("max_response_bytes must be >= 1")
+
+        if max_download_bytes is None:
+            max_download_bytes = max_response_bytes
+        elif max_download_bytes < 1:
+            raise ValueError("max_download_bytes must be >= 1")
 
         self.url = url
         self.__max_response_bytes = max_response_bytes
@@ -323,7 +340,7 @@ class APIRequest:
         try:
             if session is not None:
                 _keep_body_encoded(session)
-                _bound_download(session, max_response_bytes)
+                _bound_download(session, max_download_bytes)
                 request_method = session.get if data is None else session.post
                 self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
             else:
@@ -331,7 +348,7 @@ class APIRequest:
                 # internal handle this cannot reach.
                 with Session(impersonate=impersonate) as standalone:  # type: ignore[arg-type]
                     _keep_body_encoded(standalone)
-                    _bound_download(standalone, max_response_bytes)
+                    _bound_download(standalone, max_download_bytes)
                     request_method = standalone.get if data is None else standalone.post
                     self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
         except requests.errors.RequestsError as err:  # type: ignore[attr-defined]
@@ -339,18 +356,19 @@ class APIRequest:
             if getattr(err, "code", None) == CurlECode.FILESIZE_EXCEEDED:
                 raise DecompressionLimitError(
                     f"Response body from {self.url} is larger than the "
-                    f"{max_response_bytes} byte limit."
+                    f"{max_download_bytes} byte download limit."
                 ) from err
             raise
 
         received = self.__response.content
 
-        # Bounds the body as libcurl buffered it; the decompressors bound its
-        # expansion. This one cannot undo the read, only the work after it.
-        if len(received) > max_response_bytes:
+        # Backstop only: `_bound_download` makes libcurl abort first, so this
+        # is unreachable unless a transport ignores MAXFILESIZE. Kept because
+        # it costs one comparison and the alternative is an unbounded read.
+        if len(received) > max_download_bytes:
             raise DecompressionLimitError(
                 f"Response body from {self.url} is {len(received)} bytes, "
-                f"past the {max_response_bytes} byte limit."
+                f"past the {max_download_bytes} byte download limit."
             )
 
         self.__content = self.__decode_body(received)

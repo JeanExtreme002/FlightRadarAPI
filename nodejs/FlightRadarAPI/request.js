@@ -568,7 +568,9 @@ class Session {
      */
     async request(url, options = {}) {
         const { cookies: extraCookies, ...rest } = options;
-        const merged = { ...this.__cookiesFor(url), ...(extraCookies ?? {}) };
+        // Null-prototype like the maps it merges, so an inherited `toString`
+        // cannot reappear on the way into the Cookie header.
+        const merged = Object.assign(Object.create(null), this.__cookiesFor(url), extraCookies ?? {});
         const cookies = Object.keys(merged).length > 0 ? merged : null;
 
         const result = await request(url, {
