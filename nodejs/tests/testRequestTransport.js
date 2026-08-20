@@ -420,3 +420,66 @@ describe("Cookie attribution across redirects (offline)", function() {
         expect(session.__cookiesFor(`http://127.0.0.1:${port}/`)).to.deep.equal({});
     });
 });
+
+
+describe("Response size budget (offline)", function() {
+    const { request, MAX_RESPONSE_BYTES } = require("../FlightRadarAPI/request");
+    const { DecompressionLimitError } = require("../FlightRadarAPI/errors");
+
+    let mockAgent;
+    let mockPool;
+
+    beforeEach(function() {
+        mockAgent = new MockAgent();
+        mockAgent.disableNetConnect();
+        mockPool = mockAgent.get("https://example.com");
+    });
+
+    afterEach(async function() {
+        await mockAgent.close();
+    });
+
+    it("refuses a body past the budget", async function() {
+        mockPool.intercept({ path: "/huge" })
+            .reply(200, "x".repeat(4096), { headers: { "content-type": "text/plain" } });
+
+        try {
+            await request("https://example.com/huge", { dispatcher: mockAgent, maxResponseBytes: 1024 });
+            expect.fail("should have refused the body");
+        }
+        catch (err) {
+            expect(err).to.be.instanceOf(DecompressionLimitError);
+            expect(err.message).to.include("1024");
+        }
+    });
+
+    it("accepts a body at the budget", async function() {
+        mockPool.intercept({ path: "/exact" })
+            .reply(200, "x".repeat(1024), { headers: { "content-type": "text/plain" } });
+
+        const { content } = await request("https://example.com/exact", {
+            dispatcher: mockAgent, maxResponseBytes: 1024,
+        });
+        expect(content).to.have.lengthOf(1024);
+    });
+
+    it("still dispatches on content-type after the change to streamed reads", async function() {
+        mockPool.intercept({ path: "/j" })
+            .reply(200, { a: 1 }, { headers: { "content-type": "application/json" } });
+        mockPool.intercept({ path: "/t" })
+            .reply(200, "hi", { headers: { "content-type": "text/plain" } });
+        mockPool.intercept({ path: "/b" })
+            .reply(200, Buffer.from([1, 2, 3]), { headers: { "content-type": "image/png" } });
+
+        expect((await request("https://example.com/j", { dispatcher: mockAgent })).content).to.deep.equal({ a: 1 });
+        expect((await request("https://example.com/t", { dispatcher: mockAgent })).content).to.equal("hi");
+
+        const binary = (await request("https://example.com/b", { dispatcher: mockAgent })).content;
+        expect(binary).to.be.instanceOf(ArrayBuffer);
+        expect([...Buffer.from(binary)]).to.deep.equal([1, 2, 3]);
+    });
+
+    it("defaults to a 64 MiB budget", function() {
+        expect(MAX_RESPONSE_BYTES).to.equal(64 * 1024 * 1024);
+    });
+});

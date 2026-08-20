@@ -23,7 +23,12 @@ class CloudflareError extends FlightRadarError {
     }
 }
 
+/** Thrown when a response body exceeds the size budget. */
+class DecompressionLimitError extends FlightRadarError {}
+
 /** Thrown when login fails or an authenticated endpoint is accessed without login. */
 class LoginError extends FlightRadarError {}
 
-module.exports = { FlightRadarError, AirportNotFoundError, CloudflareError, LoginError };
+module.exports = {
+    FlightRadarError, AirportNotFoundError, CloudflareError, DecompressionLimitError, LoginError,
+};

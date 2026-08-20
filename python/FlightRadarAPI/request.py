@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import gzip
 import json
 import logging
 import random
 import time
+import zlib
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
@@ -12,11 +12,65 @@ import brotli
 from curl_cffi import requests
 from curl_cffi.requests import Session
 
-from .errors import CloudflareError
+from .errors import CloudflareError, DecompressionLimitError
 
 _logger = logging.getLogger(__name__)
 
 DEFAULT_IMPERSONATE = "chrome136"
+
+# A compressed body is trusted only as far as its expanded size: brotli reaches
+# ratios high enough to exhaust memory from a few kilobytes on the wire. FR24's
+# largest payload (the airports feed) is orders of magnitude under this.
+MAX_DECOMPRESSED_BYTES = 64 * 1024 * 1024
+_GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
+
+
+def _decompress_gzip(data: bytes, limit: int = MAX_DECOMPRESSED_BYTES) -> bytes:
+    """Inflate gzip bytes, refusing a body that expands past ``limit``."""
+    decompressor = zlib.decompressobj(_GZIP_WBITS)
+    output = decompressor.decompress(data, limit + 1)
+
+    # Output stops at max_length, so anything left over means the body did not fit.
+    if len(output) > limit or decompressor.unconsumed_tail:
+        raise DecompressionLimitError(
+            f"gzip body expands past the {limit} byte decompression limit."
+        )
+    return output
+
+
+def _decompress_brotli(data: bytes, limit: int = MAX_DECOMPRESSED_BYTES) -> bytes:
+    """Decompress brotli bytes, refusing a body that expands past ``limit``.
+
+    ``process`` takes a max-output argument, so the cap is enforced by the
+    decompressor rather than checked after the fact: peak memory stays near
+    ``limit`` no matter how far the body would have expanded.
+    """
+    decompressor = brotli.Decompressor()
+    output = bytearray()
+    fed = False
+
+    while not decompressor.is_finished():
+        room = limit + 1 - len(output)
+
+        if room <= 0:
+            raise DecompressionLimitError(
+                f"brotli body expands past the {limit} byte decompression limit."
+            )
+
+        piece = decompressor.process(data if not fed else b"", room)
+        fed = True
+        output += piece
+
+        if len(output) > limit:
+            raise DecompressionLimitError(
+                f"brotli body expands past the {limit} byte decompression limit."
+            )
+
+        # No output left and still hungry: the stream ended mid-message.
+        if not piece and decompressor.can_accept_more_data():
+            break
+
+    return bytes(output)
 
 
 class RetryPolicy:
@@ -140,8 +194,8 @@ class APIRequest:
     """
     __content_encodings = {
         "": lambda x: x,
-        "br": brotli.decompress,
-        "gzip": gzip.decompress
+        "br": _decompress_brotli,
+        "gzip": _decompress_gzip
     }
 
     def __init__(
@@ -232,6 +286,8 @@ class APIRequest:
         decode = self.__content_encodings.get(content_encoding, self.__content_encodings[""])
         try:
             content = decode(content)
+        except DecompressionLimitError:
+            raise
         except Exception as err:
             # Decided by the body, not the header: undecodable text is genuinely
             # broken and must warn, while binary bodies carry no such tell. Nothing

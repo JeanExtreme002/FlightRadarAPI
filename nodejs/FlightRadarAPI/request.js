@@ -1,4 +1,4 @@
-const { CloudflareError } = require("./errors");
+const { CloudflareError, DecompressionLimitError } = require("./errors");
 const { fetch, Agent } = require("undici");
 
 /** Thrown when a request exceeds its timeout. Surfaced as a distinct class
@@ -138,6 +138,50 @@ async function runWithRetry(fn, retry) {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+// A compressed body is trusted only as far as its expanded size: brotli reaches
+// ratios high enough to exhaust memory from a few kilobytes on the wire. undici
+// decompresses in the transport, so the budget lands on the decoded body.
+// FR24's largest payload (the airports feed) is orders of magnitude under this.
+const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Read a response body, refusing one that grows past `limit`.
+ *
+ * Streamed rather than buffered whole so the cap bounds the work: reading
+ * stops and the socket is released at the first chunk over budget, instead of
+ * discovering the size after paying for it.
+ *
+ * @param {Response} response
+ * @param {number} limit - maximum bytes to accept
+ * @param {string} url - for the error message
+ * @return {Promise<Buffer>}
+ */
+async function readBoundedBody(response, limit, url) {
+    if (response.body === null) return Buffer.alloc(0);
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        total += value.byteLength;
+
+        if (total > limit) {
+            await reader.cancel();
+            throw new DecompressionLimitError(
+                `Response body from ${url} exceeds the ${limit} byte limit.`,
+            );
+        }
+        chunks.push(value);
+    }
+
+    return Buffer.concat(chunks);
+}
+
 /**
  * Parse one `Set-Cookie` header into a cookie record.
  *
@@ -270,6 +314,7 @@ function isCloudflareBlock(statusCode, headers) {
  * @param {object} [options.cookies] - Cookies to include in the request
  * @param {Array<number>} [options.allowedErrorCodes=[]] - Status codes that should not throw
  * @param {number} [options.timeout=30000] - Request timeout in milliseconds
+ * @param {number} [options.maxResponseBytes] - Maximum accepted response body size
  * @return {Promise<{content: *, statusCode: number, cookies: object}>}
  */
 async function request(url, {
@@ -280,6 +325,7 @@ async function request(url, {
     allowedErrorCodes = [],
     timeout = DEFAULT_TIMEOUT_MS,
     dispatcher = null,
+    maxResponseBytes = MAX_RESPONSE_BYTES,
 } = {}) {
     if (params !== null && Object.keys(params).length > 0) {
         url += "?" + new URLSearchParams(params).toString();
@@ -334,16 +380,17 @@ async function request(url, {
     }
 
     const contentType = response.headers.get("content-type") ?? "";
+    const body = await readBoundedBody(response, maxResponseBytes, url);
     let content;
 
     if (contentType.includes("application/json")) {
-        content = await response.json();
+        content = JSON.parse(body.toString("utf-8"));
     }
     else if (contentType.includes("text")) {
-        content = await response.text();
+        content = body.toString("utf-8");
     }
     else {
-        content = await response.arrayBuffer();
+        content = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
     }
 
     const rawCookies = response.headers.getSetCookie() ?? [];
@@ -593,4 +640,7 @@ class APIClient {
     }
 }
 
-module.exports = { request, Session, APIClient, RetryPolicy, buildImpersonateAgent, CHROME136_PROFILE };
+module.exports = {
+    request, Session, APIClient, RetryPolicy, buildImpersonateAgent, CHROME136_PROFILE,
+    MAX_RESPONSE_BYTES,
+};

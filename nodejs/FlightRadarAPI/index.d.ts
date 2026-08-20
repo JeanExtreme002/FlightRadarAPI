@@ -520,6 +520,10 @@ export class CloudflareError extends FlightRadarError {
     constructor(message?: string, response?: any);
 }
 
+export class DecompressionLimitError extends FlightRadarError {
+    constructor(message?: string);
+}
+
 export class LoginError extends FlightRadarError {
     constructor(message?: string);
 }

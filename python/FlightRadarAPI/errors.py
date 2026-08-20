@@ -16,5 +16,10 @@ class CloudflareError(FlightRadarError):
         self.response = response
 
 
+class DecompressionLimitError(FlightRadarError):
+    """Raised when a response body expands past the decompression budget."""
+    pass
+
+
 class LoginError(FlightRadarError):
     pass
