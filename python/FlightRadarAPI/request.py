@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import brotli
-from curl_cffi import CurlOpt, requests
+from curl_cffi import CurlECode, CurlOpt, requests
 from curl_cffi.requests import Session
 
 from .errors import CloudflareError, DecompressionLimitError
@@ -32,6 +32,16 @@ MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 _ZLIB_WBITS = 15         # zlib-wrapped deflate, as RFC 9110 specifies
 _RAW_DEFLATE_WBITS = -15  # raw deflate, as many servers actually send
 _GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
+
+
+def _bound_download(session: Session, limit: int) -> None:
+    """Have libcurl abort a response body larger than ``limit``.
+
+    Bounds the bytes as received, which the post-hoc length check cannot: by
+    the time it runs, libcurl has buffered the whole body. Aborts both when
+    `Content-Length` announces the size and mid-transfer when it does not.
+    """
+    session.curl.setopt(CurlOpt.MAXFILESIZE_LARGE, limit)
 
 
 def _keep_body_encoded(session: Session) -> None:
@@ -264,10 +274,17 @@ class APIRequest:
     """
     __content_encodings = {
         "": lambda data, limit: data,
+        "identity": lambda data, limit: data,
         "br": _decompress_brotli,
         "gzip": _decompress_gzip,
-        "deflate": _decompress_deflate
+        "deflate": _decompress_deflate,
     }
+
+    #: Advertised on every request, because taking decoding from libcurl means
+    #: only asking for what `__content_encodings` can decode. curl_cffi's
+    #: impersonation otherwise defaults to "gzip, deflate, br, zstd", and a zstd
+    #: reply would arrive as bytes nothing here can read.
+    supported_encodings = "gzip, deflate, br"
 
     def __init__(
         self,
@@ -299,20 +316,49 @@ class APIRequest:
 
         self.url = url
         self.__max_response_bytes = max_response_bytes
+        headers = self.__with_supported_encodings(headers)
 
         if params: url += "?" + urlencode(params)
 
-        if session is not None:
-            _keep_body_encoded(session)
-            request_method = session.get if data is None else session.post
-            self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
-        else:
-            # A throwaway session rather than the module-level helpers, whose
-            # internal handle this cannot reach.
-            with Session(impersonate=impersonate) as standalone:  # type: ignore[arg-type]
-                _keep_body_encoded(standalone)
-                request_method = standalone.get if data is None else standalone.post
+        try:
+            if session is not None:
+                _keep_body_encoded(session)
+                _bound_download(session, max_response_bytes)
+                request_method = session.get if data is None else session.post
                 self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
+            else:
+                # A throwaway session rather than the module-level helpers, whose
+                # internal handle this cannot reach.
+                with Session(impersonate=impersonate) as standalone:  # type: ignore[arg-type]
+                    _keep_body_encoded(standalone)
+                    _bound_download(standalone, max_response_bytes)
+                    request_method = standalone.get if data is None else standalone.post
+                    self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
+        except requests.errors.RequestsError as err:  # type: ignore[attr-defined]
+            # Not a transient failure, so it must not reach the retry policy as one.
+            if getattr(err, "code", None) == CurlECode.FILESIZE_EXCEEDED:
+                raise DecompressionLimitError(
+                    f"Response body from {self.url} is larger than the "
+                    f"{max_response_bytes} byte limit."
+                ) from err
+            raise
+
+        received = self.__response.content
+
+        # Bounds the body as libcurl buffered it; the decompressors bound its
+        # expansion. This one cannot undo the read, only the work after it.
+        if len(received) > max_response_bytes:
+            raise DecompressionLimitError(
+                f"Response body from {self.url} is {len(received)} bytes, "
+                f"past the {max_response_bytes} byte limit."
+            )
+
+        self.__content = self.__decode_body(received)
+
+        # `get_response_object()` and `CloudflareError.response` are public, and
+        # a challenge page is the first thing anyone reads when debugging a
+        # block. Since libcurl no longer decodes, hand them the decoded body.
+        self.__response.content = self.__content
 
         # Cloudflare detection only when the caller did not opt-in to this status code.
         # `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
@@ -327,14 +373,15 @@ class APIRequest:
         if self.get_status_code() not in (allowed_error_codes or []):
             self.__response.raise_for_status()
 
-        self.__content = self.__response.content
+    @classmethod
+    def __with_supported_encodings(cls, headers: Optional[Dict]) -> Optional[Dict]:
+        """Ask only for encodings this class can decode."""
+        if headers and any(name.lower() == "accept-encoding" for name in headers):
+            return headers
 
-        # Bounds the body as received; the decompressors bound its expansion.
-        if len(self.__content) > max_response_bytes:
-            raise DecompressionLimitError(
-                f"Response body from {self.url} is {len(self.__content)} bytes, "
-                f"past the {max_response_bytes} byte limit."
-            )
+        merged = dict(headers or {})
+        merged["accept-encoding"] = cls.supported_encodings
+        return merged
 
     def __is_cloudflare_block(self) -> bool:
         """
@@ -358,28 +405,39 @@ class APIRequest:
             return False
         return bool(self.__response.headers.get("cf-mitigated"))
 
-    def get_content(self) -> Union[Dict, bytes]:
-        """
-        Return the received content from the request.
-        """
-        content = self.__content
+    def __decode_body(self, content: bytes) -> bytes:
+        """Undo the `Content-Encoding` this response arrived with.
 
-        content_encoding = self.__response.headers.get("Content-Encoding", "")
-        content_type = self.__response.headers.get("Content-Type", "")
+        Header values are case-insensitive and may carry whitespace, so the
+        token is normalised before lookup: an exact match would send `GZIP`
+        down the identity path and return compressed bytes as if they were
+        content. An encoding this class does not implement warns rather than
+        passing silently, since nothing downstream can act on the result.
+        """
+        content_encoding = self.__response.headers.get("Content-Encoding", "") or ""
+        encoding = content_encoding.strip().lower()
+        decode = self.__content_encodings.get(encoding)
 
-        # Decompress the content if a known encoding was used; fall back to raw bytes otherwise.
-        # curl_cffi may already decompress content automatically, so failures here usually mean
-        # the bytes were already decoded by the transport layer — log and continue rather than
-        # surfacing an error the caller cannot act on.
-        decode = self.__content_encodings.get(content_encoding, self.__content_encodings[""])
+        if decode is None:
+            _logger.warning(
+                "APIRequest: no decoder for Content-Encoding=%r on %s. Returning the body "
+                "as received, which callers will not be able to read.",
+                content_encoding, self.url,
+            )
+            return content
+
         try:
-            content = decode(content, self.__max_response_bytes)
+            return decode(content, self.__max_response_bytes)
         except DecompressionLimitError:
             raise
         except Exception as err:
-            # Decided by the body, not the header: undecodable text is genuinely
-            # broken and must warn, while binary bodies carry no such tell. Nothing
-            # here may raise, or it would replace `err` with its own failure.
+            # Reached when the body is not encoded the way the header claims —
+            # most often a transport that decoded it after all. Decided by the
+            # body, not the header: undecodable text is genuinely broken and
+            # must warn, while binary bodies carry no such tell. Nothing here
+            # may raise, or it would replace `err` with its own failure.
+            content_type = self.__response.headers.get("Content-Type", "")
+
             if not isinstance(content, bytes):
                 transport_decoded = True
             elif content_type.startswith(("application/json", "text/")):
@@ -389,21 +447,28 @@ class APIRequest:
                 except UnicodeDecodeError:
                     transport_decoded = False
             else:
-                corrupt_gzip = content_encoding == "gzip" and content.startswith(b"\x1f\x8b")
-                transport_decoded = content_encoding in ("gzip", "br") and not corrupt_gzip
+                corrupt_gzip = encoding == "gzip" and content.startswith(b"\x1f\x8b")
+                transport_decoded = encoding in ("gzip", "br", "deflate") and not corrupt_gzip
 
             _logger.log(
                 logging.DEBUG if transport_decoded else logging.WARNING,
-                "APIRequest.get_content: failed to decode Content-Encoding=%r for %s (%s). "
-                "Assuming the transport already decompressed and returning raw bytes.",
+                "APIRequest: failed to decode Content-Encoding=%r for %s (%s). "
+                "Assuming the body arrived already decoded and returning it as-is.",
                 content_encoding, self.url, err,
             )
+            return content
+
+    def get_content(self) -> Union[Dict, bytes]:
+        """
+        Return the received content from the request.
+        """
+        content_type = self.__response.headers.get("Content-Type", "")
 
         # Return a dictionary if the content type is JSON.
         if "application/json" in content_type:
-            return json.loads(content)
+            return json.loads(self.__content)
 
-        return content
+        return self.__content
 
     def get_json_content(self) -> Dict[str, Any]:
         """

@@ -530,3 +530,30 @@ describe("Byte-order mark handling (offline)", function() {
         expect([...Buffer.from(content)]).to.deep.equal([0xEF, 0xBB, 0xBF, 1, 2]);
     });
 });
+
+
+describe("Cookie read paths agree (offline)", function() {
+    const { Session } = require("../FlightRadarAPI/request");
+
+    it("resolves a re-issued cookie the same way for reads and for sending", function() {
+        // getCookie feeds the `token`/`enc` query params while the jar builds
+        // the Cookie header; if they disagree, one request carries two
+        // different values for the same token. /user/logout is a real URL.
+        const session = new Session();
+        session.__storeCookies("https://www.flightradar24.com/user/login", ["_frPl=old-token"]);
+        session.__storeCookies("https://www.flightradar24.com/", ["_frPl=new-token; Path=/"]);
+
+        expect(session.getCookie("_frPl")).to.equal("new-token");
+        expect(session.__cookiesFor("https://www.flightradar24.com/user/logout"))
+            .to.deep.equal({ _frPl: "new-token" });
+    });
+
+    it("does not expose inherited Object properties as cookies", function() {
+        const session = new Session();
+        session.__storeCookies("https://www.flightradar24.com/", ["a=1; Path=/"]);
+
+        const selected = session.__cookiesFor("https://www.flightradar24.com/");
+        expect(selected.toString).to.equal(undefined);
+        expect(selected.constructor).to.equal(undefined);
+    });
+});

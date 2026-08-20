@@ -216,10 +216,10 @@ class TestDecompressionLimit:
             with pytest.raises(ValueError):
                 APIRequest("https://x.test/", session=session, max_response_bytes=bad)  # type: ignore[arg-type]
 
-    def test_content_decoding_is_disabled_on_every_request(self):
-        """Regression: the option lapsed after the first request.
+    def test_the_curl_options_are_set_on_every_request(self):
+        """Regression: they lapsed after the first request.
 
-        Setting it once at construction looked right and worked once —
+        Setting them once at construction looked right and worked once —
         `Session.request` resets the handle, so requests 2..n arrived
         pre-expanded with no budget in reach, and no double-based test noticed
         because each one built a fresh client.
@@ -233,9 +233,12 @@ class TestDecompressionLimit:
         ))
 
         for _ in range(3):
-            APIRequest("https://x.test/", session=session)  # type: ignore[arg-type]
+            APIRequest("https://x.test/", session=session, max_response_bytes=4096)  # type: ignore[arg-type]
 
-        assert session.curl.options == [(CurlOpt.HTTP_CONTENT_DECODING, 0)] * 3
+        assert session.curl.options == [
+            (CurlOpt.HTTP_CONTENT_DECODING, 0),
+            (CurlOpt.MAXFILESIZE_LARGE, 4096),
+        ] * 3
 
     def test_the_body_is_not_requested_as_a_stream(self):
         """Pins a deliberate trade-off, not an oversight.
@@ -376,16 +379,14 @@ class TestBudgetAgainstARealTransport:
 
         try:
             client = APIClient()
-            request = client.request(
-                f"http://127.0.0.1:{server.server_port}/",
-                headers={"accept-encoding": "gzip, deflate, br"},
-                max_response_bytes=1024 * 1024,
-            )
-
-            # Decoding is lazy, which is what keeps an unread body from ever
-            # expanding; the budget therefore lands on the read.
+            # Decoded during the request, so the budget lands there rather
+            # than on a later read — the same point the Node port enforces it.
             with pytest.raises(DecompressionLimitError):
-                request.get_content()
+                client.request(
+                    f"http://127.0.0.1:{server.server_port}/",
+                    headers={"accept-encoding": "gzip, deflate, br"},
+                    max_response_bytes=1024 * 1024,
+                )
         finally:
             server.shutdown()
 
@@ -444,13 +445,148 @@ class TestBudgetAgainstARealTransport:
         server = self._serve(brotli.compress(b"\x00" * (32 * 1024 * 1024)), "br")
 
         try:
-            request = client.request_standalone(
-                f"http://127.0.0.1:{server.server_port}/",
-                headers={"accept-encoding": "gzip, br"},
-                max_response_bytes=1024 * 1024,
-            )
-
             with pytest.raises(DecompressionLimitError):
-                request.get_content()
+                client.request_standalone(
+                    f"http://127.0.0.1:{server.server_port}/",
+                    headers={"accept-encoding": "gzip, br"},
+                    max_response_bytes=1024 * 1024,
+                )
+        finally:
+            server.shutdown()
+
+
+class TestEncodingRobustness:
+    """Owning the decoding means owning every shape the header arrives in."""
+
+    def _serve(self, blob: bytes, encoding: str):
+        return TestBudgetAgainstARealTransport._serve(blob, encoding)
+
+    @pytest.mark.parametrize("header", ["gzip", "GZIP", " gzip ", "Gzip"])
+    def test_the_encoding_token_is_matched_case_insensitively(self, header):
+        """RFC 9110 header values are case-insensitive; an exact match sent
+        `GZIP` down the identity path and returned compressed bytes."""
+        import gzip as gzip_module
+
+        from FlightRadarAPI.request import APIClient
+
+        server = self._serve(gzip_module.compress(b'{"ok": true}'), header)
+
+        try:
+            response = APIClient().request(f"http://127.0.0.1:{server.server_port}/")
+            assert response.get_json_content() == {"ok": True}
+        finally:
+            server.shutdown()
+
+    def test_only_decodable_encodings_are_advertised(self):
+        """curl_cffi's impersonation asks for zstd, which nothing here decodes."""
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        from FlightRadarAPI.request import APIClient, APIRequest
+
+        seen = []
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self) -> None:
+                seen.append(self.headers.get("accept-encoding"))
+                body = b"{}"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args: object) -> None:
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.daemon_threads = True
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        try:
+            client = APIClient()
+            url = f"http://127.0.0.1:{server.server_port}/"
+            client.request(url)
+            client.request_standalone(url)
+
+            assert seen == [APIRequest.supported_encodings] * 2
+            assert "zstd" not in APIRequest.supported_encodings
+        finally:
+            server.shutdown()
+
+    def test_an_undecodable_encoding_warns_instead_of_passing_bytes_along(self, caplog):
+        import gzip as gzip_module
+
+        from FlightRadarAPI.request import APIClient
+
+        server = self._serve(gzip_module.compress(b'{"ok": true}'), "zstd")
+
+        try:
+            with caplog.at_level("WARNING", logger="FlightRadarAPI.request"):
+                APIClient().request(
+                    f"http://127.0.0.1:{server.server_port}/",
+                    headers={"accept-encoding": "gzip, zstd"},
+                )
+            assert any("no decoder for Content-Encoding" in r.message for r in caplog.records)
+        finally:
+            server.shutdown()
+
+    def test_the_public_response_object_carries_the_decoded_body(self):
+        """`CloudflareError.response` is how a user reads a challenge page."""
+        import gzip as gzip_module
+
+        from FlightRadarAPI.request import APIClient
+
+        body = b'{"ok": true}'
+        server = self._serve(gzip_module.compress(body), "gzip")
+
+        try:
+            response = APIClient().request(f"http://127.0.0.1:{server.server_port}/")
+
+            assert response.get_response_object().content == body
+            assert response.get_response_object().text == body.decode()
+        finally:
+            server.shutdown()
+
+
+class TestDownloadBound:
+    """The received bytes are bounded by libcurl, not only checked afterwards."""
+
+    def test_an_oversized_body_is_aborted_mid_download(self):
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import APIClient
+
+        big = b"x" * (5 * 1024 * 1024)
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(big)))
+                self.end_headers()
+                self.wfile.write(big)
+
+            def log_message(self, *args: object) -> None:
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.daemon_threads = True
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        try:
+            # Surfaced as our own error, not curl's: the retry policy treats
+            # curl errors as transient, and retrying an oversized body is futile.
+            with pytest.raises(DecompressionLimitError):
+                APIClient().request(
+                    f"http://127.0.0.1:{server.server_port}/",
+                    max_response_bytes=1024 * 1024,
+                )
         finally:
             server.shutdown()

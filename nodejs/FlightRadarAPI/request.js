@@ -408,7 +408,9 @@ async function request(url, {
     }
 
     const rawCookies = response.headers.getSetCookie() ?? [];
-    const responseCookies = {};
+    // Null-prototype: a cookie named `toString` must read as absent, not as an
+    // inherited function, and one named `__proto__` must not vanish.
+    const responseCookies = Object.create(null);
 
     for (const header of rawCookies) {
         const pair = String(header).split(";")[0];
@@ -542,11 +544,12 @@ class Session {
             if (hostInScope) matches.push(cookie);
         }
 
-        // Shortest path first, so a more specific cookie overwrites a broader
-        // one of the same name rather than losing to insertion order.
-        matches.sort((a, b) => a.path.length - b.path.length);
+        // Oldest first, so the newest of a same-named pair wins — the rule
+        // getCookie() uses, because a re-issued token supersedes the one it
+        // replaces. Path length only breaks a tie within one response.
+        matches.sort((a, b) => (a.storedAt - b.storedAt) || (a.path.length - b.path.length));
 
-        const selected = {};
+        const selected = Object.create(null);
 
         for (const cookie of matches) selected[cookie.name] = cookie.value;
 
