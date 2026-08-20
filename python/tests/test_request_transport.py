@@ -216,6 +216,27 @@ class TestDecompressionLimit:
             with pytest.raises(ValueError):
                 APIRequest("https://x.test/", session=session, max_response_bytes=bad)  # type: ignore[arg-type]
 
+    def test_content_decoding_is_disabled_on_every_request(self):
+        """Regression: the option lapsed after the first request.
+
+        Setting it once at construction looked right and worked once —
+        `Session.request` resets the handle, so requests 2..n arrived
+        pre-expanded with no budget in reach, and no double-based test noticed
+        because each one built a fresh client.
+        """
+        from curl_cffi import CurlOpt
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b"{}",
+        ))
+
+        for _ in range(3):
+            APIRequest("https://x.test/", session=session)  # type: ignore[arg-type]
+
+        assert session.curl.options == [(CurlOpt.HTTP_CONTENT_DECODING, 0)] * 3
+
     def test_the_body_is_not_requested_as_a_stream(self):
         """Pins a deliberate trade-off, not an oversight.
 
@@ -309,3 +330,127 @@ class TestDecompressionIntegrity:
 
         with pytest.raises(Exception):
             decompress(b'{"already": "json"}')
+
+
+class TestBudgetAgainstARealTransport:
+    """Exercises the budget over a socket, not over a double.
+
+    A previous attempt at this budget was inert in production and every
+    double-based test still passed, because the doubles fed the helpers
+    compressed input that the real transport never produced. These tests talk
+    to a local server so the decoding path is the production one.
+    """
+
+    @staticmethod
+    def _serve(blob: bytes, encoding: str):
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.send_header("Content-Encoding", encoding)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(blob)))
+                self.end_headers()
+                self.wfile.write(blob)
+
+            def log_message(self, *args: object) -> None:
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.daemon_threads = True
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        return server
+
+    def test_a_bomb_is_refused_before_it_expands(self):
+        import brotli
+
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import APIClient
+
+        # A few hundred bytes on the wire, 32 MB expanded.
+        server = self._serve(brotli.compress(b"\x00" * (32 * 1024 * 1024)), "br")
+
+        try:
+            client = APIClient()
+            request = client.request(
+                f"http://127.0.0.1:{server.server_port}/",
+                headers={"accept-encoding": "gzip, deflate, br"},
+                max_response_bytes=1024 * 1024,
+            )
+
+            # Decoding is lazy, which is what keeps an unread body from ever
+            # expanding; the budget therefore lands on the read.
+            with pytest.raises(DecompressionLimitError):
+                request.get_content()
+        finally:
+            server.shutdown()
+
+    @pytest.mark.parametrize("encoding", ["br", "gzip", "deflate"])
+    def test_every_advertised_encoding_round_trips(self, encoding):
+        """Taking decoding from libcurl means decoding everything we advertise.
+
+        `Core.html_headers` asks for deflate, so dropping it here would corrupt
+        get_airlines() rather than fail loudly.
+        """
+        import gzip as gzip_module
+        import zlib as zlib_module
+
+        import brotli
+
+        from FlightRadarAPI.request import APIClient
+
+        body = b'{"rows": [{"name": "Guarulhos"}]}'
+        compressor = zlib_module.compressobj(wbits=-15)
+        blob = {
+            "br": brotli.compress(body),
+            "gzip": gzip_module.compress(body),
+            "deflate": compressor.compress(body) + compressor.flush(),
+        }[encoding]
+
+        server = self._serve(blob, encoding)
+
+        try:
+            response = APIClient().request(
+                f"http://127.0.0.1:{server.server_port}/",
+                headers={"accept-encoding": "gzip, deflate, br"},
+            )
+            assert response.get_json_content() == {"rows": [{"name": "Guarulhos"}]}
+        finally:
+            server.shutdown()
+
+    def test_the_standalone_path_decodes_and_bounds_too(self):
+        """`get_flight_details` uses it from a thread pool, bypassing the session."""
+        import brotli
+
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import APIClient
+
+        body = b'{"ok": true}'
+        server = self._serve(brotli.compress(body), "br")
+
+        try:
+            client = APIClient()
+            url = f"http://127.0.0.1:{server.server_port}/"
+            headers = {"accept-encoding": "gzip, br"}
+
+            assert client.request_standalone(url, headers=headers).get_json_content() == {"ok": True}
+        finally:
+            server.shutdown()
+
+        server = self._serve(brotli.compress(b"\x00" * (32 * 1024 * 1024)), "br")
+
+        try:
+            request = client.request_standalone(
+                f"http://127.0.0.1:{server.server_port}/",
+                headers={"accept-encoding": "gzip, br"},
+                max_response_bytes=1024 * 1024,
+            )
+
+            with pytest.raises(DecompressionLimitError):
+                request.get_content()
+        finally:
+            server.shutdown()

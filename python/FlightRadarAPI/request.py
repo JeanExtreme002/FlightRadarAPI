@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import brotli
-from curl_cffi import requests
+from curl_cffi import CurlOpt, requests
 from curl_cffi.requests import Session
 
 from .errors import CloudflareError, DecompressionLimitError
@@ -21,18 +21,58 @@ DEFAULT_IMPERSONATE = "chrome136"
 # A compressed body is trusted only as far as its expanded size: brotli reaches
 # ratios high enough to exhaust memory from a few kilobytes on the wire.
 #
-# The reach of this budget differs from the Node port's, and not by choice.
-# curl_cffi decompresses inside libcurl, so a buffered read hands us a body
-# that has already expanded. Intercepting earlier means `stream=True`, which in
-# curl_cffi 0.16 costs two things measured to be worse than the bomb it would
-# stop: `timeout` degrades from a wall-clock cap to a >=1 byte/sec liveness
-# check (a tarpit held a `timeout=2` request for 23.8s), and the session stops
-# reusing connections (5 handshakes across 5 requests instead of 1), which is
-# the very fingerprint the TLS impersonation exists to avoid. So here the
-# budget bounds what reaches the parser, and the helpers below bound the cases
-# where the transport hands back bytes it did not decode.
+# Enforcing that needs the compressed bytes, which means taking content decoding
+# away from libcurl (see `_new_curl_handle`): left to itself it expands the body
+# before any of this code runs, and the only other way to intervene —
+# `stream=True` — was measured to cost more than the bomb it stops (`timeout`
+# degrades to a >=1 byte/sec liveness check, and connection reuse disappears).
+# Owning the decoding is why `deflate` is implemented below rather than left to
+# the transport: whatever `accept-encoding` advertises, this module must decode.
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+_ZLIB_WBITS = 15         # zlib-wrapped deflate, as RFC 9110 specifies
+_RAW_DEFLATE_WBITS = -15  # raw deflate, as many servers actually send
 _GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
+
+
+def _keep_body_encoded(session: Session) -> None:
+    """Stop libcurl decompressing this session's next response.
+
+    libcurl decompresses transparently, which would expand a bomb before this
+    module ever sees it. With decoding off the compressed bytes arrive intact
+    and the helpers below can enforce a real budget. `Accept-Encoding` is still
+    sent, so responses stay compressed on the wire.
+
+    Applied per request, not once at construction: `Session.request` resets the
+    handle, so an option set in the constructor survives the first call and
+    silently lapses on every one after it. Setting it here also leaves
+    curl_cffi's thread-local handles in place.
+    """
+    session.curl.setopt(CurlOpt.HTTP_CONTENT_DECODING, 0)
+
+
+def _decompress_deflate(data: bytes, limit: int = MAX_RESPONSE_BYTES) -> bytes:
+    """Inflate a deflate body in either shape it arrives in.
+
+    RFC 9110 says zlib-wrapped; plenty of servers send raw. libcurl accepted
+    both, so taking decoding over means accepting both too.
+    """
+    for wbits in (_ZLIB_WBITS, _RAW_DEFLATE_WBITS):
+        decompressor = zlib.decompressobj(wbits)
+
+        try:
+            output = decompressor.decompress(data, limit + 1)
+        except zlib.error:
+            continue
+
+        if len(output) > limit or decompressor.unconsumed_tail:
+            raise DecompressionLimitError(
+                f"deflate body expands past the {limit} byte decompression limit."
+            )
+
+        if decompressor.eof:
+            return output
+
+    raise zlib.error("body is not a complete deflate stream")
 
 
 def _decompress_gzip(data: bytes, limit: int = MAX_RESPONSE_BYTES) -> bytes:
@@ -223,9 +263,10 @@ class APIRequest:
     Class to make requests to the FlightRadar24.
     """
     __content_encodings = {
-        "": lambda x: x,
+        "": lambda data, limit: data,
         "br": _decompress_brotli,
-        "gzip": _decompress_gzip
+        "gzip": _decompress_gzip,
+        "deflate": _decompress_deflate
     }
 
     def __init__(
@@ -257,18 +298,21 @@ class APIRequest:
             raise ValueError("max_response_bytes must be >= 1")
 
         self.url = url
+        self.__max_response_bytes = max_response_bytes
 
         if params: url += "?" + urlencode(params)
 
         if session is not None:
+            _keep_body_encoded(session)
             request_method = session.get if data is None else session.post
             self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
         else:
-            request_method = requests.get if data is None else requests.post
-            self.__response = request_method(
-                url, headers=headers, data=data, timeout=timeout,
-                impersonate=impersonate  # type: ignore[arg-type]
-            )
+            # A throwaway session rather than the module-level helpers, whose
+            # internal handle this cannot reach.
+            with Session(impersonate=impersonate) as standalone:  # type: ignore[arg-type]
+                _keep_body_encoded(standalone)
+                request_method = standalone.get if data is None else standalone.post
+                self.__response = request_method(url, headers=headers, data=data, timeout=timeout)
 
         # Cloudflare detection only when the caller did not opt-in to this status code.
         # `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
@@ -285,10 +329,7 @@ class APIRequest:
 
         self.__content = self.__response.content
 
-        # The transport already expanded this, so the check cannot undo the peak.
-        # What it does stop is the far larger second cost: parsing a body of that
-        # size into Python objects. See the module note on why streaming — the
-        # only way to intervene earlier — is not used here.
+        # Bounds the body as received; the decompressors bound its expansion.
         if len(self.__content) > max_response_bytes:
             raise DecompressionLimitError(
                 f"Response body from {self.url} is {len(self.__content)} bytes, "
@@ -332,7 +373,7 @@ class APIRequest:
         # surfacing an error the caller cannot act on.
         decode = self.__content_encodings.get(content_encoding, self.__content_encodings[""])
         try:
-            content = decode(content)
+            content = decode(content, self.__max_response_bytes)
         except DecompressionLimitError:
             raise
         except Exception as err:
