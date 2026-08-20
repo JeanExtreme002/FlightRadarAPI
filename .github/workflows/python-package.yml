@@ -34,7 +34,7 @@ jobs:
           pip install -e "./python[tests]"
           pip install flake8 mypy build pytest-cov pip-audit
       - name: Lint
-        run: cd python && python -m flake8 FlightRadarAPI FlightRadar24 tests
+        run: cd python && python -m flake8 FlightRadarAPI tests
       - name: Type check
         run: cd python && python -m mypy FlightRadarAPI --ignore-missing-imports
       - name: Offline tests (PR gate)

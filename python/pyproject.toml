@@ -28,7 +28,7 @@ dependencies = [
 exclude = ["tests", ".flake8"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["FlightRadarAPI", "FlightRadar24"]
+packages = ["FlightRadarAPI"]
 
 # Force-include the PEP 561 marker so downstream type checkers always see it,
 # regardless of future changes to the global exclude list above.
