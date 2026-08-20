@@ -791,3 +791,28 @@ class TestStackedAndPaddedEncodings:
         assert _decompress_gzip(
             gzip_module.compress(b"first") + gzip_module.compress(b"second"),
         ) == b"firstsecond"
+
+
+class TestPartialDecodingChain:
+    def test_a_chain_that_fails_midway_falls_back_to_the_body_as_received(self):
+        """The recovery claims the body arrived decoded, so it must return that
+        body — not the half-processed intermediate of a failed chain."""
+        import json
+
+        import brotli
+
+        from FlightRadarAPI.request import APIClient
+
+        # Header claims gzip then br, but only br was applied.
+        payload = {"ok": True}
+        blob = brotli.compress(json.dumps(payload).encode())
+        server = TestBudgetAgainstARealTransport._serve(blob, "gzip, br")
+
+        try:
+            response = APIClient().request(
+                f"http://127.0.0.1:{server.server_port}/",
+                headers={"accept-encoding": "gzip, br"},
+            )
+            assert response.get_response_object().content == blob
+        finally:
+            server.shutdown()

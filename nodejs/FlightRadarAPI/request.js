@@ -401,20 +401,28 @@ async function request(url, {
         clearTimeout(timer);
     }
     const statusCode = response.status;
+    const rawCookies = response.headers.getSetCookie() ?? [];
+
+    // Attached to the errors below so the session can still bank them: a
+    // Cloudflare 403 is exactly the response that carries `cf_clearance`, and
+    // discarding it makes the retry replay the same blocked request.
+    const withCookies = (error) => Object.assign(error, { rawCookies });
 
     // Cloudflare detection only when the caller did not opt-in to this status code.
     // `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
     if (!allowedErrorCodes.includes(statusCode) && isCloudflareBlock(statusCode, response.headers)) {
-        throw new CloudflareError(
+        throw withCookies(new CloudflareError(
             "Blocked by Cloudflare. Perhaps you are making too many calls, " +
             "or the TLS impersonation needs to be updated.",
             response,
-            body.toString("utf-8"),
-        );
+            decodeText(body),
+        ));
     }
 
     if (!allowedErrorCodes.includes(statusCode) && (statusCode < 200 || statusCode >= 300)) {
-        throw new Error(`Received status code '${statusCode}: ${response.statusText}' for the URL ${url}`);
+        throw withCookies(
+            new Error(`Received status code '${statusCode}: ${response.statusText}' for the URL ${url}`),
+        );
     }
 
     const contentType = response.headers.get("content-type") ?? "";
@@ -430,10 +438,10 @@ async function request(url, {
         content = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
     }
 
-    const rawCookies = response.headers.getSetCookie() ?? [];
-    // Null-prototype: a cookie named `toString` must read as absent, not as an
-    // inherited function, and one named `__proto__` must not vanish.
-    const responseCookies = Object.create(null);
+    // A plain object, unlike the jar's internal maps: this one is public and
+    // typed `Record<string, string>`, and a null prototype would break
+    // `cookies.hasOwnProperty(name)` in consumer code.
+    const responseCookies = {};
 
     for (const header of rawCookies) {
         const pair = String(header).split(";")[0];
@@ -598,11 +606,21 @@ class Session {
         const merged = Object.assign(Object.create(null), this.__cookiesFor(url), extraCookies ?? {});
         const cookies = Object.keys(merged).length > 0 ? merged : null;
 
-        const result = await request(url, {
-            dispatcher: this.__dispatcher,
-            ...rest,
-            cookies,
-        });
+        let result;
+
+        try {
+            result = await request(url, {
+                dispatcher: this.__dispatcher,
+                ...rest,
+                cookies,
+            });
+        }
+        catch (err) {
+            // Banked even on failure: the response that blocks a request is
+            // the one that hands out the cookie needed to pass next time.
+            if (err.rawCookies) this.__storeCookies(url, err.rawCookies);
+            throw err;
+        }
 
         this.__storeCookies(result.url || url, result.rawCookies);
 

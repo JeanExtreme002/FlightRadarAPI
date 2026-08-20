@@ -675,3 +675,91 @@ describe("Rejected Set-Cookie attributes (offline)", function() {
             .to.deep.equal({ kept: "1" });
     });
 });
+
+
+describe("Public shapes and the error path (offline)", function() {
+    const http = require("http");
+    const { request, Session } = require("../FlightRadarAPI/request");
+    const { CloudflareError } = require("../FlightRadarAPI/errors");
+
+    /**
+     * @param {Function} handler - node request handler
+     * @return {Promise<object>} the listening server
+     */
+    function serve(handler) {
+        return new Promise((resolve) => {
+            const server = http.createServer(handler);
+            server.listen(0, "127.0.0.1", () => resolve(server));
+        });
+    }
+
+    it("returns cookies on an ordinary object", async function() {
+        // Typed `Record<string, string>` and public, so a null prototype would
+        // break `cookies.hasOwnProperty(name)` in a patch release.
+        const server = await serve((req, res) => {
+            res.setHeader("Set-Cookie", "a=1; Path=/");
+            res.setHeader("Content-Type", "application/json");
+            res.end("{}");
+        });
+
+        try {
+            const { cookies } = await request(`http://127.0.0.1:${server.address().port}/`);
+            expect(cookies.hasOwnProperty("a")).to.equal(true);
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it("strips a BOM from the Cloudflare challenge page", async function() {
+        const page = "<html>challenge</html>";
+        const body = Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(page)]);
+        const server = await serve((req, res) => {
+            res.writeHead(403, {
+                "cf-mitigated": "challenge",
+                "content-type": "text/html",
+                "content-length": String(body.length),
+            });
+            res.end(body);
+        });
+
+        try {
+            await request(`http://127.0.0.1:${server.address().port}/`);
+            expect.fail("should have raised CloudflareError");
+        }
+        catch (err) {
+            expect(err).to.be.instanceOf(CloudflareError);
+            expect(err.body).to.equal(page);
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it("banks cookies handed out by a blocked response", async function() {
+        // A Cloudflare 403 is the response that carries cf_clearance; dropping
+        // it makes the retry replay the same blocked request.
+        const server = await serve((req, res) => {
+            res.writeHead(403, {
+                "cf-mitigated": "challenge",
+                "set-cookie": "cf_clearance=token; Path=/",
+                "content-type": "text/html",
+                "content-length": "2",
+            });
+            res.end("hi");
+        });
+
+        try {
+            const session = new Session();
+            await session.request(`http://127.0.0.1:${server.address().port}/`).catch(() => {});
+
+            expect(session.getCookie("cf_clearance")).to.equal("token");
+        }
+        finally {
+            server.closeAllConnections?.();
+            await new Promise((done) => server.close(done));
+        }
+    });
+});

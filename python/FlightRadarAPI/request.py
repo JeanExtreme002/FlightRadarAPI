@@ -480,14 +480,22 @@ class APIRequest:
 
             decoders.append(decode)
 
+        received = content
+        failed_at = applied[-1]
+
         try:
-            for decode in reversed(decoders):
+            for token, decode in zip(reversed(applied), reversed(decoders)):
+                failed_at = token
                 content = decode(content, self.__max_response_bytes)
 
             return content
         except DecompressionLimitError:
             raise
         except Exception as err:
+            # Back to the bytes as received. A chain that failed halfway leaves
+            # a half-decoded intermediate, and the recovery below is a claim
+            # about the body that arrived, not about a partial result.
+            content = received
             # Reached when the body is not encoded the way the header claims —
             # most often a transport that decoded it after all. Decided by the
             # body, not the header: undecodable text is genuinely broken and
@@ -504,8 +512,8 @@ class APIRequest:
                 except UnicodeDecodeError:
                     transport_decoded = False
             else:
-                corrupt_gzip = applied[-1] == "gzip" and content.startswith(_GZIP_MAGIC)
-                transport_decoded = applied[-1] in ("gzip", "br", "deflate") and not corrupt_gzip
+                corrupt_gzip = failed_at == "gzip" and content.startswith(_GZIP_MAGIC)
+                transport_decoded = failed_at in ("gzip", "br", "deflate") and not corrupt_gzip
 
             _logger.log(
                 logging.DEBUG if transport_decoded else logging.WARNING,
