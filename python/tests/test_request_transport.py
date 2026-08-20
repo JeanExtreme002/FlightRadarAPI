@@ -183,20 +183,71 @@ class TestDecompressionLimit:
         assert _decompress_brotli(brotli.compress(b"")) == b""
         assert _decompress_gzip(gzip.compress(b"")) == b""
 
-    def test_the_encoding_table_uses_the_bounded_helpers(self):
-        """A default-limit bomb is too slow to build, so pin the wiring instead."""
-        from FlightRadarAPI.request import (
-            MAX_DECOMPRESSED_BYTES,
-            APIRequest,
-            _decompress_brotli,
-            _decompress_gzip,
+    def test_the_budget_is_enforced_on_the_streamed_body(self):
+        """The budget that matters is the one on the wire.
+
+        curl_cffi decompresses in the transport, so a helper that inspects
+        `.content` never sees a bomb before it has already expanded. Only the
+        streaming read can refuse one, so that is what this pins.
+        """
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import MAX_RESPONSE_BYTES, APIRequest
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b"x" * 5000,
+        ))
+
+        with pytest.raises(DecompressionLimitError):
+            APIRequest("https://x.test/", session=session, max_response_bytes=1024)  # type: ignore[arg-type]
+
+        assert MAX_RESPONSE_BYTES == 64 * 1024 * 1024
+
+    def test_a_body_at_the_budget_is_accepted(self):
+        from FlightRadarAPI.request import APIRequest
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/octet-stream"},
+            content=b"x" * 1024,
+        ))
+        request = APIRequest("https://x.test/", session=session, max_response_bytes=1024)  # type: ignore[arg-type]
+
+        assert request.get_bytes_content() == b"x" * 1024
+
+    def test_an_already_decoded_body_survives_the_encoding_header(self):
+        """curl_cffi decompresses for us, so `Content-Encoding` outlives the encoding.
+
+        get_content() must hand back the decoded bytes rather than failing on
+        them — this is the path every real FR24 response takes.
+        """
+        from FlightRadarAPI.request import APIRequest
+
+        session = StubSession(FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
+            content=b'{"rows": []}',
+        ))
+        request = APIRequest("https://x.test/", session=session)  # type: ignore[arg-type]
+
+        assert request.get_json_content() == {"rows": []}
+
+    def test_the_response_is_closed_even_when_the_body_is_refused(self):
+        from FlightRadarAPI.errors import DecompressionLimitError
+        from FlightRadarAPI.request import APIRequest
+
+        response = FakeResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            content=b"x" * 5000,
         )
+        session = StubSession(response)
 
-        table = getattr(APIRequest, "_APIRequest__content_encodings")
+        with pytest.raises(DecompressionLimitError):
+            APIRequest("https://x.test/", session=session, max_response_bytes=10)  # type: ignore[arg-type]
 
-        assert table["br"] is _decompress_brotli
-        assert table["gzip"] is _decompress_gzip
-        assert MAX_DECOMPRESSED_BYTES == 64 * 1024 * 1024
+        assert getattr(response, "closed", False) is True
 
 
 class TestDecompressionIntegrity:

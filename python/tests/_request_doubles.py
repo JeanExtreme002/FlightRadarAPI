@@ -47,8 +47,9 @@ class FakeHeaders:
 class FakeResponse:
     """Minimal stand-in for a curl_cffi response object.
 
-    ``APIRequest`` only touches ``.status_code``, ``.headers``, ``.content``,
-    and ``.raise_for_status()`` — that's all we have to implement.
+    ``APIRequest`` only touches ``.status_code``, ``.headers``,
+    ``.iter_content()``, ``.close()`` and ``.raise_for_status()`` — that's all
+    we have to implement.
     """
 
     def __init__(
@@ -65,6 +66,14 @@ class FakeResponse:
     def raise_for_status(self) -> None:
         if 400 <= self.status_code < 600:
             raise RuntimeError(f"HTTP {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 8192):
+        """Yield the body in chunks, as the streaming transport does."""
+        for start in range(0, len(self.content), chunk_size):
+            yield self.content[start:start + chunk_size]
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class StubSession:
