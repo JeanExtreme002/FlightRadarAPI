@@ -483,3 +483,50 @@ describe("Response size budget (offline)", function() {
         expect(MAX_RESPONSE_BYTES).to.equal(64 * 1024 * 1024);
     });
 });
+
+
+describe("Byte-order mark handling (offline)", function() {
+    // Response.json()/text() ran the spec UTF-8 decode, which strips a BOM.
+    // Reading the body as a Buffer does not, so this has to be done by hand.
+    const BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+
+    let mockAgent;
+    let mockPool;
+
+    beforeEach(function() {
+        mockAgent = new MockAgent();
+        mockAgent.disableNetConnect();
+        mockPool = mockAgent.get("https://example.com");
+    });
+
+    afterEach(async function() {
+        await mockAgent.close();
+    });
+
+    it("parses JSON that starts with a BOM", async function() {
+        mockPool.intercept({ path: "/bom.json" })
+            .reply(200, Buffer.concat([BOM, Buffer.from(JSON.stringify({ ok: true }))]),
+                { headers: { "content-type": "application/json" } });
+
+        const { content } = await request("https://example.com/bom.json", { dispatcher: mockAgent });
+        expect(content).to.deep.equal({ ok: true });
+    });
+
+    it("strips a BOM from text responses", async function() {
+        mockPool.intercept({ path: "/bom.txt" })
+            .reply(200, Buffer.concat([BOM, Buffer.from("hello")]),
+                { headers: { "content-type": "text/plain" } });
+
+        const { content } = await request("https://example.com/bom.txt", { dispatcher: mockAgent });
+        expect(content).to.equal("hello");
+    });
+
+    it("leaves binary bodies byte-for-byte intact", async function() {
+        mockPool.intercept({ path: "/bom.bin" })
+            .reply(200, Buffer.concat([BOM, Buffer.from([1, 2])]),
+                { headers: { "content-type": "image/png" } });
+
+        const { content } = await request("https://example.com/bom.bin", { dispatcher: mockAgent });
+        expect([...Buffer.from(content)]).to.deep.equal([0xEF, 0xBB, 0xBF, 1, 2]);
+    });
+});

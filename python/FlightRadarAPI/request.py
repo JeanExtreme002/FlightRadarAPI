@@ -26,15 +26,31 @@ _GZIP_WBITS = 31  # 16 + MAX_WBITS: gzip wrapper rather than raw deflate
 
 
 def _decompress_gzip(data: bytes, limit: int = MAX_DECOMPRESSED_BYTES) -> bytes:
-    """Inflate gzip bytes, refusing a body that expands past ``limit``."""
-    decompressor = zlib.decompressobj(_GZIP_WBITS)
-    output = decompressor.decompress(data, limit + 1)
+    """Inflate gzip bytes, refusing a body that expands past ``limit``.
 
-    # Output stops at max_length, so anything left over means the body did not fit.
-    if len(output) > limit or decompressor.unconsumed_tail:
-        raise DecompressionLimitError(
-            f"gzip body expands past the {limit} byte decompression limit."
-        )
+    A short read must raise rather than return what arrived: the caller cannot
+    tell truncated JSON from a malformed feed, and `get_content` treats a raised
+    error as "the transport already decoded this" and hands back the raw bytes.
+    """
+    output = b""
+    remaining = data
+
+    while remaining:
+        # A new object per member: `Content-Encoding: gzip` may carry several,
+        # and one decompressor stops at the first trailer.
+        decompressor = zlib.decompressobj(_GZIP_WBITS)
+        output += decompressor.decompress(remaining, limit + 1 - len(output))
+
+        if len(output) > limit or decompressor.unconsumed_tail:
+            raise DecompressionLimitError(
+                f"gzip body expands past the {limit} byte decompression limit."
+            )
+
+        if not decompressor.eof:
+            raise zlib.error("gzip stream ended mid-member")
+
+        remaining = decompressor.unused_data
+
     return output
 
 
@@ -66,9 +82,13 @@ def _decompress_brotli(data: bytes, limit: int = MAX_DECOMPRESSED_BYTES) -> byte
                 f"brotli body expands past the {limit} byte decompression limit."
             )
 
-        # No output left and still hungry: the stream ended mid-message.
+        # No output left and still hungry: nothing more will come.
         if not piece and decompressor.can_accept_more_data():
             break
+
+    # Same contract as the gzip helper: a partial body must not pass as whole.
+    if not decompressor.is_finished():
+        raise brotli.error("brotli stream ended mid-message")
 
     return bytes(output)
 

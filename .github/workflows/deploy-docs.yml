@@ -6,6 +6,7 @@ on:
     paths:
       - 'mkdocs.yml'
       - 'docs/**'
+      - '.github/docs-requirements.txt'
       - '.github/workflows/deploy-docs.yml'
 
 # Pages is served from the Actions artifact, so nothing here needs to push to
@@ -35,7 +36,7 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install -r docs/requirements.txt
+      - run: pip install -r .github/docs-requirements.txt
       - run: mkdocs build
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:

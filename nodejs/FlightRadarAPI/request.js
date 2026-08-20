@@ -145,6 +145,20 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
 
 /**
+ * Decode a body as UTF-8 text, dropping a leading byte-order mark.
+ *
+ * `Response.text()` ran the spec's UTF-8 decode, which strips the BOM;
+ * `Buffer.toString` does not, and a BOM left in place breaks `JSON.parse`.
+ *
+ * @param {Buffer} body
+ * @return {string}
+ */
+function decodeText(body) {
+    const text = body.toString("utf-8");
+    return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
+/**
  * Read a response body, refusing one that grows past `limit`.
  *
  * Streamed rather than buffered whole so the cap bounds the work: reading
@@ -384,10 +398,10 @@ async function request(url, {
     let content;
 
     if (contentType.includes("application/json")) {
-        content = JSON.parse(body.toString("utf-8"));
+        content = JSON.parse(decodeText(body));
     }
     else if (contentType.includes("text")) {
-        content = body.toString("utf-8");
+        content = decodeText(body);
     }
     else {
         content = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);

@@ -197,3 +197,56 @@ class TestDecompressionLimit:
         assert table["br"] is _decompress_brotli
         assert table["gzip"] is _decompress_gzip
         assert MAX_DECOMPRESSED_BYTES == 64 * 1024 * 1024
+
+
+class TestDecompressionIntegrity:
+    """A partial body must not pass as a whole one."""
+
+    BODY = b'{"rows": [' + b'{"name": "Guarulhos"},' * 500 + b'{}]}'
+
+    def test_a_truncated_gzip_body_raises(self):
+        import gzip
+
+        from FlightRadarAPI.request import _decompress_gzip
+
+        blob = gzip.compress(self.BODY)
+
+        with pytest.raises(Exception) as excinfo:
+            _decompress_gzip(blob[: len(blob) * 3 // 4])
+
+        # Not the budget error: this body was short, not oversized.
+        assert "limit" not in str(excinfo.value)
+
+    def test_a_truncated_brotli_body_raises(self):
+        import brotli
+
+        from FlightRadarAPI.request import _decompress_brotli
+
+        blob = brotli.compress(self.BODY)
+
+        with pytest.raises(Exception) as excinfo:
+            _decompress_brotli(blob[: len(blob) * 3 // 4])
+
+        assert "limit" not in str(excinfo.value)
+
+    def test_gzip_reads_every_member(self):
+        """Concatenated members are legal Content-Encoding: gzip."""
+        import gzip
+
+        from FlightRadarAPI.request import _decompress_gzip
+
+        assert _decompress_gzip(gzip.compress(b"first") + gzip.compress(b"second")) == b"firstsecond"
+
+    @pytest.mark.parametrize("encoding", ["br", "gzip"])
+    def test_an_already_decoded_body_still_reaches_the_transport_fallback(self, encoding):
+        """curl_cffi may decompress for us, leaving plain bytes under a br/gzip header.
+
+        get_content() reads a raised error as "already decoded" and returns the
+        raw bytes, so these helpers must raise rather than quietly return b"".
+        """
+        from FlightRadarAPI.request import _decompress_brotli, _decompress_gzip
+
+        decompress = {"br": _decompress_brotli, "gzip": _decompress_gzip}[encoding]
+
+        with pytest.raises(Exception):
+            decompress(b'{"already": "json"}')
