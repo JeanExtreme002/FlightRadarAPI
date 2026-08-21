@@ -337,7 +337,7 @@ function isCloudflareBlock(statusCode, headers) {
  * @param {Array<number>} [options.allowedErrorCodes=[]] - Status codes that should not throw
  * @param {number} [options.timeout=30000] - Request timeout in milliseconds
  * @param {number} [options.maxResponseBytes] - Maximum accepted response body size
- * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+ * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
  */
 async function request(url, {
     params = null,
@@ -612,7 +612,7 @@ class Session {
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async request(url, options = {}) {
         const { cookies: extraCookies, ...rest } = options;
@@ -666,7 +666,7 @@ class APIClient {
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async request(url, options = {}) {
         return runWithRetry(() => this.__session.request(url, options), this.__retry);
@@ -681,7 +681,7 @@ class APIClient {
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async requestStandalone(url, options = {}) {
         return runWithRetry(

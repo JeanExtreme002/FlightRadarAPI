@@ -1,5 +1,5 @@
-# Pinned because this workflow runs with `contents: write`: an automatic
-# upgrade to a compromised release would execute with a token that can push
-# to the repository. Bump deliberately, not implicitly.
+# Pinned so a compromised release cannot be pulled in automatically: these
+# packages execute during `mkdocs build`, inside the job that publishes the
+# docs site. Bump deliberately, not implicitly.
 mkdocs-material==9.7.7
 mkdocs-git-committers-plugin-2==2.5.0
