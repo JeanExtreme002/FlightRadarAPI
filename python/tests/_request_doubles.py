@@ -47,7 +47,7 @@ class FakeHeaders:
 class FakeResponse:
     """Minimal stand-in for a curl_cffi response object.
 
-    ``APIRequest`` only touches ``.status_code``, ``.headers``, ``.content``,
+    ``APIRequest`` only touches ``.status_code``, ``.headers``, ``.content``
     and ``.raise_for_status()`` — that's all we have to implement.
     """
 
@@ -67,6 +67,20 @@ class FakeResponse:
             raise RuntimeError(f"HTTP {self.status_code}")
 
 
+class FakeCurl:
+    """Curl handle double that records the options set on it.
+
+    ``APIRequest`` disables content decoding per request; recording the calls is
+    what lets a test prove it happens on every one, not just the first.
+    """
+
+    def __init__(self) -> None:
+        self.options: List[Any] = []
+
+    def setopt(self, option: Any, value: Any) -> None:
+        self.options.append((option, value))
+
+
 class StubSession:
     """Session double whose ``.get`` / ``.post`` return a pre-baked response.
 
@@ -76,6 +90,7 @@ class StubSession:
     def __init__(self, response: FakeResponse) -> None:
         self._response = response
         self.calls: List[Dict[str, Any]] = []
+        self.curl = FakeCurl()
 
     def _record(self, url: str, **kwargs: Any) -> FakeResponse:
         self.calls.append({"url": url, **kwargs})

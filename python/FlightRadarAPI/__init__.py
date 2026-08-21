@@ -12,12 +12,18 @@ https://www.flightradar24.com/terms-and-conditions
 """
 
 __author__ = "Jean Loui Bernard Silva de Jesus"
-__version__ = "1.5.3"
+__version__ = "1.6.0"
 
 from .api import FlightRadar24API
 from .core import Countries
 from .entities import Airport, Entity, Flight
-from .errors import AirportNotFoundError, CloudflareError, FlightRadarError, LoginError
+from .errors import (
+    AirportNotFoundError,
+    CloudflareError,
+    DecompressionLimitError,
+    FlightRadarError,
+    LoginError,
+)
 from .flight_tracker_config import FlightTrackerConfig
 from .request import RetryPolicy
 
@@ -29,6 +35,7 @@ __all__ = [
     "Flight",
     "AirportNotFoundError",
     "CloudflareError",
+    "DecompressionLimitError",
     "FlightRadarError",
     "LoginError",
     "FlightTrackerConfig",

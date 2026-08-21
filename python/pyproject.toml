@@ -18,16 +18,17 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-  "Brotli",
-  "beautifulsoup4",
-  "curl_cffi",
+  # Security floors: curl_cffi 0.15.0 fixes redirect-based SSRF (GHSA-qw2m-4pqf-rmpp).
+  "Brotli>=1.2.0",
+  "beautifulsoup4>=4.12.0",
+  "curl_cffi>=0.15.0",
 ]
 
 [tool.hatch.build]
 exclude = ["tests", ".flake8"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["FlightRadarAPI", "FlightRadar24"]
+packages = ["FlightRadarAPI"]
 
 # Force-include the PEP 561 marker so downstream type checkers always see it,
 # regardless of future changes to the global exclude list above.

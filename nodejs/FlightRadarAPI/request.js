@@ -1,4 +1,4 @@
-const { CloudflareError } = require("./errors");
+const { CloudflareError, DecompressionLimitError } = require("./errors");
 const { fetch, Agent } = require("undici");
 
 /** Thrown when a request exceeds its timeout. Surfaced as a distinct class
@@ -138,6 +138,170 @@ async function runWithRetry(fn, retry) {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+// A compressed body is trusted only as far as its expanded size: brotli reaches
+// ratios high enough to exhaust memory from a few kilobytes on the wire. undici
+// decompresses in the transport, so the budget lands on the decoded body.
+// FR24's largest payload (the airports feed) is orders of magnitude under this.
+const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Decode a body as UTF-8 text, dropping a leading byte-order mark.
+ *
+ * `Response.text()` ran the spec's UTF-8 decode, which strips the BOM;
+ * `Buffer.toString` does not, and a BOM left in place breaks `JSON.parse`.
+ *
+ * @param {Buffer} body
+ * @return {string}
+ */
+function decodeText(body) {
+    const text = body.toString("utf-8");
+    return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
+/**
+ * Read a response body, refusing one that grows past `limit`.
+ *
+ * Streamed rather than buffered whole so the cap bounds the work: reading
+ * stops and the socket is released at the first chunk over budget, instead of
+ * discovering the size after paying for it.
+ *
+ * @param {Response} response
+ * @param {number} limit - maximum bytes to accept
+ * @param {string} url - for the error message
+ * @return {Promise<Buffer>}
+ */
+async function readBoundedBody(response, limit, url) {
+    if (response.body === null) return Buffer.alloc(0);
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        total += value.byteLength;
+
+        if (total > limit) {
+            await reader.cancel();
+            throw new DecompressionLimitError(
+                `Response body from ${url} exceeds the ${limit} byte limit.`,
+            );
+        }
+        chunks.push(value);
+    }
+
+    return Buffer.concat(chunks);
+}
+
+/**
+ * Parse one `Set-Cookie` header into a cookie record.
+ *
+ * The name/value pair is split on the FIRST `=` only: session tokens are
+ * routinely base64 and end in `=` padding, which a greedy split truncates.
+ *
+ * Not delegated to undici's `getSetCookies`: it drops a negative `Max-Age`
+ * instead of treating it as a deletion, accepts an empty cookie name, and
+ * widens a relative `Path` to `/`. See the parser tests.
+ *
+ * @param {string} header - a single Set-Cookie value
+ * @param {URL} url - the URL the header arrived from, for the default scope
+ * @return {object|null} `{name, value, domain, path, secure, hostOnly, expires}`, or null if unparsable
+ */
+function parseSetCookie(header, url) {
+    const [pair, ...attributeParts] = String(header).split(";");
+    const separator = pair.indexOf("=");
+
+    if (separator < 1) return null;
+
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+
+    if (!name) return null;
+
+    const cookie = {
+        name,
+        value,
+        domain: url.hostname,
+        path: defaultPath(url.pathname),
+        secure: false,
+        hostOnly: true,
+        expires: null,
+        storedAt: 0,
+    };
+
+    let rejected = false;
+
+    for (const part of attributeParts) {
+        const index = part.indexOf("=");
+        const key = (index < 0 ? part : part.slice(0, index)).trim().toLowerCase();
+        const attributeValue = index < 0 ? "" : part.slice(index + 1).trim();
+
+        if (key === "secure") cookie.secure = true;
+        else if (key === "path" && attributeValue.startsWith("/")) cookie.path = attributeValue;
+        else if (key === "expires" && cookie.expires === null) {
+            const parsed = Date.parse(attributeValue);
+            if (!Number.isNaN(parsed)) cookie.expires = parsed;
+        }
+        else if (key === "max-age" && /^-?\d+$/.test(attributeValue)) {
+            // Max-Age wins over Expires, and <= 0 means "delete now". A malformed
+            // value must be ignored, not read as 0 — that would delete the cookie.
+            cookie.expires = Date.now() + Number(attributeValue) * 1000;
+        }
+        else if (key === "domain" && attributeValue) {
+            const domain = attributeValue.replace(/^\./, "").toLowerCase();
+
+            // A dotless domain is a TLD: `Domain=com` would scope the cookie to
+            // every .com host the caller later requests.
+            if (domain.includes(".") && domainMatches(url.hostname, domain)) {
+                cookie.domain = domain;
+                cookie.hostOnly = false;
+            }
+            else {
+                // RFC 6265 5.3.6: a Domain that does not cover the host means
+                // the cookie is discarded, not narrowed back to the host.
+                rejected = true;
+            }
+        }
+    }
+
+    return rejected ? null : cookie;
+}
+
+/**
+ * RFC 6265 default-path: the request path up to, but not including, the rightmost `/`.
+ *
+ * @param {string} pathname
+ * @return {string}
+ */
+function defaultPath(pathname) {
+    if (!pathname.startsWith("/")) return "/";
+    const lastSlash = pathname.lastIndexOf("/");
+    return lastSlash < 1 ? "/" : pathname.slice(0, lastSlash);
+}
+
+/**
+ * @param {string} host - request hostname
+ * @param {string} domain - cookie domain, without a leading dot
+ * @return {boolean} whether the cookie's domain covers this host
+ */
+function domainMatches(host, domain) {
+    return host === domain || host.endsWith("." + domain);
+}
+
+/**
+ * @param {string} requestPath
+ * @param {string} cookiePath
+ * @return {boolean}
+ */
+function pathMatches(requestPath, cookiePath) {
+    if (requestPath === cookiePath) return true;
+    if (!requestPath.startsWith(cookiePath)) return false;
+    return cookiePath.endsWith("/") || requestPath[cookiePath.length] === "/";
+}
+
 /**
  * Detect Cloudflare-level blocks.
  *
@@ -172,7 +336,8 @@ function isCloudflareBlock(statusCode, headers) {
  * @param {object} [options.cookies] - Cookies to include in the request
  * @param {Array<number>} [options.allowedErrorCodes=[]] - Status codes that should not throw
  * @param {number} [options.timeout=30000] - Request timeout in milliseconds
- * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+ * @param {number} [options.maxResponseBytes] - Maximum accepted response body size
+ * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
  */
 async function request(url, {
     params = null,
@@ -182,6 +347,7 @@ async function request(url, {
     allowedErrorCodes = [],
     timeout = DEFAULT_TIMEOUT_MS,
     dispatcher = null,
+    maxResponseBytes = MAX_RESPONSE_BYTES,
 } = {}) {
     if (params !== null && Object.keys(params).length > 0) {
         url += "?" + new URLSearchParams(params).toString();
@@ -207,8 +373,23 @@ async function request(url, {
     settings.signal = controller.signal;
 
     let response;
+    let body;
+
     try {
         response = await fetch(url, settings);
+
+        // Read before the status checks below, for two reasons: an abandoned
+        // body leaves undici no choice but to destroy the connection, so every
+        // error response would cost a fresh TLS handshake; and a Cloudflare
+        // challenge page is the one thing worth having when a block happens.
+        // Inside the try so the timeout still covers the read — the abort
+        // signal is what stops a trickled body holding the call open.
+        //
+        // The cost is that an error response is read before it is raised, so a
+        // large one is paid for in full (bounded by the budget), and a body
+        // over budget surfaces as DecompressionLimitError rather than as the
+        // status or Cloudflare error behind it.
+        body = await readBoundedBody(response, maxResponseBytes, url);
     }
     catch (err) {
         if (err.name === "AbortError") {
@@ -220,49 +401,83 @@ async function request(url, {
         clearTimeout(timer);
     }
     const statusCode = response.status;
+    const rawCookies = response.headers.getSetCookie() ?? [];
+
+    /**
+     * Attach the response's cookies to an error so the session can still bank
+     * them: a Cloudflare 403 is exactly the response that carries
+     * `cf_clearance`, and discarding it makes the retry replay the same
+     * blocked request.
+     *
+     * Non-enumerable, and that is the point: an enumerable property puts the
+     * cookie values into `JSON.stringify(err)` and `util.inspect(err)`, so
+     * anything that logs the error would print the session credentials.
+     *
+     * @param {Error} error
+     * @return {Error} the same error
+     */
+    const withCookies = (error) => Object.defineProperties(error, {
+        rawCookies: { value: rawCookies, enumerable: false },
+        // The host that answered, which after a redirect is not the host that
+        // was asked — the jar has to credit the cookie to the right one.
+        cookieOrigin: { value: response.url || url, enumerable: false },
+    });
 
     // Cloudflare detection only when the caller did not opt-in to this status code.
     // `getAirlineLogo`/`getCountryFlag` allow 403 to mean "asset not found" on the CDN.
     if (!allowedErrorCodes.includes(statusCode) && isCloudflareBlock(statusCode, response.headers)) {
-        throw new CloudflareError(
+        throw withCookies(new CloudflareError(
             "Blocked by Cloudflare. Perhaps you are making too many calls, " +
             "or the TLS impersonation needs to be updated.",
             response,
-        );
+            decodeText(body),
+        ));
     }
 
     if (!allowedErrorCodes.includes(statusCode) && (statusCode < 200 || statusCode >= 300)) {
-        throw new Error(`Received status code '${statusCode}: ${response.statusText}' for the URL ${url}`);
+        throw withCookies(
+            new Error(`Received status code '${statusCode}: ${response.statusText}' for the URL ${url}`),
+        );
     }
 
     const contentType = response.headers.get("content-type") ?? "";
     let content;
 
     if (contentType.includes("application/json")) {
-        content = await response.json();
+        content = JSON.parse(decodeText(body));
     }
     else if (contentType.includes("text")) {
-        content = await response.text();
+        content = decodeText(body);
     }
     else {
-        content = await response.arrayBuffer();
+        content = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
     }
 
-    const rawCookies = response.headers.getSetCookie();
+    // A plain object, unlike the jar's internal maps: this one is public and
+    // typed `Record<string, string>`, and a null prototype would break
+    // `cookies.hasOwnProperty(name)` in consumer code.
     const responseCookies = {};
 
-    if (rawCookies?.length > 0) {
-        rawCookies.forEach((string) => {
-            const keyAndValue = string.split(";")[0].split("=");
-            responseCookies[keyAndValue[0]] = keyAndValue[1];
-        });
+    for (const header of rawCookies) {
+        const pair = String(header).split(";")[0];
+        const separator = pair.indexOf("=");
+
+        // Split on the first `=` only, so base64 padding survives.
+        if (separator > 0) responseCookies[pair.slice(0, separator).trim()] = pair.slice(separator + 1).trim();
     }
 
-    return { content, statusCode, cookies: responseCookies };
+    // `response.url` is the URL after redirects — the host that actually set the cookies.
+    return { content, statusCode, cookies: responseCookies, rawCookies, url: response.url || url };
 }
 
 /**
  * HTTP session that automatically manages cookies across requests.
+ *
+ * The jar honours the scope FR24 sets on each cookie: a cookie stored by
+ * `www.flightradar24.com` is not replayed to `cdn.`/`api.`/`data-live.`, and
+ * `Path`, `Secure` and expiry are respected. A Map keyed by name/domain/path
+ * keeps same-named cookies from different hosts apart, and keeps a cookie
+ * called `__proto__` from reaching Object.prototype.
  */
 class Session {
     /**
@@ -270,29 +485,40 @@ class Session {
      * @param {object} [options.dispatcher] - undici Agent to use for every request.
      */
     constructor({ dispatcher = null } = {}) {
-        this.__cookies = {};
+        this.__jar = new Map();
+        this.__sequence = 0;
         this.__dispatcher = dispatcher;
     }
 
     /**
-     * Return the value of a stored cookie by name.
+     * Return the value of a stored cookie by name, ignoring scope.
      *
      * @param {string} name
      * @return {string|undefined}
      */
     getCookie(name) {
-        return this.__cookies[name];
+        let match = null;
+
+        for (const cookie of this.__jar.values()) {
+            if (cookie.name !== name || this.__isExpired(cookie)) continue;
+            // The same name can live under several scopes at once. Take the
+            // newest: a re-issued token supersedes the one it replaces, even
+            // when the old one sat at a more specific path.
+            if (match === null || cookie.storedAt > match.storedAt) match = cookie;
+        }
+
+        return match === null ? undefined : match.value;
     }
 
     /**
      * Clear all stored cookies.
      */
     clearCookies() {
-        this.__cookies = {};
+        this.__jar.clear();
     }
 
     /**
-     * Drop a single stored cookie, leaving the rest of the jar intact.
+     * Drop every stored cookie with this name, leaving the rest of the jar intact.
      *
      * Sheds load-balancer stickiness without discarding the login session,
      * which lives in the same jar.
@@ -300,33 +526,118 @@ class Session {
      * @param {string} name
      */
     deleteCookie(name) {
-        delete this.__cookies[name];
+        for (const [key, cookie] of this.__jar) {
+            if (cookie.name === name) this.__jar.delete(key);
+        }
     }
 
     /**
-     * Make an HTTP request, automatically sending stored cookies and storing
-     * any cookies returned by the response.
+     * @param {object} cookie
+     * @return {boolean}
+     */
+    __isExpired(cookie) {
+        return cookie.expires !== null && cookie.expires <= Date.now();
+    }
+
+    /**
+     * Store the `Set-Cookie` headers a response arrived with.
+     *
+     * @param {string} url - the URL that produced the response
+     * @param {Array<string>} rawCookies
+     */
+    __storeCookies(url, rawCookies) {
+        const target = new URL(url);
+
+        for (const header of rawCookies ?? []) {
+            const cookie = parseSetCookie(header, target);
+
+            if (cookie === null) continue;
+            if (cookie.secure && target.protocol !== "https:") continue;
+
+            const key = `${cookie.name};${cookie.domain};${cookie.path}`;
+
+            cookie.storedAt = ++this.__sequence;
+
+            // An expiry in the past is a deletion instruction, not a value.
+            if (this.__isExpired(cookie)) this.__jar.delete(key);
+            else this.__jar.set(key, cookie);
+        }
+    }
+
+    /**
+     * Select the stored cookies that are in scope for a URL.
+     *
+     * @param {string} url
+     * @return {object} name/value pairs to send
+     */
+    __cookiesFor(url) {
+        const target = new URL(url);
+        const isSecure = target.protocol === "https:";
+        const matches = [];
+
+        for (const [key, cookie] of this.__jar) {
+            if (this.__isExpired(cookie)) {
+                this.__jar.delete(key);
+                continue;
+            }
+            if (cookie.secure && !isSecure) continue;
+            if (!pathMatches(target.pathname, cookie.path)) continue;
+
+            const hostInScope = cookie.hostOnly ?
+                target.hostname === cookie.domain :
+                domainMatches(target.hostname, cookie.domain);
+
+            if (hostInScope) matches.push(cookie);
+        }
+
+        // Oldest first, so the newest of a same-named pair wins — the rule
+        // getCookie() uses, because a re-issued token supersedes the one it
+        // replaces. `storedAt` is unique per cookie, so no tie is possible.
+        // Collapsing to one is a deliberate limit of building the header from
+        // a flat map; RFC 6265 would send both, most-specific path first.
+        matches.sort((a, b) => a.storedAt - b.storedAt);
+
+        const selected = Object.create(null);
+
+        for (const cookie of matches) selected[cookie.name] = cookie.value;
+
+        return selected;
+    }
+
+    /**
+     * Make an HTTP request, automatically sending the cookies that are in
+     * scope for the URL and storing any cookies the response returns.
      *
      * Accepts the same parameters as the module-level {@link request} function.
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async request(url, options = {}) {
         const { cookies: extraCookies, ...rest } = options;
-        const merged = { ...this.__cookies, ...(extraCookies ?? {}) };
+        // Null-prototype like the maps it merges, so an inherited `toString`
+        // cannot reappear on the way into the Cookie header.
+        const merged = Object.assign(Object.create(null), this.__cookiesFor(url), extraCookies ?? {});
         const cookies = Object.keys(merged).length > 0 ? merged : null;
 
-        const result = await request(url, {
-            dispatcher: this.__dispatcher,
-            ...rest,
-            cookies,
-        });
+        let result;
 
-        if (result.cookies && Object.keys(result.cookies).length > 0) {
-            Object.assign(this.__cookies, result.cookies);
+        try {
+            result = await request(url, {
+                dispatcher: this.__dispatcher,
+                ...rest,
+                cookies,
+            });
         }
+        catch (err) {
+            // Banked even on failure: the response that blocks a request is
+            // the one that hands out the cookie needed to pass next time.
+            if (err.rawCookies) this.__storeCookies(err.cookieOrigin || url, err.rawCookies);
+            throw err;
+        }
+
+        this.__storeCookies(result.url || url, result.rawCookies);
 
         return result;
     }
@@ -355,7 +666,7 @@ class APIClient {
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async request(url, options = {}) {
         return runWithRetry(() => this.__session.request(url, options), this.__retry);
@@ -370,7 +681,7 @@ class APIClient {
      *
      * @param {string} url
      * @param {object} [options={}]
-     * @return {Promise<{content: *, statusCode: number, cookies: object}>}
+     * @return {Promise<{content: *, statusCode: number, cookies: object, rawCookies: Array<string>, url: string}>}
      */
     async requestStandalone(url, options = {}) {
         return runWithRetry(
@@ -406,4 +717,7 @@ class APIClient {
     }
 }
 
-module.exports = { request, Session, APIClient, RetryPolicy, buildImpersonateAgent, CHROME136_PROFILE };
+module.exports = {
+    request, Session, APIClient, RetryPolicy, buildImpersonateAgent, CHROME136_PROFILE,
+    MAX_RESPONSE_BYTES,
+};

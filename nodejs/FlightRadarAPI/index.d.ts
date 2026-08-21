@@ -25,12 +25,12 @@ export interface ImpersonateOptions {
  */
 export class APIClient {
     constructor(options?: { impersonate?: ImpersonateOptions; retry?: RetryPolicy });
-    request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
+    request(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>; rawCookies: string[]; url: string}>;
     /**
      * Make a stateless request that bypasses the shared cookie jar. Safe to
      * call from concurrent fan-outs.
      */
-    requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>}>;
+    requestStandalone(url: string, options?: object): Promise<{content: any; statusCode: number; cookies: Record<string, string>; rawCookies: string[]; url: string}>;
     getCookie(name: string): string | undefined;
     clearCookies(): void;
     /** Drop a single cookie, leaving the rest of the jar intact. */
@@ -517,7 +517,13 @@ export class AirportNotFoundError extends FlightRadarError {
 
 export class CloudflareError extends FlightRadarError {
     response: any;
-    constructor(message?: string, response?: any);
+    /** The challenge page, read off `response` before it was consumed. */
+    body?: string;
+    constructor(message?: string, response?: any, body?: string);
+}
+
+export class DecompressionLimitError extends FlightRadarError {
+    constructor(message?: string);
 }
 
 export class LoginError extends FlightRadarError {

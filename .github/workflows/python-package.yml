@@ -23,9 +23,9 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -34,25 +34,35 @@ jobs:
           pip install -e "./python[tests]"
           pip install flake8 mypy build pytest-cov pip-audit
       - name: Lint
-        run: cd python && python -m flake8 FlightRadarAPI FlightRadar24 tests
+        run: cd python && python -m flake8 FlightRadarAPI tests
       - name: Type check
         run: cd python && python -m mypy FlightRadarAPI --ignore-missing-imports
       - name: Offline tests (PR gate)
         run: cd python && pytest -m "not integration" --cov=FlightRadarAPI --cov-report=term --cov-report=xml -v
       - name: Integration tests (live FR24)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08  # v3
         with:
           timeout_minutes: 10
           max_attempts: 3
           command: cd python && pytest -m integration -vv -s
         continue-on-error: ${{ github.event_name == 'push' }}
-      - name: Dependency audit (informational)
-        # Informational only: surfaces vulnerable transitive deps as a soft-fail
-        # without blocking PRs. Re-enable enforcement (drop continue-on-error)
-        # once the audit baseline is clean.
+      - name: Dependency audit (shipped dependencies)
+        # Enforced, and scoped to what users actually install: a vulnerable dev
+        # tool must not block every PR, but a vulnerable runtime dep must.
+        if: matrix.python-version == '3.13'
+        run: |
+          python -m venv /tmp/shipenv
+          /tmp/shipenv/bin/pip install --quiet --upgrade pip
+          /tmp/shipenv/bin/pip install --quiet ./python
+          /tmp/shipenv/bin/pip freeze | grep -v "^FlightRadarAPI" > /tmp/shipped.txt
+          cat /tmp/shipped.txt
+          pip-audit -r /tmp/shipped.txt
+      - name: Dependency audit (dev toolchain, informational)
         if: matrix.python-version == '3.13'
         continue-on-error: true
-        run: pip-audit --skip-editable -r <(pip freeze | grep -v "^FlightRadarAPI")
+        run: |
+          pip freeze | grep -v "^FlightRadarAPI" > /tmp/devenv.txt
+          pip-audit -r /tmp/devenv.txt
       - name: Build and verify install
         run: |
           python -m build ./python

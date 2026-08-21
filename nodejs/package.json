@@ -1,6 +1,6 @@
 {
   "name": "flightradarapi",
-  "version": "1.5.3",
+  "version": "1.6.0",
   "description": "SDK for FlightRadar24",
   "main": "./FlightRadarAPI/index.js",
   "types": "./FlightRadarAPI/index.d.ts",
@@ -32,11 +32,11 @@
   },
   "homepage": "https://github.com/JeanExtreme002/FlightRadarAPI#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=18.17"
   },
   "dependencies": {
     "node-html-parser": "^6.1.13",
-    "undici": "^6.13.0"
+    "undici": "^6.28.0"
   },
   "devDependencies": {
     "chai": "^4.3.10",

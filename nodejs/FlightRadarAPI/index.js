@@ -9,7 +9,9 @@
  * https://www.flightradar24.com/terms-and-conditions
  */
 
-const { FlightRadarError, AirportNotFoundError, CloudflareError, LoginError } = require("./errors");
+const {
+    FlightRadarError, AirportNotFoundError, CloudflareError, DecompressionLimitError, LoginError,
+} = require("./errors");
 const FlightRadar24API = require("./api");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const Airport = require("./entities/airport");
@@ -25,7 +27,7 @@ module.exports = {
     FlightTrackerConfig,
     Countries,
     Airport, Entity, Flight,
-    FlightRadarError, AirportNotFoundError, CloudflareError, LoginError,
+    FlightRadarError, AirportNotFoundError, CloudflareError, DecompressionLimitError, LoginError,
     RetryPolicy, APIClient,
     author, version,
 };

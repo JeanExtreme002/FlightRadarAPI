@@ -13,6 +13,7 @@ venv/
 .mypy_cache/
 .pytest_cache/
 htmlcov/
+site/
 .coverage
 coverage.xml
 
