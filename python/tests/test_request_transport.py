@@ -816,3 +816,39 @@ class TestPartialDecodingChain:
             assert response.get_response_object().content == blob
         finally:
             server.shutdown()
+
+
+class TestDecompressionMemoryShape:
+    """The budget is only meaningful if the cost tracks it.
+
+    A helper that decodes correctly but holds several copies of the output
+    turns a 64 MiB budget into a far larger peak, which matters to anyone
+    sizing the limit for a memory-constrained host.
+    """
+
+    @pytest.mark.parametrize("encoding", ["br", "gzip"])
+    def test_a_decoded_body_is_not_held_several_times_over(self, encoding):
+        import gzip as gzip_module
+        import tracemalloc
+
+        import brotli
+
+        from FlightRadarAPI.request import _decompress_brotli, _decompress_gzip
+
+        body = b"z" * (4 * 1024 * 1024)
+        blob, decompress = {
+            "br": (brotli.compress(body), _decompress_brotli),
+            "gzip": (gzip_module.compress(body), _decompress_gzip),
+        }[encoding]
+
+        tracemalloc.start()
+        try:
+            assert decompress(blob, 8 * 1024 * 1024) == body
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+
+        # Accumulating into a bytearray and converting back measured 3x for
+        # brotli; collecting the pieces and joining returns the usual
+        # single-piece body without copying it at all.
+        assert peak < 2.5 * len(body), f"peaked at {peak / len(body):.1f}x the body"
