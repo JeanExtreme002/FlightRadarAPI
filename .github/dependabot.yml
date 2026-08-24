@@ -23,6 +23,15 @@ updates:
       - "deps"
       - "security"
 
+  - package-ecosystem: "gomod"
+    directory: "/go"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    labels:
+      - "deps"
+      - "security"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

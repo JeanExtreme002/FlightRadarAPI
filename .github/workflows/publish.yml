@@ -32,14 +32,19 @@ jobs:
         run: |
           py_version=$(grep -oP '__version__\s*=\s*"\K[^"]+' python/FlightRadarAPI/__init__.py)
           npm_version=$(node -p "require('./nodejs/package.json').version")
+          go_version=$(grep -oP 'const Version = "\K[^"]+' go/flightradarapi/doc.go)
           echo "python=$py_version" >> "$GITHUB_OUTPUT"
           echo "npm=$npm_version" >> "$GITHUB_OUTPUT"
-          echo "Python: $py_version | npm: $npm_version"
+          echo "go=$go_version" >> "$GITHUB_OUTPUT"
+          echo "Python: $py_version | npm: $npm_version | Go: $go_version"
 
       - name: Check versions are in sync
+        # The Go module is published by the release tag itself, so it has no
+        # upload job below — only this check keeps its version honest.
         run: |
-          if [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.npm }}" ]; then
-            echo "::error::Version mismatch: python=${{ steps.versions.outputs.python }} npm=${{ steps.versions.outputs.npm }}"
+          if [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.npm }}" ] \
+            || [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.go }}" ]; then
+            echo "::error::Version mismatch: python=${{ steps.versions.outputs.python }} npm=${{ steps.versions.outputs.npm }} go=${{ steps.versions.outputs.go }}"
             exit 1
           fi
 
@@ -52,6 +57,33 @@ jobs:
             echo "::error::Release tag $tag does not match package version ${{ steps.versions.outputs.python }}"
             exit 1
           fi
+
+  tag-go-module:
+    needs: verify-versions
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push the module tag
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0
+
+      # A module in a subdirectory is released by a tag carrying that prefix, so
+      # `go get .../go@latest` sees nothing without this.
+      - name: Tag the Go module
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          module_tag="go/v${version}"
+          if git rev-parse -q --verify "refs/tags/${module_tag}" >/dev/null; then
+            echo "${module_tag} already exists"
+            exit 0
+          fi
+          git tag "${module_tag}" "${TAG}"
+          git push origin "${module_tag}"
+          echo "Pushed ${module_tag}"
 
   publish-pypi:
     needs: verify-versions
