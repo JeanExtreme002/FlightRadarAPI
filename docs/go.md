@@ -127,6 +127,17 @@ matched, err := flight.CheckInfo(map[string]any{
 })
 ```
 
+### Building Entities From a Payload You Already Have
+
+The constructors the Python and Node.js ports expose have counterparts here:
+
+```go
+airport := flightradarapi.NewAirportFromBasicInfo(row)      // one airports-feed row
+airport = flightradarapi.NewAirportFromInfo(info)           // the "details" block
+airport = flightradarapi.NewAirportFromDetails(payload)     // a GetAirportDetails payload
+flight := flightradarapi.NewFlight("2e0f1a2", feedRow)      // one live-feed row
+```
+
 ### Fetching Airport by ICAO or IATA
 
 ```go
@@ -202,6 +213,20 @@ retried with exponential backoff:
 ```go
 retry, err := flightradarapi.NewRetryPolicy(3)
 client := flightradarapi.New(flightradarapi.Options{Retry: retry})
+```
+
+### Configuring the Client
+
+Every field of `Options` defaults from its zero value, so set only what you need:
+
+```go
+retry, err := flightradarapi.NewRetryPolicy(3)  // 1s base, 30s cap, 500ms jitter
+
+client := flightradarapi.New(flightradarapi.Options{
+    Timeout:    10 * time.Second,  // default: 30s
+    MaxWorkers: 4,                 // default: 8
+    Retry:      retry,             // default: no retry
+})
 ```
 
 ### TLS Impersonation

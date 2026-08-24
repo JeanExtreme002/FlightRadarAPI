@@ -47,7 +47,7 @@ is a documented reason not to. Common targets that must stay in sync:
 - The public surface — `FlightRadar24API` methods (`Client` in Go), the
   `Countries` enum (`Country` constants in Go), `FlightTrackerConfig` fields,
   and the `Entity` / `Airport` / `Flight` attributes consumers depend on.
-  `go/README.md` documents where the Go surface deliberately differs.
+  `docs/go.md` documents where the Go surface deliberately differs.
 
 ## Style
 
