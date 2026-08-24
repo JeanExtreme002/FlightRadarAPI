@@ -1,5 +1,5 @@
 # FlightRadarAPI
-Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and Node.js.
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Node.js.
 
 This SDK should only be used for your own educational purposes. If you are interested in accessing Flightradar24 data commercially, please contact business@fr24.com. See more information at [Flightradar24's terms and conditions](https://www.flightradar24.com/terms-and-conditions).
 
@@ -64,4 +64,4 @@ Countries.FRANCE           // "france"
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package, for Python or NodeJS, through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).
+Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).

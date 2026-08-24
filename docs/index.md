@@ -1,6 +1,6 @@
 # FlightRadarAPI Documentation
 
-Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3 and Node.js.
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Python 3, Node.js and Go.
 
 This SDK should only be used for your own educational purposes. If you are interested in accessing Flightradar24 data commercially, please contact [business@fr24.com](business@fr24.com). 
 
@@ -26,11 +26,11 @@ See more information at [Flightradar24's terms and conditions](https://www.fligh
     The code is open source and available for inspection on GitHub.
 
 
--   :material-sticker-check-outline:{ .lg .middle } __Python and Node.js__
+-   :material-sticker-check-outline:{ .lg .middle } __Python, Node.js and Go__
 
     ---
 
-    Packages are avaiable for use on both Python and Node.js
+    Packages are available for use on Python, Node.js and Go
 
 </div>
 
@@ -56,4 +56,12 @@ See more information at [Flightradar24's terms and conditions](https://www.fligh
 
     ```bash
     npm install flightradarapi
+    ```
+
+=== "Go"
+
+    To install FlightRadarAPI for Go, run the following command in your terminal:
+
+    ```bash
+    go get github.com/JeanExtreme002/FlightRadarAPI/go@latest
     ```

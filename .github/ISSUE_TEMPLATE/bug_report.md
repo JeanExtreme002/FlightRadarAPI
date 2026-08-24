@@ -26,7 +26,9 @@ If applicable, add screenshots to help explain your problem.
 
 **System (please complete the following information):**
  - OS: [e.g. Windows]
- - Python Version [e.g. 1.10]
+ - SDK: [Python, Node.js or Go]
+ - Language version: [e.g. Python 3.12, Node.js 22, Go 1.26]
+ - FlightRadarAPI version: [e.g. 1.6.0]
 
 **Additional context**
 Add any other context about the problem here.
