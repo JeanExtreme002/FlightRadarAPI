@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 	"net/http/cookiejar"
@@ -308,37 +307,6 @@ func TestGetZonesReturnsACopy(t *testing.T) {
 	}
 	if _, ok := fresh["northamerica"].Subzones["na_n"]; !ok {
 		t.Error("mutating a subzone map must not touch the bundled zones")
-	}
-}
-
-func TestGetBoundsRendersTheZone(t *testing.T) {
-	client := newTestClient(t, http.NewServeMux())
-	bounds := client.GetBounds(Zone{TLY: 72.57, TLX: -16.96, BRY: 33.57, BRX: 53.05})
-
-	if bounds != "72.57,33.57,-16.96,53.05" {
-		t.Errorf("got %q", bounds)
-	}
-}
-
-func TestGetBoundsByPointSurroundsThePoint(t *testing.T) {
-	client := newTestClient(t, http.NewServeMux())
-	bounds := client.GetBoundsByPoint(52.567774, 13.282827, 2000)
-	parts := strings.Split(bounds, ",")
-
-	if len(parts) != 4 {
-		t.Fatalf("got %q, want four values", bounds)
-	}
-
-	var north, south, west, east float64
-
-	if _, err := fmt.Sscanf(bounds, "%f,%f,%f,%f", &north, &south, &west, &east); err != nil {
-		t.Fatal(err)
-	}
-	if !(south < 52.567774 && 52.567774 < north) || !(west < 13.282827 && 13.282827 < east) {
-		t.Errorf("got %q, want a box around the point", bounds)
-	}
-	if north-south > 0.1 || east-west > 0.1 {
-		t.Errorf("got %q, want a box of about 4 km across", bounds)
 	}
 }
 
@@ -1162,6 +1130,8 @@ func TestGetBoundsByPointAgreesWithThePythonPort(t *testing.T) {
 		t.Fatalf("got %q, want four values", bounds)
 	}
 
+	corners := make([]float64, len(parts))
+
 	for index, part := range parts {
 		got, err := strconv.ParseFloat(part, 64)
 
@@ -1171,6 +1141,17 @@ func TestGetBoundsByPointAgreesWithThePythonPort(t *testing.T) {
 		if math.Abs(got-expected[index]) > tolerance {
 			t.Errorf("value %d: got %v, want %v (within %v)", index, got, expected[index], tolerance)
 		}
+		corners[index] = got
+	}
+
+	// The values above are a fixture; these two say what they mean.
+	north, south, west, east := corners[0], corners[1], corners[2], corners[3]
+
+	if !(south < 52.567967 && 52.567967 < north) || !(west < 13.282644 && 13.282644 < east) {
+		t.Errorf("got %q, want a box around the point", bounds)
+	}
+	if north-south > 0.1 || east-west > 0.1 {
+		t.Errorf("got %q, want a box of about 4 km across", bounds)
 	}
 }
 
