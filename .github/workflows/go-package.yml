@@ -1,0 +1,91 @@
+name: Go Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'go/**'
+      # ports_test.go reads these to keep the three SDKs aligned, so a change
+      # there has to run this workflow or the drift goes unnoticed.
+      - 'python/FlightRadarAPI/**'
+      - '.github/workflows/go-package.yml'
+  pull_request:
+    paths:
+      - 'go/**'
+      - 'python/FlightRadarAPI/**'
+      - '.github/workflows/go-package.yml'
+  schedule:
+    - cron: '0 0 */7 * *'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ./go
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.25.x', '1.26.x']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: go/go.sum
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+      - name: Check go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - name: Lint
+        run: make lint
+      - name: Static analysis
+        if: matrix.go-version == '1.26.x'
+        run: make lint-strict
+      - name: Offline tests (PR gate)
+        # Coverage threshold lives in the Makefile ($(COVERAGE_MIN)); raise it
+        # there and it applies here too.
+        run: make test-coverage
+      - name: Race detector
+        run: make test-race
+      - name: Integration tests (live FR24)
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08  # v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: cd go && make test-integration
+        continue-on-error: ${{ github.event_name == 'push' }}
+      - name: Vulnerability scan (shipped dependencies)
+        if: matrix.go-version == '1.26.x'
+        run: make security
+      - name: Verify the package builds as a dependency
+        run: |
+          go build ./...
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          go mod init consumer
+          go mod edit -require=github.com/JeanExtreme002/FlightRadarAPI/go@v0.0.0
+          go mod edit -replace=github.com/JeanExtreme002/FlightRadarAPI/go=$GITHUB_WORKSPACE/go
+          cat > main.go <<'EOF'
+          package main
+
+          import (
+          	"fmt"
+
+          	"github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
+          )
+
+          func main() {
+          	client := flightradarapi.New()
+          	fmt.Println("Install OK:", len(client.GetZones()), "zones")
+          }
+          EOF
+          go mod tidy
+          go run .

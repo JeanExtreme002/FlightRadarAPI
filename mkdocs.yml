@@ -9,6 +9,7 @@ nav:
   - Home: index.md
   - Python: python.md
   - Node.js: nodejs.md
+  - Go: go.md
   - Projects Using FlightRadarAPI: projects.md
 
 theme:

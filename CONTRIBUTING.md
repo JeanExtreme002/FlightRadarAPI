@@ -1,8 +1,8 @@
 # Contributing to FlightRadarAPI
 
-Thanks for your interest. This repo ships two SDKs in parallel — Python and
-Node.js — that must stay behavior-aligned, so most non-trivial changes touch
-both sides.
+Thanks for your interest. This repo ships three SDKs in parallel — Python,
+Node.js and Go — that must stay behavior-aligned, so most non-trivial changes
+touch every side.
 
 ## Development setup
 
@@ -25,25 +25,37 @@ make lint               # eslint
 make test-types         # tsd
 ```
 
-## Keeping Python and Node aligned
+### Go
+```bash
+cd go
+make deps
+make test               # offline suite (the PR gate)
+make test-integration   # live FR24 suite
+make lint               # gofmt + go vet
+make lint-strict        # adds staticcheck
+```
 
-When you change behavior, change it in both SDKs in the same PR unless there
+## Keeping the SDKs aligned
+
+When you change behavior, change it in every SDK in the same PR unless there
 is a documented reason not to. Common targets that must stay in sync:
 
 - Error taxonomy (`AirportNotFoundError`, `LoginError`, `CloudflareError`,
   `FlightRadarError`).
 - `RetryPolicy` semantics (which exceptions are transient, backoff math).
 - Cloudflare detection rules.
-- The public surface — `FlightRadar24API` methods, the `Countries` enum,
-  `FlightTrackerConfig` fields, and the `Entity` / `Airport` / `Flight`
-  attributes consumers depend on.
+- The public surface — `FlightRadar24API` methods (`Client` in Go), the
+  `Countries` enum (`Country` constants in Go), `FlightTrackerConfig` fields,
+  and the `Entity` / `Airport` / `Flight` attributes consumers depend on.
+  `docs/go.md` documents where the Go surface deliberately differs.
 
 ## Style
 
 - Python: flake8 + mypy.
 - Node: eslint + tsd.
+- Go: gofmt + go vet + staticcheck.
 - Comments must explain **why**, not **what**. The codebase has a few exemplars in
-  `request.py`/`request.js` — read those before adding new comments.
+  `request.py`/`request.js`/`request.go` — read those before adding new comments.
 
 ## Commits and PRs
 
@@ -53,10 +65,17 @@ is a documented reason not to. Common targets that must stay in sync:
 
 ## Releases
 
-Before publishing a new release, the version **must be bumped**. The version lives in two places:
+Before publishing a new release, the version **must be bumped**. The version lives in three places:
 
 - `python/FlightRadarAPI/__init__.py` (`__version__`)
 - `nodejs/package.json` (`version`)
+- `go/flightradarapi/doc.go` (`Version`)
+
+The Go module needs no registry upload — the tag *is* the release. Because it
+lives in a subdirectory, the Go toolchain only sees tags carrying that prefix,
+so the `tag-go-module` job of `publish.yml` pushes `go/v1.6.0` alongside the
+release tag. Nothing to do by hand; if that job is skipped, `go get
+.../go@latest` finds no release and callers fall back to a pseudo-version.
 
 ## Reporting bugs and asking questions
 

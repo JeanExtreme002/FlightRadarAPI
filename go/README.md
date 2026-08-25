@@ -1,11 +1,11 @@
 # FlightRadarAPI
-Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Node.js.
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/) for Go.
 
 This SDK should only be used for your own educational purposes. If you are interested in accessing Flightradar24 data commercially, please contact business@fr24.com. See more information at [Flightradar24's terms and conditions](https://www.flightradar24.com/terms-and-conditions).
 
 **Official FR24 API**: https://fr24api.flightradar24.com/
 
-[![Node.js Package](https://github.com/JeanExtreme002/FlightRadarAPI/actions/workflows/node-package.yml/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
+[![Go Package](https://github.com/JeanExtreme002/FlightRadarAPI/actions/workflows/go-package.yml/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
 [![License](https://img.shields.io/pypi/l/FlightRadarAPI)](https://github.com/JeanExtreme002/FlightRadarAPI)
 [![Pypi](https://img.shields.io/pypi/v/FlightRadarAPI?logo=pypi)](https://pypi.org/project/FlightRadarAPI/)
 [![Python Version](https://img.shields.io/badge/python-3.10+-8A2BE2)](https://pypi.org/project/FlightRadarAPI/)
@@ -18,53 +18,55 @@ This SDK should only be used for your own educational purposes. If you are inter
 
 ## Installing FlightRadarAPI:
 ```
-$ npm install flightradarapi
+$ go get github.com/JeanExtreme002/FlightRadarAPI/go
 ```
 
 ## Basic Usage:
+Import the package and create a client. Every method that talks to FlightRadar24 takes a `context.Context` and returns an `error` alongside its result.
+```go
+import "github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
 
-Import the class `FlightRadar24API` and create an instance of it.
-```javascript
-const { FlightRadar24API, Countries } = require("flightradarapi");
-const frApi = new FlightRadar24API();
+client := flightradarapi.New()
 ```
 
 **Getting flights list:**
-```javascript
-let flights = await frApi.getFlights(...);  // Returns a list of Flight objects
+```go
+flights, err := client.GetFlights(ctx, flightradarapi.FlightSearch{})  // Returns a list of Flight objects
 ```
 
 **Getting airports list:**
-```javascript
+```go
 // Get airports from specific countries
-let airports = await frApi.getAirports([Countries.BRAZIL, Countries.UNITED_STATES]);  // Returns a list of Airport objects
+airports, err := client.GetAirports(ctx, []flightradarapi.Country{
+    flightradarapi.CountryBrazil, flightradarapi.CountryUnitedStates,
+})
 
-// Omit the countries to get every airport
-let allAirports = await frApi.getAirports();
+// Pass nil to get every airport
+allAirports, err := client.GetAirports(ctx, nil)
 ```
 
 **Getting airlines list:**
-```javascript
-let airlines = await frApi.getAirlines();  // Returns detailed airline information with IATA/ICAO codes
+```go
+airlines, err := client.GetAirlines(ctx)  // Returns detailed airline information with IATA/ICAO codes
 ```
 
 **Getting zones list:**
-```javascript
-let zones = await frApi.getZones();
+```go
+zones := client.GetZones()
 ```
 
-**Using Countries enum:**
-```javascript
-// Available countries in the Countries enum
-const { Countries } = require("flightradarapi");
-
-// Examples of country codes:
-Countries.UNITED_STATES    // "united-states"
-Countries.BRAZIL           // "brazil" 
-Countries.GERMANY          // "germany"
-Countries.FRANCE           // "france"
+**Using the Country constants:**
+```go
+// Available countries, the counterpart of the Countries enum in the other packages
+flightradarapi.CountryUnitedStates  // "united-states"
+flightradarapi.CountryBrazil        // "brazil"
+flightradarapi.CountryGermany       // "germany"
+flightradarapi.CountryFrance        // "france"
 // ... and many more
+
+// AllCountries() enumerates them all
+for _, country := range flightradarapi.AllCountries() { }
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).
+Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/), or read the [Go reference](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi).

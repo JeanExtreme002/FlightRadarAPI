@@ -34,26 +34,46 @@ jobs:
             const paths = files.map((f) => f.filename);
             core.info(`Changed files (${paths.length}):\n  ` + paths.join("\n  "));
 
+            const goPackage = "go/flightradarapi/";
+
+            // Go keeps its tests inside the package, where python/ and nodejs/
+            // keep them in a sibling tests/ directory. Told apart here so a
+            // test-only PR gets "tests" and not "api".
+            const isGoTest = (f) =>
+              f.startsWith(goPackage) &&
+              (/_test\.go$/.test(f) || f.startsWith(goPackage + "testdata/"));
+
             const isCore = (f) =>
               f === "python/FlightRadarAPI/core.py" ||
               f === "python/FlightRadarAPI/request.py" ||
               f === "nodejs/FlightRadarAPI/core.js" ||
-              f === "nodejs/FlightRadarAPI/request.js";
+              f === "nodejs/FlightRadarAPI/request.js" ||
+              f === "go/flightradarapi/core.go" ||
+              f === "go/flightradarapi/request.go" ||
+              // The Go port owns the cookie jar its siblings get from their
+              // HTTP client, so it belongs to the same layer as request.go.
+              f === "go/flightradarapi/cookies.go";
 
             const isEntities = (f) =>
-              /^(python|nodejs)\/FlightRadarAPI\/entities\//.test(f);
+              /^(python|nodejs)\/FlightRadarAPI\/entities\//.test(f) ||
+              // One package per directory in Go: the entities are files.
+              /^go\/flightradarapi\/(entity|airport|flight)\.go$/.test(f);
 
             const isInPackage = (f) =>
-              /^(python|nodejs)\/FlightRadarAPI\//.test(f);
+              /^(python|nodejs)\/FlightRadarAPI\//.test(f) ||
+              (f.startsWith(goPackage) && !isGoTest(f));
 
-            const isTests = (f) => /^(python|nodejs)\/tests\//.test(f);
+            const isTests = (f) =>
+              /^(python|nodejs)\/tests\//.test(f) || isGoTest(f);
 
             const isCi = (f) => f.startsWith(".github/");
 
             const isDeps = (f) =>
               f === "python/pyproject.toml" ||
               f === "nodejs/package.json" ||
-              f === "nodejs/package-lock.json";
+              f === "nodejs/package-lock.json" ||
+              f === "go/go.mod" ||
+              f === "go/go.sum";
 
             const isBuild = (f) =>
               /(^|\/)Makefile$/.test(f) ||
@@ -69,6 +89,7 @@ jobs:
 
             const isPython = (f) => f.startsWith("python/");
             const isNode = (f) => f.startsWith("nodejs/");
+            const isGo = (f) => f.startsWith("go/");
 
             const desired = new Set();
 
@@ -83,6 +104,7 @@ jobs:
               if (isDocs(f)) desired.add("docs");
               if (isPython(f)) desired.add("pkg:python");
               if (isNode(f)) desired.add("pkg:node");
+              if (isGo(f)) desired.add("pkg:go");
             }
 
             // Dependabot PRs (we only enable Dependabot for security advisories).
@@ -119,7 +141,7 @@ jobs:
               "api:core", "api:entities", "api", "tests",
               "ci", "build", "feature", "docs",
               "revert", "performance", "bug",
-              "deps", "security", "pkg:python", "pkg:node",
+              "deps", "security", "pkg:python", "pkg:node", "pkg:go",
             ]);
 
             const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({

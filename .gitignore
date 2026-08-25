@@ -20,6 +20,9 @@ coverage.xml
 # Node.js
 node_modules/
 
+# Go
+coverage.out
+
 # Version managers (local dev only)
 .tool-versions
 .python-version
