@@ -81,7 +81,8 @@ release tag. Nothing to do by hand; if that job is skipped, `go get
 
 `publish.yml` also runs from the Actions tab, where `target` picks what goes
 out: `pypi`, `npm`, `go`, or `all`. `dry_run` is on by default and reports what
-would happen without publishing anything.
+would happen without publishing anything — including what it would refuse, so a
+rehearsal from a branch tells you the outcome instead of failing.
 
 `target: go` tags the dispatched commit, which must be on `main`. It exists for
 when the module needs the tag that a release did not leave behind — the Go SDK
