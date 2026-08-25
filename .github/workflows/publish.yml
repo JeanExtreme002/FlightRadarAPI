@@ -94,26 +94,49 @@ jobs:
           fi
 
           module_tag="go/v${version}"
+          commit=$(git rev-parse "${target}^{commit}")
 
-          if git rev-parse -q --verify "refs/tags/${module_tag}" >/dev/null; then
-            echo "::error::${module_tag} already exists — a published version is immutable, bump go/flightradarapi/doc.go"
+          # Idempotent on the commit, not on the name: re-running a release, or
+          # publishing one after the module was tagged by hand, must not fail.
+          if existing=$(git rev-parse -q --verify "refs/tags/${module_tag}^{commit}"); then
+            if [ "${existing}" = "${commit}" ]; then
+              echo "${module_tag} already points at ${commit}"
+              exit 0
+            fi
+            echo "::error::${module_tag} exists at ${existing}, not ${commit} — a published version is immutable, bump go/flightradarapi/doc.go"
             exit 1
           fi
 
           # The tag has to carry the module, or the proxy caches an empty one.
-          if ! git cat-file -e "${target}:go/go.mod" 2>/dev/null; then
+          if ! git cat-file -e "${commit}:go/go.mod" 2>/dev/null; then
             echo "::error::${target} carries no go/go.mod"
             exit 1
           fi
 
-          if [ "${DRY_RUN}" = "true" ]; then
-            echo "Would tag ${module_tag} at ${target}"
+          # A dispatch can be started from any branch, and the tag it leaves
+          # behind cannot be taken back.
+          if [ "${{ github.event_name }}" != "release" ]; then
+            git fetch -q origin main || {
+              echo "::error::could not read main to check the commit against it"
+              exit 1
+            }
+            if ! git merge-base --is-ancestor "${commit}" origin/main; then
+              echo "::error::${commit} is not on main"
+              exit 1
+            fi
+          fi
+
+          # Pushes only when told to in so many words: anything else — a
+          # trigger added to `on:` that carries no inputs, say — is a dry run,
+          # because this push is the one thing here that cannot be undone.
+          if [ "${DRY_RUN}" != "false" ]; then
+            echo "Would tag ${module_tag} at ${commit}"
             exit 0
           fi
 
-          git tag "${module_tag}" "${target}"
+          git tag "${module_tag}" "${commit}"
           git push origin "${module_tag}"
-          echo "Pushed ${module_tag} at ${target}"
+          echo "Pushed ${module_tag} at ${commit}"
 
   publish-pypi:
     needs: verify-versions

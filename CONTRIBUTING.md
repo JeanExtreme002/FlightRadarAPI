@@ -80,14 +80,21 @@ release tag. Nothing to do by hand; if that job is skipped, `go get
 ### Releasing one package on its own
 
 `publish.yml` also runs from the Actions tab, where `target` picks what goes
-out: `pypi`, `npm`, `go`, or `all`. Use `go` when the Go module changed and the
-other two did not — it tags the dispatched commit, since there is no release tag
-to hang the module tag from. `dry_run` is on by default and reports what would
-be tagged without pushing.
+out: `pypi`, `npm`, `go`, or `all`. `dry_run` is on by default and reports what
+would happen without publishing anything.
 
-A published Go version is immutable in the module proxy, so the job refuses to
-overwrite one: bump `Version` in `go/flightradarapi/doc.go` first. Note that the
-version check above still requires all three ports to declare the same version.
+`target: go` tags the dispatched commit, which must be on `main`. It exists for
+when the module needs the tag that a release did not leave behind — the Go SDK
+arriving after the other two had already shipped that version, or a release
+whose tagging step never ran. The version comes from the three declared
+versions, which `verify-versions` still requires to agree, so this publishes the
+version the repository already declares rather than a new one.
+
+Tagging a version the Go module has already published is refused: a version is
+immutable in the module proxy, and the only way past it is a version bump —
+which means bumping all three ports and cutting a normal release. Re-tagging the
+same commit is not refused, so re-running a release, or publishing one after the
+module was tagged by hand, does what you would expect and nothing else.
 
 ## Reporting bugs and asking questions
 
