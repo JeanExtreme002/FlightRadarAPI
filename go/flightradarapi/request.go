@@ -174,7 +174,7 @@ func decompressBrotli(data []byte, limit int) ([]byte, error) {
 type RetryPolicy struct {
 	// MaxAttempts is the total number of attempts, including the first.
 	MaxAttempts int
-	// BaseDelay is the first backoff sleep.
+	// BaseDelay is the first backoff sleep. Zero or less means no wait.
 	BaseDelay time.Duration
 	// MaxDelay caps the exponential backoff. Zero means uncapped.
 	MaxDelay time.Duration
@@ -215,6 +215,12 @@ func (p *RetryPolicy) validate() error {
 func (p *RetryPolicy) SleepFor(attemptIndex int) time.Duration {
 	delay := float64(p.BaseDelay) * math.Pow(2, float64(attemptIndex))
 
+	// A negative BaseDelay, or the NaN a zero one produces once the doubling
+	// overflows, would otherwise reach the overflow guard below and come back
+	// as the longest sleep a Duration can hold.
+	if math.IsNaN(delay) || delay < 0 {
+		delay = 0
+	}
 	if capped := float64(p.MaxDelay); capped > 0 && delay > capped {
 		delay = capped
 	}

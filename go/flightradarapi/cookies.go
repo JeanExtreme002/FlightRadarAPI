@@ -1,9 +1,11 @@
 package flightradarapi
 
 import (
+	"cmp"
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -181,30 +183,18 @@ func (j *cookieJar) matching(target *url.URL) []*storedCookie {
 		}
 	}
 
-	// Oldest first so the newest of a same-named pair wins, the rule get()
-	// uses. Collapsing to one per name is a deliberate limit of a flat jar.
-	sortByStoredAt(matches)
-
-	seen := make(map[string]int, len(matches))
-	deduped := make([]*storedCookie, 0, len(matches))
-
-	for _, cookie := range matches {
-		if index, ok := seen[cookie.name]; ok {
-			deduped[index] = cookie
-			continue
+	// RFC 6265 5.4: every cookie whose path matches goes out, the longest path
+	// first, and among equal paths the one stored earliest. Keeping only one
+	// per name would hand the server the root cookie where it scoped a
+	// different value to this path.
+	slices.SortFunc(matches, func(a, b *storedCookie) int {
+		if byPath := cmp.Compare(len(b.path), len(a.path)); byPath != 0 {
+			return byPath
 		}
-		seen[cookie.name] = len(deduped)
-		deduped = append(deduped, cookie)
-	}
-	return deduped
-}
+		return cmp.Compare(a.storedAt, b.storedAt)
+	})
 
-func sortByStoredAt(cookies []*storedCookie) {
-	for i := 1; i < len(cookies); i++ {
-		for j := i; j > 0 && cookies[j-1].storedAt > cookies[j].storedAt; j-- {
-			cookies[j-1], cookies[j] = cookies[j], cookies[j-1]
-		}
-	}
+	return matches
 }
 
 // parseSetCookie parses one Set-Cookie header into a cookie record, or nil when

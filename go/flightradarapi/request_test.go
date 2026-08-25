@@ -1405,3 +1405,24 @@ func TestABodyLostMidDownloadIsRetried(t *testing.T) {
 		t.Errorf("got %v, want it to match ErrFlightRadar", err)
 	}
 }
+
+func TestSleepForRefusesToTurnABadDelayIntoAnEternity(t *testing.T) {
+	// New() no longer validates the policy, so a public field can arrive
+	// negative — and the overflow guard used to read that as an overflow and
+	// return the longest sleep a Duration can hold.
+	cases := map[string]*RetryPolicy{
+		"negative base delay": {MaxAttempts: 3, BaseDelay: -time.Second},
+		"negative everything": {MaxAttempts: 3, BaseDelay: -time.Second, MaxDelay: -time.Second},
+		"doubling overflows":  {MaxAttempts: 3, BaseDelay: 0},
+	}
+
+	for name, policy := range cases {
+		for _, attempt := range []int{0, 3, 2000} {
+			delay := policy.SleepFor(attempt)
+
+			if delay < 0 || delay > time.Minute {
+				t.Errorf("%s, attempt %d: got %v, want no wait", name, attempt, delay)
+			}
+		}
+	}
+}

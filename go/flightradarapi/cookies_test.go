@@ -119,7 +119,8 @@ func TestJarSkipsASecureCookieOverPlainHTTP(t *testing.T) {
 	}
 }
 
-func TestJarNewestValueOfANameWins(t *testing.T) {
+func TestJarNewestValueOfANameWinsForGet(t *testing.T) {
+	// get() answers "which token is current", so the newest re-issue wins.
 	jar := newCookieJar()
 	jar.store(mustURL(t, "https://www.flightradar24.com/data/airlines"), []string{"token=old"})
 	jar.store(mustURL(t, "https://www.flightradar24.com/"), []string{"token=new; Path=/"})
@@ -127,8 +128,32 @@ func TestJarNewestValueOfANameWins(t *testing.T) {
 	if value, _ := jar.get("token"); value != "new" {
 		t.Errorf("got %q, want new", value)
 	}
-	if header := jar.header(mustURL(t, "https://www.flightradar24.com/data/airlines")); header != "token=new" {
-		t.Errorf("got %q, want token=new", header)
+}
+
+func TestJarSendsEverySameNamedCookieLongestPathFirst(t *testing.T) {
+	// RFC 6265 5.4. Collapsing to one per name handed the server the root
+	// cookie where FR24 had scoped a different value to this path.
+	jar := newCookieJar()
+	jar.store(mustURL(t, "https://www.flightradar24.com/data/airlines"), []string{"token=scoped"})
+	jar.store(mustURL(t, "https://www.flightradar24.com/"), []string{"token=root; Path=/"})
+
+	if header := jar.header(mustURL(t, "https://www.flightradar24.com/data/airlines")); header != "token=scoped; token=root" {
+		t.Errorf("got %q, want the path-scoped cookie first", header)
+	}
+
+	// Outside the scoped path only the root one applies.
+	if header := jar.header(mustURL(t, "https://www.flightradar24.com/other")); header != "token=root" {
+		t.Errorf("got %q, want only the root cookie", header)
+	}
+}
+
+func TestJarOrdersEqualPathsByAge(t *testing.T) {
+	jar := newCookieJar()
+	jar.store(mustURL(t, "https://www.flightradar24.com/"), []string{"first=1; Path=/"})
+	jar.store(mustURL(t, "https://www.flightradar24.com/"), []string{"second=2; Path=/"})
+
+	if header := jar.header(mustURL(t, "https://www.flightradar24.com/")); header != "first=1; second=2" {
+		t.Errorf("got %q, want the oldest first", header)
 	}
 }
 
