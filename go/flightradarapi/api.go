@@ -164,7 +164,9 @@ func (c *Client) GetAirlineLogo(ctx context.Context, iata, icao string) (*Image,
 		if err != nil {
 			return nil, err
 		}
-		if response.StatusCode < 400 || response.StatusCode >= 500 {
+		// Only 403 and 404 reach here as failures; any other non-2xx already
+		// came back as an error, so there is nothing else to fall through for.
+		if response.StatusCode < 400 {
 			return &Image{Data: response.Body, Extension: extensionOf(logoURL)}, nil
 		}
 	}

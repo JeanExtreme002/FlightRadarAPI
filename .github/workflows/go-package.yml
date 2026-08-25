@@ -65,7 +65,7 @@ jobs:
         continue-on-error: ${{ github.event_name == 'push' }}
       - name: Vulnerability scan (shipped dependencies)
         if: matrix.go-version == '1.26.x'
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        run: make security
       - name: Verify the package builds as a dependency
         run: |
           go build ./...

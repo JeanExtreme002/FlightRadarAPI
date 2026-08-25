@@ -142,7 +142,8 @@ func (j *cookieJar) header(target *url.URL) string {
 	return strings.Join(pairs, "; ")
 }
 
-// matching returns the in-scope cookies, oldest first, one per name.
+// matching returns every in-scope cookie, ordered as RFC 6265 5.4 asks: the
+// longest path first, and the oldest first among equal paths.
 func (j *cookieJar) matching(target *url.URL) []*storedCookie {
 	if target == nil {
 		return nil

@@ -9,6 +9,11 @@ COVERAGE_MIN = 80
 
 GO ?= go
 
+# Pinned, like every action in the workflows: an upstream release adding a check
+# would otherwise turn CI red on a tree nobody touched. Bump them deliberately.
+STATICCHECK_VERSION = v0.8.1
+GOVULNCHECK_VERSION = v1.7.0
+
 GREEN = \033[0;32m
 YELLOW = \033[0;33m
 NC = \033[0m
@@ -96,7 +101,7 @@ lint:
 .PHONY: lint-strict
 lint-strict: lint
 	@echo "$(GREEN)Running staticcheck...$(NC)"
-	$(GO) run honnef.co/go/tools/cmd/staticcheck@latest ./...
+	$(GO) run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
 .PHONY: lint-fix
 lint-fix:
@@ -108,11 +113,13 @@ tidy:
 	@echo "$(GREEN)Tidying modules...$(NC)"
 	$(GO) mod tidy
 
-# Uses govulncheck, the same tool the CI workflow runs.
+# Uses govulncheck, the same tool the CI workflow runs. A finding in the
+# standard library means the local toolchain is behind, not that this package
+# is: CI resolves 1.26.x to the newest patch and sees none.
 .PHONY: security
 security:
 	@echo "$(GREEN)Running vulnerability scan (govulncheck)...$(NC)"
-	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 .PHONY: docs
 docs:

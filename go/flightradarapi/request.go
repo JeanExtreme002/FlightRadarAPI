@@ -43,9 +43,24 @@ var decoders = map[string]func(data []byte, limit int) ([]byte, error){
 	"br":      decompressBrotli,
 }
 
-// supportedEncodings is advertised on every request. Derived from the decoder
-// table, so advertising an encoding with no decoder is not expressible.
-const supportedEncodings = "gzip, deflate, br"
+// encodingOrder is the order Chrome advertises them in. Kept apart from the
+// table below so the header's order is a choice and its contents are not.
+var encodingOrder = []string{"gzip", "deflate", "br"}
+
+// supportedEncodings is advertised on every request, and is built from the
+// decoder table rather than written out: advertising an encoding this package
+// cannot decode is then not expressible. The reverse — a decoder that never
+// reaches the header — is what TestEveryAdvertisedEncodingHasADecoder catches.
+var supportedEncodings = func() string {
+	names := make([]string, 0, len(decoders))
+
+	for _, name := range encodingOrder {
+		if _, ok := decoders[name]; ok {
+			names = append(names, name)
+		}
+	}
+	return strings.Join(names, ", ")
+}()
 
 var logger atomic.Pointer[slog.Logger]
 
