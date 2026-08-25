@@ -289,7 +289,7 @@ func runWithRetry[T any](ctx context.Context, policy *RetryPolicy, fn func() (T,
 		if attempt < policy.MaxAttempts-1 {
 			select {
 			case <-ctx.Done():
-				return zero, ctx.Err()
+				return zero, fmt.Errorf("%w: %w", ErrFlightRadar, ctx.Err())
 			case <-time.After(policy.SleepFor(attempt)):
 			}
 		}
@@ -414,9 +414,10 @@ type Response struct {
 	Cookies map[string]string
 }
 
-// IsJSON reports whether the response announced a JSON body.
+// IsJSON reports whether the response announced a JSON body. Compared in lower
+// case, because a media type is case-insensitive.
 func (r *Response) IsJSON() bool {
-	return strings.Contains(r.Header.Get("Content-Type"), "application/json")
+	return strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "application/json")
 }
 
 // JSON parses the body as a JSON object.
@@ -430,6 +431,12 @@ func (r *Response) JSON() (map[string]any, error) {
 
 	if err := json.Unmarshal(bytes.TrimPrefix(r.Body, []byte("\xef\xbb\xbf")), &content); err != nil {
 		return nil, fmt.Errorf("%w: could not parse the JSON body of %s: %w", ErrFlightRadar, r.URL, err)
+	}
+
+	// A body of "null" unmarshals into a nil map without complaint, and the
+	// caller would read every key as missing instead of seeing the failure.
+	if content == nil {
+		return nil, fmt.Errorf("%w: %s returned a null JSON body", ErrFlightRadar, r.URL)
 	}
 	return content, nil
 }
@@ -691,7 +698,11 @@ func responseCookies(headers []string) map[string]string {
 func decodeBody(content []byte, response *http.Response, target string, limit int) ([]byte, error) {
 	var applied []string
 
-	for _, token := range strings.Split(response.Header.Get("Content-Encoding"), ",") {
+	// Joined first: the header may arrive as several fields, which is the same
+	// thing on the wire as one comma-separated list.
+	encodings := strings.Join(response.Header.Values("Content-Encoding"), ",")
+
+	for _, token := range strings.Split(encodings, ",") {
 		token = strings.ToLower(strings.TrimSpace(token))
 
 		if token != "" && token != "identity" {
@@ -740,7 +751,7 @@ func decodeBody(content []byte, response *http.Response, target string, limit in
 // logDecodeFailure warns unless the body looks like the transport decoded it
 // already, in which case there is nothing for a caller to act on.
 func logDecodeFailure(content []byte, response *http.Response, target, failedAt string, cause error) {
-	contentType := response.Header.Get("Content-Type")
+	contentType := strings.ToLower(response.Header.Get("Content-Type"))
 	transportDecoded := false
 
 	switch {

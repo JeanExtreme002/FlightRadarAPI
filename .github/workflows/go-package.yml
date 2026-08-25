@@ -6,10 +6,14 @@ on:
       - main
     paths:
       - 'go/**'
+      # ports_test.go reads these to keep the three SDKs aligned, so a change
+      # there has to run this workflow or the drift goes unnoticed.
+      - 'python/FlightRadarAPI/**'
       - '.github/workflows/go-package.yml'
   pull_request:
     paths:
       - 'go/**'
+      - 'python/FlightRadarAPI/**'
       - '.github/workflows/go-package.yml'
   schedule:
     - cron: '0 0 */7 * *'

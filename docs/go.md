@@ -16,7 +16,11 @@ go get github.com/JeanExtreme002/FlightRadarAPI/go@latest
 Import the package and create a client:
 
 ```go
-import "github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
+import (
+    "time"
+
+    "github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
+)
 
 client := flightradarapi.New()
 

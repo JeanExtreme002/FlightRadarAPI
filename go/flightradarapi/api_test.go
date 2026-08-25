@@ -1324,3 +1324,82 @@ func TestFlightEndpointsRefuseANilFlight(t *testing.T) {
 		t.Errorf("GetHistoryData: got %v, want an error", err)
 	}
 }
+
+func TestGetFlightsKeepsTheOrderTheFeedSent(t *testing.T) {
+	// A Go map randomises iteration, so identical responses used to come back
+	// in a different order each call; the sibling ports keep the feed's.
+	row := []any{"A", 1.0, 2.0, 0.0, 0.0, 0.0, "", 0.0, "a", "r", 0.0, "", "", "", 0.0, 0.0, "", 0.0, ""}
+
+	// Written as text, because a map would not keep the order under test.
+	ordered := `{"full_count":3,"333":` + rowJSON(t, row) + `,"111":` + rowJSON(t, row) +
+		`,"222":` + rowJSON(t, row) + `}`
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/zones/fcgi/feed.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(ordered))
+	})
+
+	client := newTestClient(t, mux)
+
+	for range 5 {
+		flights, err := client.GetFlights(context.Background(), FlightSearch{})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		ids := make([]string, 0, len(flights))
+
+		for _, flight := range flights {
+			ids = append(ids, flight.ID)
+		}
+		if strings.Join(ids, ",") != "333,111,222" {
+			t.Fatalf("got %v, want the feed's own order", ids)
+		}
+	}
+}
+
+func rowJSON(t *testing.T, row []any) string {
+	t.Helper()
+	encoded, err := json.Marshal(row)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
+}
+
+func TestOnlyZeroSelectsTheDefaultLimits(t *testing.T) {
+	// A negative goes to FR24 as given, the way the sibling ports forward it,
+	// instead of being hidden behind the default.
+	var query url.Values
+	mux := http.NewServeMux()
+	mux.HandleFunc("/common/v1/airport.json", func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		writeJSON(t, w, map[string]any{"result": map[string]any{"response": map[string]any{
+			"airport": map[string]any{"pluginData": map[string]any{"details": map[string]any{"name": "x"}}},
+		}}})
+	})
+	mux.HandleFunc("/v1/search/web/find", func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"results":[],"stats":{"count":{}}}`))
+	})
+
+	client := newTestClient(t, mux)
+
+	if _, err := client.GetAirportDetails(context.Background(), "ATL", -5, -2); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if query.Get("limit") != "-5" || query.Get("page") != "-2" {
+		t.Errorf("got limit=%q page=%q, want them forwarded", query.Get("limit"), query.Get("page"))
+	}
+
+	if _, err := client.Search(context.Background(), "x", -1); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if query.Get("limit") != "-1" {
+		t.Errorf("got limit=%q, want it forwarded", query.Get("limit"))
+	}
+}

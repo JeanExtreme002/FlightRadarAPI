@@ -1426,3 +1426,84 @@ func TestSleepForRefusesToTurnABadDelayIntoAnEternity(t *testing.T) {
 		}
 	}
 }
+
+func TestJSONRefusesANullBody(t *testing.T) {
+	// "null" unmarshals into a nil map without complaint, and every key would
+	// then read as missing instead of the caller seeing the failure.
+	server := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("null"))
+	})
+
+	response, err := testClient().request(context.Background(), server.URL, requestOptions{})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := response.JSON(); !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("got %v, want a null body refused", err)
+	}
+}
+
+func TestAMediaTypeIsReadCaseInsensitively(t *testing.T) {
+	server := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "Application/JSON; Charset=UTF-8")
+		w.Write([]byte(`{"a":1}`))
+	})
+
+	response, err := testClient().request(context.Background(), server.URL, requestOptions{})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, err := response.JSON()
+
+	if err != nil {
+		t.Fatalf("got %v, want the body parsed whatever the header's case", err)
+	}
+	if content["a"] != 1.0 {
+		t.Errorf("got %v", content)
+	}
+}
+
+func TestStackedEncodingsSplitAcrossHeaderFields(t *testing.T) {
+	// Several Content-Encoding fields mean the same as one comma-separated list.
+	payload := []byte("stacked across fields")
+	server := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Encoding", "gzip")
+		w.Header().Add("Content-Encoding", "br")
+		w.Write(brotliBytes(t, gzipBytes(t, payload)))
+	})
+
+	response, err := testClient().request(context.Background(), server.URL, requestOptions{})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !bytes.Equal(response.Body, payload) {
+		t.Errorf("got %q, want %q", response.Body, payload)
+	}
+}
+
+func TestCancellationDuringBackoffCarriesTheSentinel(t *testing.T) {
+	server := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(520)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	client := newAPIClient(newHTTPClient(Chrome136Profile()), &RetryPolicy{
+		MaxAttempts: 5, BaseDelay: time.Second,
+	})
+
+	_, err := client.request(ctx, server.URL, requestOptions{})
+
+	if !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("got %v, want it to match ErrFlightRadar", err)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("got %v, want the context cause underneath", err)
+	}
+}

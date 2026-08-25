@@ -1,6 +1,7 @@
 package flightradarapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -214,12 +215,13 @@ func (c *Client) GetAirport(ctx context.Context, code string, details bool) (*Ai
 
 // GetAirportDetails returns the full airport payload, with up to flightLimit
 // flights from the given page of results. Zero means what the Python and
-// Node.js ports default to: 100 flights, first page.
+// Node.js ports default to: 100 flights, first page. Any other value is sent as
+// given, so FR24 rejects a nonsensical one rather than this package hiding it.
 func (c *Client) GetAirportDetails(ctx context.Context, code string, flightLimit, page int) (map[string]any, error) {
-	if flightLimit <= 0 {
+	if flightLimit == 0 {
 		flightLimit = defaultFlightLimit
 	}
-	if page <= 0 {
+	if page == 0 {
 		page = 1
 	}
 	if len(code) < 3 || len(code) > 4 {
@@ -466,7 +468,7 @@ func (c *Client) GetFlights(ctx context.Context, search FlightSearch) ([]*Flight
 		if err != nil {
 			return nil, err
 		}
-		flights = flightsFromFeed(content)
+		flights = flightsFromFeed(content, feedKeyOrder(response.Body))
 
 		// "full_count": 0 means the feed really has nothing to report.
 		fullCount := toNumber(content["full_count"])
@@ -489,19 +491,61 @@ func (c *Client) GetFlights(ctx context.Context, search FlightSearch) ([]*Flight
 }
 
 // flightsFromFeed keeps the feed entries that are flights, skipping the
-// envelope's own keys.
-func flightsFromFeed(content map[string]any) []*Flight {
+// envelope's own keys, in the order the feed listed them.
+func flightsFromFeed(content map[string]any, order []string) []*Flight {
 	flights := make([]*Flight, 0, len(content))
 
-	for flightID, info := range content {
+	// Falls back to the map's own order only if the body could not be scanned,
+	// which cannot happen for a body that already parsed.
+	if len(order) == 0 {
+		order = make([]string, 0, len(content))
+
+		for flightID := range content {
+			order = append(order, flightID)
+		}
+	}
+
+	for _, flightID := range order {
 		if flightID == "" || flightID[0] < '0' || flightID[0] > '9' {
 			continue
 		}
-		if row, ok := info.([]any); ok {
+		if row, ok := content[flightID].([]any); ok {
 			flights = append(flights, newFlight(flightID, row))
 		}
 	}
 	return flights
+}
+
+// feedKeyOrder reads the keys of a JSON object in the order they arrived. A Go
+// map does not keep that order, and both sibling ports hand flights back in the
+// order the feed listed them.
+func feedKeyOrder(body []byte) []string {
+	decoder := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))))
+	token, err := decoder.Token()
+
+	if err != nil || token != json.Delim('{') {
+		return nil
+	}
+
+	var keys []string
+
+	for decoder.More() {
+		token, err := decoder.Token()
+
+		if err != nil {
+			return keys
+		}
+
+		name, _ := token.(string)
+		var value json.RawMessage
+
+		// Decoded rather than tokenised, so nested objects are skipped whole.
+		if err := decoder.Decode(&value); err != nil {
+			return keys
+		}
+		keys = append(keys, name)
+	}
+	return keys
 }
 
 // fetchDetails fills in every flight's details, MaxWorkers at a time.
@@ -648,9 +692,10 @@ func cloneZone(zone Zone) Zone {
 }
 
 // Search returns the search results, grouped as FR24 counts them. A limit of
-// zero means the 50 the Python and Node.js ports default to.
+// zero means the 50 the Python and Node.js ports default to; any other value is
+// sent as given.
 func (c *Client) Search(ctx context.Context, query string, limit int) (map[string][]any, error) {
-	if limit <= 0 {
+	if limit == 0 {
 		limit = defaultSearchLimit
 	}
 
