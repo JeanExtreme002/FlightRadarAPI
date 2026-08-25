@@ -1329,3 +1329,17 @@ func TestAJarOnTheGivenClientIsIgnored(t *testing.T) {
 		t.Errorf("got %v, want the cookie sent exactly once", received)
 	}
 }
+
+func TestFlightEndpointsRefuseANilFlight(t *testing.T) {
+	// The argument is a pointer, so nil is valid at compile time; it must come
+	// back as the package's error rather than a panic.
+	client := newTestClient(t, http.NewServeMux())
+	ctx := context.Background()
+
+	if _, err := client.GetFlightDetails(ctx, nil); !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("GetFlightDetails: got %v, want an error", err)
+	}
+	if _, err := client.GetHistoryData(ctx, nil, "CSV", 0); !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("GetHistoryData: got %v, want an error", err)
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1246,5 +1247,107 @@ func TestTheLimitErrorNamesTheBudget(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "10 byte") {
 		t.Errorf("got %q, want the 10 byte budget named", err)
+	}
+}
+
+func TestATransportFailureCarriesThePackageSentinel(t *testing.T) {
+	// The taxonomy documented on ErrFlightRadar says every error here wraps it.
+	_, err := testClient().request(context.Background(), "http://127.0.0.1:9/", requestOptions{})
+
+	if !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("got %v, want it to match ErrFlightRadar", err)
+	}
+
+	// The transport's own cause has to survive, or the retry policy goes blind.
+	var urlErr *url.Error
+
+	if !errors.As(err, &urlErr) {
+		t.Errorf("got %v, want the url.Error underneath", err)
+	}
+	if !isTransient(err) {
+		t.Error("a network failure must still read as transient")
+	}
+}
+
+// deadlineRecorder reads the deadline of the outgoing request, which is where
+// the client-side timeout lives: it never travels to the server.
+type deadlineRecorder struct {
+	base     http.RoundTripper
+	deadline time.Time
+	set      bool
+}
+
+func (d *deadlineRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
+	d.deadline, d.set = request.Context().Deadline()
+	return d.base.RoundTrip(request)
+}
+
+func TestANegativeTimeoutFallsBackToTheDefault(t *testing.T) {
+	// Client.Timeout is public and documented as "zero or less means the
+	// default", so a negative value must not leave the request unbounded.
+	server := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	})
+
+	recorder := &deadlineRecorder{base: newHTTPClient(Chrome136Profile()).Transport}
+	client := newAPIClient(&http.Client{Transport: recorder}, nil)
+
+	for name, timeout := range map[string]time.Duration{"negative": -time.Second, "zero": 0} {
+		recorder.set = false
+
+		if _, err := client.request(context.Background(), server.URL, requestOptions{timeout: timeout}); err != nil {
+			t.Fatalf("%s: unexpected error: %v", name, err)
+		}
+		if !recorder.set {
+			t.Fatalf("%s: the request went out with no deadline at all", name)
+		}
+		if remaining := time.Until(recorder.deadline); remaining > DefaultTimeout {
+			t.Errorf("%s: got %v left, want at most the %v default", name, remaining, DefaultTimeout)
+		}
+	}
+}
+
+func TestSleepForSurvivesTheLargestJitter(t *testing.T) {
+	// Every field is public: the largest Duration there is must not panic.
+	policy := &RetryPolicy{MaxAttempts: 2, BaseDelay: time.Second, Jitter: math.MaxInt64}
+
+	if delay := policy.SleepFor(0); delay < 0 {
+		t.Errorf("got %v, want a usable delay", delay)
+	}
+
+	// Nor may the sum of two values that each fit wrap round.
+	huge := &RetryPolicy{MaxAttempts: 2, BaseDelay: math.MaxInt64, Jitter: math.MaxInt64}
+
+	if delay := huge.SleepFor(0); delay < 0 {
+		t.Errorf("got %v, want the sum clamped", delay)
+	}
+}
+
+type replacedRoundTripper struct{}
+
+func (replacedRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("not used")
+}
+
+func TestNewSurvivesAReplacedDefaultTransport(t *testing.T) {
+	// Mocking libraries swap http.DefaultTransport; a type assertion on it
+	// turned New() into a panic.
+	original := http.DefaultTransport
+	http.DefaultTransport = replacedRoundTripper{}
+	t.Cleanup(func() { http.DefaultTransport = original })
+
+	client := New()
+
+	if client == nil {
+		t.Fatal("no client")
+	}
+
+	transport, ok := newHTTPClient(Chrome136Profile()).Transport.(*http.Transport)
+
+	if !ok {
+		t.Fatal("expected this package to build its own transport")
+	}
+	if !transport.DisableCompression {
+		t.Error("the fallback transport must still leave decoding to this package")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"math"
 	"reflect"
 	"regexp"
@@ -226,6 +227,13 @@ func parseAirportsJSON(payload []byte, countries []Country) []*Airport {
 
 	if err := decoder.Decode(&data); err != nil {
 		log().Warn("parseAirportsJSON: response is not valid JSON — FR24 feed may have changed")
+		return []*Airport{}
+	}
+
+	// Decode stops at the first value, so a truncated or spliced body would
+	// otherwise pass as valid. The Python and Node.js parsers reject it.
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		log().Warn("parseAirportsJSON: response carries data past the JSON body — FR24 feed may have changed")
 		return []*Airport{}
 	}
 

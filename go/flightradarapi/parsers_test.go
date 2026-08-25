@@ -448,3 +448,21 @@ func repeat(text string, times int) string {
 	}
 	return string(result)
 }
+
+func TestParseAirportsJSONRejectsDataPastTheJSONBody(t *testing.T) {
+	// Decode reads the first value only, so a spliced body used to pass.
+	payload := []byte(`{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",` +
+		`"lat":1,"lon":2,"alt":3}]}trailing garbage`)
+
+	if airports := parseAirportsJSON(payload, nil); len(airports) != 0 {
+		t.Errorf("got %d airports, want the body rejected", len(airports))
+	}
+
+	// Trailing whitespace is not garbage.
+	clean := []byte(`{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",` +
+		`"lat":1,"lon":2,"alt":3}]}` + "\n\n  ")
+
+	if airports := parseAirportsJSON(clean, nil); len(airports) != 1 {
+		t.Errorf("got %d airports, want the body accepted", len(airports))
+	}
+}

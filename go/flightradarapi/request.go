@@ -218,13 +218,30 @@ func (p *RetryPolicy) SleepFor(attemptIndex int) time.Duration {
 	if capped := float64(p.MaxDelay); capped > 0 && delay > capped {
 		delay = capped
 	}
+	if delay >= float64(math.MaxInt64) {
+		return time.Duration(math.MaxInt64)
+	}
 
-	jitter := time.Duration(0)
+	jitter := int64(0)
 
 	if p.Jitter > 0 {
-		jitter = time.Duration(rand.Int63n(int64(p.Jitter) + 1))
+		span := int64(p.Jitter)
+
+		// The endpoint is included by sampling one past the span, which only
+		// the largest Duration there is cannot afford.
+		if span < math.MaxInt64 {
+			span++
+		}
+		jitter = rand.Int63n(span)
 	}
-	return time.Duration(delay) + jitter
+
+	total := int64(delay) + jitter
+
+	// Two values that each fit can still overflow together.
+	if total < 0 {
+		return time.Duration(math.MaxInt64)
+	}
+	return time.Duration(total)
 }
 
 // isTransient reports whether a failure is worth retrying.
@@ -344,7 +361,13 @@ func bankRedirectCookies(request *http.Request, via []*http.Request) error {
 // newHTTPClient builds a client that impersonates the profile and leaves
 // content decoding to this package.
 func newHTTPClient(profile TLSProfile) *http.Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// A comma-ok assertion, because http.DefaultTransport is an interface an
+	// application (or a mocking library) is free to replace.
+	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
+
+	if standard, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport = standard.Clone()
+	}
 
 	// Decoding is ours: the transport would expand a bomb before any budget
 	// could see it.
@@ -488,7 +511,9 @@ func (c *apiClient) do(ctx context.Context, target string, options requestOption
 
 	timeout := options.timeout
 
-	if timeout == 0 {
+	// Zero or less means the default, as Options documents: a negative value
+	// must not leave the request unbounded.
+	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
 	if timeout > 0 {
@@ -529,7 +554,9 @@ func (c *apiClient) do(ctx context.Context, target string, options requestOption
 	response, err := c.httpClient.Do(request)
 
 	if err != nil {
-		return nil, err
+		// Wrapped twice: callers match the package sentinel, and the retry
+		// policy still reads the transport's own cause underneath.
+		return nil, fmt.Errorf("%w: %w", ErrFlightRadar, err)
 	}
 	defer response.Body.Close()
 
@@ -548,7 +575,7 @@ func (c *apiClient) do(ctx context.Context, target string, options requestOption
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrFlightRadar, err)
 	}
 	if len(received) > maxDownloadBytes {
 		return nil, limitError("response body from %s is larger than the %d byte download limit",

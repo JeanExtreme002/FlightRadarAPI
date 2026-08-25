@@ -395,6 +395,10 @@ func (c *Client) GetCountryFlag(ctx context.Context, country string) (*Image, er
 
 // GetFlightDetails returns the details payload of a flight.
 func (c *Client) GetFlightDetails(ctx context.Context, flight *Flight) (map[string]any, error) {
+	if flight == nil {
+		return nil, fmt.Errorf("%w: no flight given", ErrFlightRadar)
+	}
+
 	response, err := c.client.requestStandalone(ctx, c.endpoints.flightDataURL(flight.ID), requestOptions{
 		headers: jsonHeaders,
 		timeout: c.Timeout,
@@ -571,6 +575,10 @@ func (c *Client) SetFlightTrackerConfig(config *FlightTrackerConfig, values map[
 // GetHistoryData downloads the historical data of a flight. fileType must be
 // "CSV" or "KML". Requires a premium account.
 func (c *Client) GetHistoryData(ctx context.Context, flight *Flight, fileType string, timestamp int64) (string, error) {
+	if flight == nil {
+		return "", fmt.Errorf("%w: no flight given", ErrFlightRadar)
+	}
+
 	headers, err := c.authHeaders()
 
 	if err != nil {

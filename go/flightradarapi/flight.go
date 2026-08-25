@@ -341,38 +341,51 @@ func detailValue(field reflect.Value) any {
 func (f *Flight) CheckInfo(criteria map[string]any) (bool, error) {
 	fields := f.fields()
 
+	type comparison struct {
+		name   string
+		prefix string
+		wanted any
+	}
+
+	// Every criterion is validated before any is evaluated. Map iteration is
+	// randomised, so reporting as we went would raise the unknown-field error
+	// only when that key happened to come before a criterion that fails.
+	comparisons := make([]comparison, 0, len(criteria))
+
 	for key, wanted := range criteria {
 		name, prefix := key, ""
 
 		if strings.HasPrefix(key, "min_") || strings.HasPrefix(key, "max_") {
 			name, prefix = key[4:], key[:3]
 		}
-
-		actual, known := fields[name]
-
-		if !known {
+		if _, known := fields[name]; !known {
 			return false, fmt.Errorf("%w: unknown flight field %q", ErrFlightRadar, key)
 		}
+		if prefix != "" && toNumber(wanted) == nil {
+			return false, fmt.Errorf("%w: %q needs a numeric value, got %v", ErrFlightRadar, key, wanted)
+		}
+		comparisons = append(comparisons, comparison{name: name, prefix: prefix, wanted: wanted})
+	}
 
-		if prefix == "" {
-			if !equalValues(wanted, actual) {
+	for _, check := range comparisons {
+		actual := fields[check.name]
+
+		if check.prefix == "" {
+			if !equalValues(check.wanted, actual) {
 				return false, nil
 			}
 			continue
 		}
 
-		wantedNumber, actualNumber := toNumber(wanted), toNumber(actual)
+		wantedNumber, actualNumber := toNumber(check.wanted), toNumber(actual)
 
-		if wantedNumber == nil {
-			return false, fmt.Errorf("%w: %q needs a numeric value, got %v", ErrFlightRadar, key, wanted)
-		}
 		if actualNumber == nil {
 			return false, nil
 		}
-		if prefix == "min" && *actualNumber < *wantedNumber {
+		if check.prefix == "min" && *actualNumber < *wantedNumber {
 			return false, nil
 		}
-		if prefix == "max" && *actualNumber > *wantedNumber {
+		if check.prefix == "max" && *actualNumber > *wantedNumber {
 			return false, nil
 		}
 	}
@@ -435,6 +448,14 @@ func (f *Flight) SetFlightDetails(flightDetails map[string]any) {
 	originCountry := getMap(originPosition, "country")
 	originTimezone := getMap(origin, "timezone")
 
+	// The Python port defaults this to an empty list; the field is `any`, so a
+	// nil would compare differently in CheckInfo and marshal as null.
+	images, hasImages := aircraft["images"]
+
+	if !hasImages {
+		images = []any{}
+	}
+
 	history := getMap(flightDetails, "flightHistory")
 	status := getMap(flightDetails, "status")
 
@@ -442,7 +463,7 @@ func (f *Flight) SetFlightDetails(flightDetails map[string]any) {
 		AircraftAge:       getString(aircraft, "age"),
 		AircraftCountryID: getNumber(aircraft, "countryId"),
 		AircraftHistory:   getSlice(history, "aircraft"),
-		AircraftImages:    aircraft["images"],
+		AircraftImages:    images,
 		AircraftModel:     getString(getMap(aircraft, "model"), "text"),
 
 		AirlineName:      getString(airline, "name"),

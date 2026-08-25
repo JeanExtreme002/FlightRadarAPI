@@ -569,3 +569,56 @@ func TestConstructorsReadGoNumericTypes(t *testing.T) {
 		t.Errorf("got %v for a bool, want nil", *number)
 	}
 }
+
+func TestCheckInfoReportsAnUnknownFieldWhateverTheOrder(t *testing.T) {
+	// Map iteration is randomised: reporting as it went raised this error only
+	// when the unknown key happened to come before a criterion that fails.
+	flight := newFlight("x", feedRow())
+
+	for range 200 {
+		matched, err := flight.CheckInfo(map[string]any{
+			"airline_icao": "NOPE", "campo_inexistente": 1,
+		})
+
+		if err == nil {
+			t.Fatal("an unknown field must be reported every time, not sometimes")
+		}
+		if matched {
+			t.Fatal("a rejected criteria set must not report a match")
+		}
+	}
+}
+
+func TestCheckInfoReportsANonNumericBoundWhateverTheOrder(t *testing.T) {
+	flight := newFlight("x", feedRow())
+
+	for range 200 {
+		if _, err := flight.CheckInfo(map[string]any{
+			"airline_icao": "NOPE", "min_altitude": "muito alto",
+		}); err == nil {
+			t.Fatal("a non-numeric bound must be reported every time")
+		}
+	}
+}
+
+func TestSetFlightDetailsDefaultsAircraftImagesToAList(t *testing.T) {
+	// The Python port does aircraft.get("images", []), and the field is `any`:
+	// a nil compares differently in CheckInfo and marshals as null.
+	flight := newFlight("x", feedRow())
+	flight.SetFlightDetails(map[string]any{"aircraft": map[string]any{}})
+
+	images, ok := flight.Details.AircraftImages.([]any)
+
+	if !ok || len(images) != 0 {
+		t.Errorf("got %#v, want an empty list", flight.Details.AircraftImages)
+	}
+
+	// A payload that carries images keeps its own shape.
+	flight.SetFlightDetails(map[string]any{
+		"aircraft": map[string]any{"images": map[string]any{"large": []any{"a"}}},
+	})
+
+	if _, ok := flight.Details.AircraftImages.(map[string]any); !ok {
+		t.Errorf("got %#v, want the payload preserved", flight.Details.AircraftImages)
+	}
+}
