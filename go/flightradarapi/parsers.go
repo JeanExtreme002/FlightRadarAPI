@@ -185,7 +185,7 @@ func nativeNumber(value any) *float64 {
 		number = float64(reflected.Int())
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		number = float64(reflected.Uint())
-	case reflect.Float32:
+	case reflect.Float32, reflect.Float64:
 		number = reflected.Float()
 	default:
 		return nil

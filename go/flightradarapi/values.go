@@ -1,6 +1,9 @@
 package flightradarapi
 
-import "strconv"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 // DefaultText is the placeholder the Get* formatters return for a value the
 // feed did not send.
@@ -49,6 +52,10 @@ func getString(source map[string]any, key string) string {
 	switch typed := value.(type) {
 	case string:
 		return typed
+	case json.Number:
+		// A payload decoded with UseNumber carries these where a plain decode
+		// would carry a float64.
+		return typed.String()
 	case float64:
 		return formatNumber(typed)
 	case bool:

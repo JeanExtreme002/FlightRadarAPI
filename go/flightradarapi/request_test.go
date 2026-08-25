@@ -7,9 +7,11 @@ import (
 	"compress/zlib"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1349,5 +1351,57 @@ func TestNewSurvivesAReplacedDefaultTransport(t *testing.T) {
 	}
 	if !transport.DisableCompression {
 		t.Error("the fallback transport must still leave decoding to this package")
+	}
+}
+
+// truncatingListener answers with a Content-Length it does not honour, then
+// hangs up — the shape of a connection FR24 drops mid-body.
+func truncatingListener(t *testing.T, attempts *atomic.Int32) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+
+			if err != nil {
+				return
+			}
+			attempts.Add(1)
+			fmt.Fprint(conn, "HTTP/1.1 200 OK\r\nContent-Length: 5000\r\n\r\nabcdef")
+			conn.Close()
+		}
+	}()
+	return "http://" + listener.Addr().String()
+}
+
+func TestABodyLostMidDownloadIsRetried(t *testing.T) {
+	// The body is read after Do returns, so this failure carries no *url.Error
+	// of its own and used to be classified as permanent.
+	var attempts atomic.Int32
+	target := truncatingListener(t, &attempts)
+
+	client := newAPIClient(newHTTPClient(Chrome136Profile()), &RetryPolicy{
+		MaxAttempts: 3, BaseDelay: time.Millisecond,
+	})
+
+	_, err := client.request(context.Background(), target, requestOptions{})
+
+	if err == nil {
+		t.Fatal("expected the truncated body to fail")
+	}
+	if !isTransient(err) {
+		t.Errorf("got %v, want a transient failure", err)
+	}
+	if attempts.Load() != 3 {
+		t.Errorf("got %d attempts, want the policy's 3", attempts.Load())
+	}
+	if !errors.Is(err, ErrFlightRadar) {
+		t.Errorf("got %v, want it to match ErrFlightRadar", err)
 	}
 }

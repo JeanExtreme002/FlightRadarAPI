@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -464,5 +465,25 @@ func TestParseAirportsJSONRejectsDataPastTheJSONBody(t *testing.T) {
 
 	if airports := parseAirportsJSON(clean, nil); len(airports) != 1 {
 		t.Errorf("got %d airports, want the body accepted", len(airports))
+	}
+}
+
+func TestTextFieldsReadAPayloadDecodedWithUseNumber(t *testing.T) {
+	// This package decodes the airports feed that way, and the exported
+	// constructors take a map the caller may have decoded the same way.
+	decoder := json.NewDecoder(strings.NewReader(`{"age": 12, "name": "Lukla"}`))
+	decoder.UseNumber()
+
+	var payload map[string]any
+
+	if err := decoder.Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := getString(payload, "age"); got != "12" {
+		t.Errorf("got %q, want the number rendered as text", got)
+	}
+	if got := getString(payload, "name"); got != "Lukla" {
+		t.Errorf("got %q, want Lukla", got)
 	}
 }

@@ -575,7 +575,11 @@ func (c *apiClient) do(ctx context.Context, target string, options requestOption
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrFlightRadar, err)
+		// Wrapped the way the transport wraps its own failures: the body is
+		// read after Do returns, so a connection lost mid-body would otherwise
+		// reach the retry policy as a bare read error and never be retried.
+		return nil, fmt.Errorf("%w: %w", ErrFlightRadar,
+			&url.Error{Op: method, URL: finalURL.String(), Err: err})
 	}
 	if len(received) > maxDownloadBytes {
 		return nil, limitError("response body from %s is larger than the %d byte download limit",

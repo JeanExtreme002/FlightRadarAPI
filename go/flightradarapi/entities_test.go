@@ -622,3 +622,25 @@ func TestSetFlightDetailsDefaultsAircraftImagesToAList(t *testing.T) {
 		t.Errorf("got %#v, want the payload preserved", flight.Details.AircraftImages)
 	}
 }
+
+func TestCheckInfoAcceptsDefinedNumericTypes(t *testing.T) {
+	// A defined type over float64 reaches the reflection path, where the
+	// float64 kind was missing while int64 and float32 worked.
+	type feet float64
+	type knots int64
+	type ratio float32
+
+	flight := newFlight("x", feedRow())
+
+	for name, criteria := range map[string]map[string]any{
+		"float64 underlying": {"min_altitude": feet(6700)},
+		"int64 underlying":   {"min_altitude": knots(6700)},
+		"float32 underlying": {"min_altitude": ratio(6700)},
+	} {
+		matched, err := flight.CheckInfo(criteria)
+
+		if err != nil || !matched {
+			t.Errorf("%s: got %v (err=%v), want a match", name, matched, err)
+		}
+	}
+}
