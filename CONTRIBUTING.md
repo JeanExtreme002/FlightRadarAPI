@@ -77,6 +77,18 @@ so the `tag-go-module` job of `publish.yml` pushes `go/v1.6.0` alongside the
 release tag. Nothing to do by hand; if that job is skipped, `go get
 .../go@latest` finds no release and callers fall back to a pseudo-version.
 
+### Releasing one package on its own
+
+`publish.yml` also runs from the Actions tab, where `target` picks what goes
+out: `pypi`, `npm`, `go`, or `all`. Use `go` when the Go module changed and the
+other two did not — it tags the dispatched commit, since there is no release tag
+to hang the module tag from. `dry_run` is on by default and reports what would
+be tagged without pushing.
+
+A published Go version is immutable in the module proxy, so the job refuses to
+overwrite one: bump `Version` in `go/flightradarapi/doc.go` first. Note that the
+version check above still requires all three ports to declare the same version.
+
 ## Reporting bugs and asking questions
 
 - Bugs: open a GitHub issue with the bug report template.

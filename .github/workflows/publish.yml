@@ -11,8 +11,8 @@ on:
       target:
         description: 'Which package(s) to publish'
         type: choice
-        options: [both, pypi, npm]
-        default: both
+        options: [all, pypi, npm, go]
+        default: all
       dry_run:
         description: 'Build and validate only, without uploading'
         type: boolean
@@ -24,6 +24,9 @@ permissions:
 jobs:
   verify-versions:
     runs-on: ubuntu-latest
+    outputs:
+      # Read by tag-go-module when there is no release tag to take it from.
+      go: ${{ steps.versions.outputs.go }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
@@ -39,8 +42,8 @@ jobs:
           echo "Python: $py_version | npm: $npm_version | Go: $go_version"
 
       - name: Check versions are in sync
-        # The Go module is published by the release tag itself, so it has no
-        # upload job below — only this check keeps its version honest.
+        # The Go module has no registry upload below: the tag is its release,
+        # and this check is what keeps its version honest.
         run: |
           if [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.npm }}" ] \
             || [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.go }}" ]; then
@@ -60,7 +63,7 @@ jobs:
 
   tag-go-module:
     needs: verify-versions
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'go'
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Required to push the module tag
@@ -71,23 +74,50 @@ jobs:
 
       # A module in a subdirectory is released by a tag carrying that prefix, so
       # `go get .../go@latest` sees nothing without this.
+      #
+      # Run from a release, the tag points at the release's own tag. Run by hand
+      # it points at the dispatched commit, which is what releasing the Go
+      # module on its own means: the other two packages did not change, so there
+      # is no release tag to hang it from.
       - name: Tag the Go module
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DECLARED_VERSION: ${{ needs.verify-versions.outputs.go }}
+          DRY_RUN: ${{ github.event_name != 'release' && inputs.dry_run }}
         run: |
-          version="${TAG#v}"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            version="${RELEASE_TAG#v}"
+            target="${RELEASE_TAG}"
+          else
+            version="${DECLARED_VERSION}"
+            target="${GITHUB_SHA}"
+          fi
+
           module_tag="go/v${version}"
+
           if git rev-parse -q --verify "refs/tags/${module_tag}" >/dev/null; then
-            echo "${module_tag} already exists"
+            echo "::error::${module_tag} already exists — a published version is immutable, bump go/flightradarapi/doc.go"
+            exit 1
+          fi
+
+          # The tag has to carry the module, or the proxy caches an empty one.
+          if ! git cat-file -e "${target}:go/go.mod" 2>/dev/null; then
+            echo "::error::${target} carries no go/go.mod"
+            exit 1
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "Would tag ${module_tag} at ${target}"
             exit 0
           fi
-          git tag "${module_tag}" "${TAG}"
+
+          git tag "${module_tag}" "${target}"
           git push origin "${module_tag}"
-          echo "Pushed ${module_tag}"
+          echo "Pushed ${module_tag} at ${target}"
 
   publish-pypi:
     needs: verify-versions
-    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'pypi'
+    if: github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'pypi'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -122,7 +152,7 @@ jobs:
 
   publish-npm:
     needs: verify-versions
-    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'npm'
+    if: github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'npm'
     runs-on: ubuntu-latest
     environment: npm
     permissions:
