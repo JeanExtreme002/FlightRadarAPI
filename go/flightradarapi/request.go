@@ -169,16 +169,29 @@ func decompressBrotli(data []byte, limit int) ([]byte, error) {
 	return readBounded(brotli.NewReader(bytes.NewReader(data)), limit, "brotli body")
 }
 
+// Defaults the Python and Node.js ports declare in their RetryPolicy
+// constructors, used here for any field left at zero.
+const (
+	DefaultRetryBaseDelay = time.Second
+	DefaultRetryMaxDelay  = 30 * time.Second
+	DefaultRetryJitter    = 500 * time.Millisecond
+)
+
 // RetryPolicy retries transient failures: a Cloudflare block, a timeout, or a
 // network error. The zero value retries nothing.
 type RetryPolicy struct {
-	// MaxAttempts is the total number of attempts, including the first.
+	// MaxAttempts is the total number of attempts, including the first. Below
+	// two, nothing is retried.
 	MaxAttempts int
-	// BaseDelay is the first backoff sleep. Zero or less means no wait.
+	// BaseDelay is the first backoff sleep. Zero or less means
+	// [DefaultRetryBaseDelay], so a struct literal backs off like
+	// [NewRetryPolicy] rather than hammering.
 	BaseDelay time.Duration
-	// MaxDelay caps the exponential backoff. Zero means uncapped.
+	// MaxDelay caps the exponential backoff. Zero or less means
+	// [DefaultRetryMaxDelay]; for an effectively uncapped policy, set it high.
 	MaxDelay time.Duration
-	// Jitter is the random span added to each sleep.
+	// Jitter is the random span added to each sleep. Zero means none, which is
+	// what a deterministic test wants.
 	Jitter time.Duration
 }
 
@@ -187,9 +200,9 @@ type RetryPolicy struct {
 func NewRetryPolicy(maxAttempts int) (*RetryPolicy, error) {
 	policy := &RetryPolicy{
 		MaxAttempts: maxAttempts,
-		BaseDelay:   time.Second,
-		MaxDelay:    30 * time.Second,
-		Jitter:      500 * time.Millisecond,
+		BaseDelay:   DefaultRetryBaseDelay,
+		MaxDelay:    DefaultRetryMaxDelay,
+		Jitter:      DefaultRetryJitter,
 	}
 	if err := policy.validate(); err != nil {
 		return nil, err
@@ -213,16 +226,27 @@ func (p *RetryPolicy) validate() error {
 // MaxDelay caps nothing rather than capping everything at zero, and a negative
 // Jitter adds nothing rather than panicking.
 func (p *RetryPolicy) SleepFor(attemptIndex int) time.Duration {
-	delay := float64(p.BaseDelay) * math.Pow(2, float64(attemptIndex))
+	base, capped := p.BaseDelay, p.MaxDelay
 
-	// A negative BaseDelay, or the NaN a zero one produces once the doubling
-	// overflows, would otherwise reach the overflow guard below and come back
-	// as the longest sleep a Duration can hold.
+	// An unset field means the default, the way it does everywhere else here:
+	// a literal &RetryPolicy{MaxAttempts: 5} then backs off like the Python
+	// constructor rather than hammering or climbing past four minutes.
+	if base <= 0 {
+		base = DefaultRetryBaseDelay
+	}
+	if capped <= 0 {
+		capped = DefaultRetryMaxDelay
+	}
+
+	delay := float64(base) * math.Pow(2, float64(attemptIndex))
+
+	// NaN once the doubling overflows, which the overflow guard below would
+	// otherwise read as the longest sleep a Duration can hold.
 	if math.IsNaN(delay) || delay < 0 {
 		delay = 0
 	}
-	if capped := float64(p.MaxDelay); capped > 0 && delay > capped {
-		delay = capped
+	if delay > float64(capped) {
+		delay = float64(capped)
 	}
 	if delay >= float64(math.MaxInt64) {
 		return time.Duration(math.MaxInt64)

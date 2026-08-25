@@ -1176,15 +1176,33 @@ func TestRetryPolicyValidationReportsNegativeTiming(t *testing.T) {
 	}
 }
 
-func TestAZeroMaxDelayCapsNothing(t *testing.T) {
-	// Every field is public, so the zero value has to mean something sane: a
-	// policy built as a struct literal used to back off for zero seconds.
-	policy := &RetryPolicy{MaxAttempts: 5, BaseDelay: 2 * time.Second}
+func TestAnUnsetFieldMeansTheDocumentedDefault(t *testing.T) {
+	// Every field is public, so a struct literal is the natural way to build
+	// one — and it has to behave like NewRetryPolicy, which is what the Python
+	// and Node.js constructors give: 1s base, 30s cap.
+	literal := &RetryPolicy{MaxAttempts: 5}
+	built, err := NewRetryPolicy(5)
 
-	for attempt, expected := range map[int]time.Duration{0: 2 * time.Second, 2: 8 * time.Second} {
-		if got := policy.SleepFor(attempt); got != expected {
-			t.Errorf("attempt %d: got %v, want %v", attempt, got, expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, attempt := range []int{0, 1, 4, 10} {
+		// Compared without jitter, which the literal deliberately leaves at zero.
+		built.Jitter = 0
+
+		if literal.SleepFor(attempt) != built.SleepFor(attempt) {
+			t.Errorf("attempt %d: got %v, want %v", attempt, literal.SleepFor(attempt), built.SleepFor(attempt))
 		}
+	}
+
+	// The cap is the 30s the other ports default to, not "no cap at all".
+	policy := &RetryPolicy{MaxAttempts: 10, BaseDelay: 2 * time.Second}
+
+	if got := policy.SleepFor(0); got != 2*time.Second {
+		t.Errorf("got %v, want the base delay untouched", got)
+	}
+	if got := policy.SleepFor(9); got != DefaultRetryMaxDelay {
+		t.Errorf("got %v, want it capped at %v", got, DefaultRetryMaxDelay)
 	}
 }
 

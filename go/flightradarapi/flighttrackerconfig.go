@@ -71,6 +71,31 @@ func (c FlightTrackerConfig) Values() url.Values {
 	return values
 }
 
+// fillDefaults replaces the fields a struct literal left empty. Go's zero value
+// is the empty string where the Python dataclass carries a default, so
+// FlightTrackerConfig{Limit: "10"} means the same there as here.
+func (c *FlightTrackerConfig) fillDefaults() {
+	defaults := NewFlightTrackerConfig()
+	fields, defaulted := c.fields(), defaults.fields()
+
+	for name, field := range fields {
+		if *field == "" {
+			*field = *defaulted[name]
+		}
+	}
+}
+
+// validate refuses a value the feed cannot read, wherever it came from: the
+// same empty string is rejected through the values map.
+func (c *FlightTrackerConfig) validate() error {
+	for name, field := range c.fields() {
+		if !isDecimal(*field) {
+			return fmt.Errorf("%w: value must be a number, got %q for key %q", ErrFlightRadar, *field, name)
+		}
+	}
+	return nil
+}
+
 // update applies name/value pairs, rejecting unknown options and
 // non-numeric values the way the feed does.
 func (c *FlightTrackerConfig) update(values map[string]string) error {

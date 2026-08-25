@@ -581,6 +581,9 @@ func (c *Client) fetchDetails(ctx context.Context, flights []*Flight) error {
 		}()
 	}
 
+	// Not guarded by ctx: once it is done, each remaining request fails before
+	// touching the network — 100 of them cost a millisecond — so draining the
+	// queue is cheaper than the branch that would stop it.
 	for _, flight := range flights {
 		queue <- flight
 	}
@@ -608,8 +611,12 @@ func (c *Client) SetFlightTrackerConfig(config *FlightTrackerConfig, values map[
 
 	if config != nil {
 		updated = *config
+		updated.fillDefaults()
 	}
 	if err := updated.update(values); err != nil {
+		return err
+	}
+	if err := updated.validate(); err != nil {
 		return err
 	}
 	c.flightTrackerConfig = updated

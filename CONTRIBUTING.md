@@ -77,14 +77,6 @@ so the `tag-go-module` job of `publish.yml` pushes `go/v1.6.0` alongside the
 release tag. Nothing to do by hand; if that job is skipped, `go get
 .../go@latest` finds no release and callers fall back to a pseudo-version.
 
-## Generated files
-
-`go/flightradarapi/countries.go` and `zones.go` are generated from
-`python/FlightRadarAPI/core.py` and `zones.py`. Change the Python source first,
-then regenerate them — `go/flightradarapi/ports_test.go` fails with the
-exact entries that drifted, and also checks `FlightTrackerConfig` against the
-Python dataclass.
-
 ## Reporting bugs and asking questions
 
 - Bugs: open a GitHub issue with the bug report template.

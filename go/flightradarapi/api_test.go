@@ -1403,3 +1403,36 @@ func TestOnlyZeroSelectsTheDefaultLimits(t *testing.T) {
 		t.Errorf("got limit=%q, want it forwarded", query.Get("limit"))
 	}
 }
+
+func TestSetFlightTrackerConfigFillsAPartialStruct(t *testing.T) {
+	// Go's zero value is the empty string where the Python dataclass carries a
+	// default, and the same empty value is rejected through the values map.
+	client := newTestClient(t, http.NewServeMux())
+
+	if err := client.SetFlightTrackerConfig(&FlightTrackerConfig{Limit: "10"}, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	config := client.GetFlightTrackerConfig()
+
+	if config.Limit != "10" {
+		t.Errorf("got limit %q, want the one that was set", config.Limit)
+	}
+	if config.MaxAge != "14400" || config.ADSB != "1" {
+		t.Errorf("got maxage %q adsb %q, want the defaults filled in", config.MaxAge, config.ADSB)
+	}
+	if query := config.Values().Encode(); strings.Contains(query, "=&") {
+		t.Errorf("got %q, want no empty option in the query", query)
+	}
+}
+
+func TestSetFlightTrackerConfigRejectsABadFieldInTheStruct(t *testing.T) {
+	client := newTestClient(t, http.NewServeMux())
+
+	if err := client.SetFlightTrackerConfig(&FlightTrackerConfig{Limit: "dez"}, nil); err == nil {
+		t.Error("expected a non-numeric field to be reported, as it is through the map")
+	}
+	if client.GetFlightTrackerConfig().Limit != "5000" {
+		t.Error("a rejected config must leave the current one untouched")
+	}
+}

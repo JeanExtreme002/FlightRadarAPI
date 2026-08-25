@@ -275,3 +275,21 @@ func TestJarClampsAnEnormousMaxAge(t *testing.T) {
 		}
 	}
 }
+
+func TestJarKeepsACookieScopedToADotlessHost(t *testing.T) {
+	// Domain=com is a TLD and must be refused; Domain=localhost from localhost
+	// is the host itself, and dropping it loses the session behind a proxy.
+	jar := newCookieJar()
+	jar.store(mustURL(t, "http://localhost/api"), []string{"session=abc; Domain=localhost; Path=/"})
+
+	if value, ok := jar.get("session"); !ok || value != "abc" {
+		t.Errorf("got %q, want the cookie kept", value)
+	}
+
+	jar.clear()
+	jar.store(mustURL(t, "https://www.flightradar24.com/"), []string{"leaky=1; Domain=com"})
+
+	if _, ok := jar.get("leaky"); ok {
+		t.Error("a bare TLD must still be refused")
+	}
+}

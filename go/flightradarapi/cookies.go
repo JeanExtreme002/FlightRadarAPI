@@ -265,8 +265,9 @@ func parseSetCookie(header string, target *url.URL, now time.Time) *storedCookie
 			domain := strings.ToLower(strings.TrimPrefix(value, "."))
 
 			// A dotless domain is a TLD: Domain=com would scope the cookie to
-			// every .com host requested later.
-			if strings.Contains(domain, ".") && domainMatches(host, domain) {
+			// every .com host requested later. One that is the host itself is
+			// not — "localhost" behind a proxy has to keep its session.
+			if (domain == host || strings.Contains(domain, ".")) && domainMatches(host, domain) {
 				cookie.domain = domain
 				cookie.hostOnly = false
 			} else {
