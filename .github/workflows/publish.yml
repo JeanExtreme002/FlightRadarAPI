@@ -11,8 +11,8 @@ on:
       target:
         description: 'Which package(s) to publish'
         type: choice
-        options: [both, pypi, npm]
-        default: both
+        options: [all, pypi, npm, go]
+        default: all
       dry_run:
         description: 'Build and validate only, without uploading'
         type: boolean
@@ -24,6 +24,9 @@ permissions:
 jobs:
   verify-versions:
     runs-on: ubuntu-latest
+    outputs:
+      # Read by tag-go-module when there is no release tag to take it from.
+      go: ${{ steps.versions.outputs.go }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
@@ -39,8 +42,8 @@ jobs:
           echo "Python: $py_version | npm: $npm_version | Go: $go_version"
 
       - name: Check versions are in sync
-        # The Go module is published by the release tag itself, so it has no
-        # upload job below — only this check keeps its version honest.
+        # The Go module has no registry upload below: the tag is its release,
+        # and this check is what keeps its version honest.
         run: |
           if [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.npm }}" ] \
             || [ "${{ steps.versions.outputs.python }}" != "${{ steps.versions.outputs.go }}" ]; then
@@ -59,8 +62,15 @@ jobs:
           fi
 
   tag-go-module:
-    needs: verify-versions
-    if: github.event_name == 'release'
+    needs: [verify-versions, publish-pypi, publish-npm]
+    # Last on purpose: the tag is the only step here that cannot be undone, and
+    # a registry that rejected the version must not be outlived by a module the
+    # proxy serves forever. A single-target dispatch skips the two publish jobs,
+    # and a skipped dependency would take this job with it — which is what the
+    # cancelled/failure pair is there to prevent.
+    if: >-
+      !cancelled() && !failure()
+      && (github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'go')
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Required to push the module tag
@@ -71,23 +81,89 @@ jobs:
 
       # A module in a subdirectory is released by a tag carrying that prefix, so
       # `go get .../go@latest` sees nothing without this.
+      #
+      # Run from a release, the tag points at the release's own tag. Run by hand
+      # it points at the dispatched commit, which is what releasing the Go
+      # module on its own means: the other two packages did not change, so there
+      # is no release tag to hang it from.
       - name: Tag the Go module
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DECLARED_VERSION: ${{ needs.verify-versions.outputs.go }}
+          DRY_RUN: ${{ github.event_name != 'release' && inputs.dry_run }}
         run: |
-          version="${TAG#v}"
+          # Reports in a dry run and refuses for real: a rehearsal has nothing
+          # to undo, so it must say what would happen rather than fail. Without
+          # this, the only way to try a dispatch change — from its own branch —
+          # dies at the first guard.
+          refuse() {
+            if [ "${DRY_RUN}" != "false" ]; then
+              echo "Would refuse: $1"
+              exit 0
+            fi
+            echo "::error::$1"
+            exit 1
+          }
+
+          if [ "${EVENT_NAME}" = "release" ]; then
+            version="${RELEASE_TAG#v}"
+            target="${RELEASE_TAG}"
+          else
+            version="${DECLARED_VERSION}"
+            target="${GITHUB_SHA}"
+          fi
+
           module_tag="go/v${version}"
-          if git rev-parse -q --verify "refs/tags/${module_tag}" >/dev/null; then
-            echo "${module_tag} already exists"
+
+          commit=$(git rev-parse -q --verify "${target}^{commit}") ||
+            refuse "${target} does not resolve to a commit in this checkout"
+
+          # Idempotent on the commit, not on the name: re-running a release, or
+          # publishing one after the module was tagged by hand, must not fail.
+          if existing=$(git rev-parse -q --verify "refs/tags/${module_tag}^{commit}"); then
+            if [ "${existing}" = "${commit}" ]; then
+              echo "${module_tag} already points at ${commit}"
+              exit 0
+            fi
+            refuse "${module_tag} exists at ${existing}, not ${commit} — a published version is immutable, bump go/flightradarapi/doc.go"
+          fi
+
+          # The tag has to carry the module, or the proxy caches an empty one.
+          git cat-file -e "${commit}:go/go.mod" 2>/dev/null ||
+            refuse "${target} carries no go/go.mod"
+
+          # A dispatch can be started from any branch, and the tag it leaves
+          # behind cannot be taken back.
+          if [ "${EVENT_NAME}" != "release" ]; then
+            git fetch -q origin main ||
+              refuse "could not read main to check the commit against it"
+
+            # Told apart deliberately: 1 means "not an ancestor", anything else
+            # is git failing, which must not read as an accusation about the
+            # commit. FETCH_HEAD, because the line above is what just wrote it.
+            status=0
+            git merge-base --is-ancestor "${commit}" FETCH_HEAD || status=$?
+
+            case "${status}" in
+              0) ;;
+              1) refuse "${commit} is not on main" ;;
+              *) refuse "could not compare ${commit} against main (git exited ${status})" ;;
+            esac
+          fi
+
+          if [ "${DRY_RUN}" != "false" ]; then
+            echo "Would tag ${module_tag} at ${commit}"
             exit 0
           fi
-          git tag "${module_tag}" "${TAG}"
+
+          git tag "${module_tag}" "${commit}"
           git push origin "${module_tag}"
-          echo "Pushed ${module_tag}"
+          echo "Pushed ${module_tag} at ${commit}"
 
   publish-pypi:
     needs: verify-versions
-    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'pypi'
+    if: github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'pypi'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -122,7 +198,7 @@ jobs:
 
   publish-npm:
     needs: verify-versions
-    if: github.event_name == 'release' || inputs.target == 'both' || inputs.target == 'npm'
+    if: github.event_name == 'release' || inputs.target == 'all' || inputs.target == 'npm'
     runs-on: ubuntu-latest
     environment: npm
     permissions:
