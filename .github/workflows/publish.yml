@@ -235,7 +235,7 @@ jobs:
         run: npm run test:offline
 
       - name: Validate package contents
-        run: npm publish --dry-run
+        run: npm pack --dry-run  # publish --dry-run on npm 12 refuses an already-published version
 
       - name: Publish to npm
         if: github.event_name == 'release' || inputs.dry_run == false
