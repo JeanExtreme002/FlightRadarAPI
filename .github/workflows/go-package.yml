@@ -29,13 +29,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ['1.25.x', '1.26.x']
+        go-version: ['1.26.x', '1.27.x']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true  # the toolcache lags patch releases govulncheck expects
           cache-dependency-path: go/go.sum
       - name: Download dependencies
         run: |
@@ -48,7 +49,7 @@ jobs:
       - name: Lint
         run: make lint
       - name: Static analysis
-        if: matrix.go-version == '1.26.x'
+        if: matrix.go-version == '1.26.x'  # staticcheck v0.8.1 cannot read Go 1.27 export data
         run: make lint-strict
       - name: Offline tests (PR gate)
         # Coverage threshold lives in the Makefile ($(COVERAGE_MIN)); raise it
@@ -64,7 +65,7 @@ jobs:
           command: cd go && make test-integration
         continue-on-error: ${{ github.event_name == 'push' }}
       - name: Vulnerability scan (shipped dependencies)
-        if: matrix.go-version == '1.26.x'
+        if: matrix.go-version == '1.27.x'
         run: make security
       - name: Verify the package builds as a dependency
         run: |

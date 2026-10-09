@@ -115,7 +115,7 @@ tidy:
 
 # Uses govulncheck, the same tool the CI workflow runs. A finding in the
 # standard library means the local toolchain is behind, not that this package
-# is: CI resolves 1.26.x to the newest patch and sees none.
+# is: CI resolves 1.27.x to the newest patch and sees none.
 .PHONY: security
 security:
 	@echo "$(GREEN)Running vulnerability scan (govulncheck)...$(NC)"
