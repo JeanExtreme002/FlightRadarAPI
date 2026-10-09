@@ -15,7 +15,7 @@ See more information at [Flightradar24's terms and conditions](https://www.fligh
 [![Npm](https://img.shields.io/npm/v/flightradarapi?logo=npm&color=red)](https://www.npmjs.com/package/flightradarapi)
 [![Node Version](https://img.shields.io/badge/node-18.17+-339933)](https://www.npmjs.com/package/flightradarapi)
 [![Go Reference](https://pkg.go.dev/badge/github.com/JeanExtreme002/FlightRadarAPI/go.svg)](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi)
-[![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8)](https://go.dev/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8)](https://go.dev/dl/)
 [![Downloads](https://static.pepy.tech/personalized-badge/flightradarapi?period=total&units=international_system&left_color=grey&right_color=orange&left_text=downloads)](https://pypi.org/project/FlightRadarAPI/)
 [![Frequency](https://img.shields.io/pypi/dm/flightradarapi?style=flat&label=frequency)](https://pypi.org/project/FlightRadarAPI/)
 
