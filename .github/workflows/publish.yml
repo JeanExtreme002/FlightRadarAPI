@@ -87,6 +87,7 @@ jobs:
       # module on its own means: the other two packages did not change, so there
       # is no release tag to hang it from.
       - name: Tag the Go module
+        id: tag
         env:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -124,6 +125,7 @@ jobs:
           if existing=$(git rev-parse -q --verify "refs/tags/${module_tag}^{commit}"); then
             if [ "${existing}" = "${commit}" ]; then
               echo "${module_tag} already points at ${commit}"
+              echo "version=v${version}" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             refuse "${module_tag} exists at ${existing}, not ${commit} — a published version is immutable, bump go/flightradarapi/doc.go"
@@ -160,6 +162,26 @@ jobs:
           git tag "${module_tag}" "${commit}"
           git push origin "${module_tag}"
           echo "Pushed ${module_tag} at ${commit}"
+          echo "version=v${version}" >> "$GITHUB_OUTPUT"
+
+      # Best effort: pkg.go.dev can miss a version the proxy already serves.
+      - name: Request the version on pkg.go.dev
+        if: >-
+          steps.tag.outputs.version != ''
+          && (github.event_name == 'release' || inputs.dry_run == false)
+        env:
+          MODULE: github.com/JeanExtreme002/FlightRadarAPI/go@${{ steps.tag.outputs.version }}
+        run: |
+          for attempt in $(seq 1 10); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://pkg.go.dev/fetch/${MODULE}" || true)
+            if [ "${status}" = "200" ]; then
+              echo "pkg.go.dev serves ${MODULE}"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: pkg.go.dev answered ${status}"
+            sleep 30
+          done
+          echo "::warning::pkg.go.dev did not confirm ${MODULE}; request it at https://pkg.go.dev/${MODULE}"
 
   publish-pypi:
     needs: verify-versions
