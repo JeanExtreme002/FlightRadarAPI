@@ -46,9 +46,12 @@ const Core = {
 
     apiAirportDataUrl: `${API_FR24_BASE}/airport.json`,
     airportDataUrl: (code) => `${FR24_BASE}/airports/traffic-stats/?airport=${code}`,
+    // The listing is split by country, and by state for the largest countries.
+    // These are Inertia pages: the data rides JSON-encoded in the data-page
+    // attribute of the HTML, or comes as the whole body when the request carries
+    // `inertiaHeaders` and the asset version the index page declares.
     airportsDataUrl: `${FR24_BASE}/data/airports`,
-    // Every airport in one payload; the per-country pages above are client-rendered.
-    airportsJsonUrl: `${FR24_BASE}/_json/airports.php`,
+    airportsByCountryUrl: (slug) => `${FR24_BASE}/data/airports/${slug}`,
 
     airlinesDataUrl: `${FR24_BASE}/data/airlines`,
 
@@ -72,6 +75,11 @@ const Core = {
     headers: baseHeaders,
     jsonHeaders: { accept: "application/json", ...baseHeaders },
     imageHeaders: { accept: "image/gif, image/jpg, image/jpeg, image/png", ...baseHeaders },
+    // Asks an Inertia page for its page object instead of the HTML around it.
+    // `x-inertia-version` must match the deployed assets or FR24 answers 409.
+    inertiaHeaders: {
+        "accept": "application/json", ...baseHeaders, "x-inertia": "true", "x-requested-with": "XMLHttpRequest",
+    },
     htmlHeaders: {
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "accept-encoding": "gzip, deflate, br",

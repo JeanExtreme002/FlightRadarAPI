@@ -1,0 +1,51 @@
+{
+    "component": "Data/AirportsByCountry",
+    "props": {
+        "errors": {},
+        "name": "Flightradar24 API",
+        "host": "www.flightradar24.com",
+        "locale": "en",
+        "route": {
+            "name": "web.data.airports.by-country",
+            "params": {
+                "country": "uruguay"
+            },
+            "query": []
+        },
+        "country": {
+            "id": 238,
+            "name": "Uruguay",
+            "slug": "uruguay"
+        },
+        "airports": [
+            {
+                "id": 787,
+                "name": "Colonia Laguna de Los Patos International Airport",
+                "city": "Colonia",
+                "iata": "CYR",
+                "icao": "SUCA",
+                "total": 8
+            },
+            {
+                "id": 2349,
+                "name": "Montevideo Carrasco International Airport",
+                "city": "Montevideo",
+                "iata": "MVD",
+                "icao": "SUMU",
+                "total": 632
+            }
+        ],
+        "airportImages": {
+            "SUMU": {
+                "thumbnail": "https://cdn.jetphotos.com/200/5/1.jpg",
+                "copyright": "Someone"
+            }
+        },
+        "busiestAirports": [],
+        "bestAirports": []
+    },
+    "url": "/data/airports/uruguay",
+    "version": "919b94d2a33f365a34f99828f6eeec6a",
+    "clearHistory": false,
+    "encryptHistory": false
+}

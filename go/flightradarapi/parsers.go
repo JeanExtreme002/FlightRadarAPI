@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"math"
 	"reflect"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -25,6 +23,16 @@ var numericPattern = regexp.MustCompile(`^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+
 // U+001C-U+001F and U+FEFF.
 const surroundingSpace = " \t\n\r\f\v"
 
+// airlineCodePattern is an airline code badge: a two-letter IATA code or a
+// three-letter ICAO code. ASCII only, so a stray Unicode letter does not pass
+// for a code.
+var airlineCodePattern = regexp.MustCompile(`^[A-Z0-9]{2,3}$`)
+
+// aircraftCountPattern is a fleet size as the page prints it: "340" or "3,878".
+var aircraftCountPattern = regexp.MustCompile(`^[0-9]{1,3}(?:[,.][0-9]{3})*$|^[0-9]+$`)
+
+const airlinesPathPrefix = "/data/airlines/"
+
 // Airline is one row of the airlines listing. The JSON tags match the keys the
 // Python and Node.js ports use, so NumAircrafts serialises as "n_aircrafts".
 type Airline struct {
@@ -35,6 +43,11 @@ type Airline struct {
 }
 
 // parseAirlinesHTML parses the airlines listing page into airline records.
+//
+// Every airline is a link to its data page, with the IATA and ICAO codes as
+// badges next to the name. The "Largest fleets" section repeats a few airlines
+// with their aircraft count; an airline the page lists twice becomes one entry
+// carrying everything the page said about it.
 func parseAirlinesHTML(page []byte) []Airline {
 	document, err := html.Parse(bytes.NewReader(page))
 
@@ -43,69 +56,112 @@ func parseAirlinesHTML(page []byte) []Airline {
 		return []Airline{}
 	}
 
-	tbody := findElement(document, func(node *html.Node) bool { return node.Data == "tbody" })
+	links := findElements(document, func(node *html.Node) bool {
+		return node.Data == "a" && strings.HasPrefix(attr(node, "href"), airlinesPathPrefix)
+	})
 
-	if tbody == nil {
-		log().Warn("parseAirlinesHTML: no <tbody> in response — FR24 page layout may have changed")
+	if len(links) == 0 {
+		log().Warn("parseAirlinesHTML: no airline links in response — FR24 page layout may have changed")
 		return []Airline{}
 	}
 
 	airlines := []Airline{}
+	indexByHref := map[string]int{}
 
-	for _, row := range findElements(tbody, func(node *html.Node) bool { return node.Data == "tr" }) {
-		cells := findElements(row, func(node *html.Node) bool { return node.Data == "td" })
-		notranslate := findElement(row, func(node *html.Node) bool {
-			return node.Data == "td" && hasClass(node, "notranslate")
-		})
-
-		if notranslate == nil {
-			continue
-		}
-
-		link := findElement(notranslate, func(node *html.Node) bool {
-			return node.Data == "a" && strings.HasPrefix(attr(node, "href"), "/data/airlines")
-		})
-
-		if link == nil {
-			continue
-		}
-
-		name := textContent(link)
+	for _, link := range links {
+		name := airlineName(link)
 
 		if len(name) < 2 {
 			continue
 		}
 
-		airline := Airline{Name: name}
+		var iata, icao string
 
-		if len(cells) >= 4 {
-			codes := textContent(cells[3])
-
+		for _, text := range leafTexts(link, "span") {
 			switch {
-			case strings.Contains(codes, " / "):
-				if parts := strings.Split(codes, " / "); len(parts) == 2 {
-					airline.IATA = strings.TrimSpace(parts[0])
-					airline.ICAO = strings.TrimSpace(parts[1])
-				}
-			case len(codes) == 2:
-				airline.IATA = codes
-			case len(codes) == 3:
-				airline.ICAO = codes
+			case !airlineCodePattern.MatchString(text):
+			case len(text) == 2 && iata == "":
+				iata = text
+			case len(text) == 3 && icao == "":
+				icao = text
 			}
 		}
 
-		if len(cells) >= 5 {
-			if text := textContent(cells[4]); text != "" {
-				field := strings.TrimSpace(strings.SplitN(text, " ", 2)[0])
+		// Section links ("All") point under /data/airlines/ too; a code tells
+		// an airline apart from them.
+		if iata == "" && icao == "" {
+			continue
+		}
 
-				if count, err := strconv.Atoi(field); err == nil {
-					airline.NumAircrafts = &count
+		var numAircrafts *int
+
+		for _, text := range leafTexts(link, "strong") {
+			if aircraftCountPattern.MatchString(text) {
+				digits := strings.Map(func(char rune) rune {
+					if char >= '0' && char <= '9' {
+						return char
+					}
+					return -1
+				}, text)
+
+				if count, err := strconv.Atoi(digits); err == nil {
+					numAircrafts = &count
+					break
 				}
 			}
 		}
-		airlines = append(airlines, airline)
+
+		href := attr(link, "href")
+		index, seen := indexByHref[href]
+
+		if !seen {
+			index = len(airlines)
+			indexByHref[href] = index
+			airlines = append(airlines, Airline{Name: name})
+		}
+
+		airline := &airlines[index]
+
+		if airline.ICAO == "" {
+			airline.ICAO = icao
+		}
+		if airline.IATA == "" {
+			airline.IATA = iata
+		}
+		if airline.NumAircrafts == nil {
+			airline.NumAircrafts = numAircrafts
+		}
 	}
 	return airlines
+}
+
+// airlineName is the airline name of a listing entry. The name sits in the
+// element titled with it, with the logo's aria-label as a fallback; the anchor
+// text also carries the codes and the fleet size.
+func airlineName(link *html.Node) string {
+	for _, attribute := range []string{"title", "aria-label"} {
+		element := findElement(link, func(node *html.Node) bool { return hasAttr(node, attribute) })
+
+		if element != nil {
+			return strings.TrimSpace(attr(element, attribute))
+		}
+	}
+	return textContent(link)
+}
+
+// leafTexts is the text of the `tag` elements under root that hold no other
+// element. The name element is left out by its title attribute: an airline
+// called "TAP" would otherwise read as an ICAO code.
+func leafTexts(root *html.Node, tag string) []string {
+	var texts []string
+
+	for _, element := range findElements(root, func(node *html.Node) bool { return node.Data == tag }) {
+		if hasAttr(element, "title") || findElement(element, func(*html.Node) bool { return true }) != nil {
+			continue
+		}
+		texts = append(texts, textContent(element))
+	}
+	return texts
 }
 
 // countryToSlug slugifies a country name the way FR24 spells it in its data page
@@ -214,49 +270,79 @@ func parseNumber(text string) *float64 {
 	return &number
 }
 
-// parseAirportsJSON parses the airports JSON feed into airports, keeping only
-// the wanted countries when any are given.
-func parseAirportsJSON(payload []byte, countries []Country) []*Airport {
-	decoder := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(payload, []byte("\xef\xbb\xbf"))))
+// parseInertiaPage returns the Inertia page object (component, props, version)
+// of a FR24 data page, or false when the payload carries none.
+//
+// Served as HTML, the page keeps it JSON-encoded in the data-page attribute of
+// its root element; asked with inertiaHeaders, FR24 sends it as the body, which
+// the caller has already decoded into a map. Both shapes are accepted, so a
+// test can feed the parser a decoded fixture the way the other ports do.
+func parseInertiaPage(payload any) (map[string]any, bool) {
+	var page any
 
-	// Numbers stay as text, so a literal no float64 can hold is rejected
-	// instead of silently becoming an infinity.
-	decoder.UseNumber()
+	switch typed := payload.(type) {
+	case map[string]any:
+		page = typed
+	case string:
+		return parseInertiaPage([]byte(typed))
+	case []byte:
+		document, err := html.Parse(bytes.NewReader(typed))
 
-	var data map[string]any
+		if err != nil {
+			log().Warn("parseInertiaPage: could not parse the response as HTML")
+			return nil, false
+		}
 
-	if err := decoder.Decode(&data); err != nil {
-		log().Warn("parseAirportsJSON: response is not valid JSON — FR24 feed may have changed")
-		return []*Airport{}
+		root := findElement(document, func(node *html.Node) bool { return hasAttr(node, "data-page") })
+
+		if root == nil {
+			log().Warn("parseInertiaPage: no data-page attribute in response — FR24 page layout may have changed")
+			return nil, false
+		}
+		if err := json.Unmarshal([]byte(attr(root, "data-page")), &page); err != nil {
+			log().Warn("parseInertiaPage: data-page is not valid JSON — FR24 page layout may have changed")
+			return nil, false
+		}
+	default:
+		page = payload
 	}
 
-	// Decode stops at the first value, so a truncated or spliced body would
-	// otherwise pass as valid. The Python and Node.js parsers reject it.
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		log().Warn("parseAirportsJSON: response carries data past the JSON body — FR24 feed may have changed")
-		return []*Airport{}
-	}
-
-	rows, ok := data["rows"].([]any)
+	object, ok := page.(map[string]any)
 
 	if !ok {
-		log().Warn(`parseAirportsJSON: no "rows" array in response — FR24 feed may have changed`)
-		return []*Airport{}
+		log().Warn("parseInertiaPage: no page props in response — FR24 page layout may have changed")
+		return nil, false
+	}
+	if _, ok := object["props"].(map[string]any); !ok {
+		log().Warn("parseInertiaPage: no page props in response — FR24 page layout may have changed")
+		return nil, false
+	}
+	return object, true
+}
+
+// airportsCountry is one entry of the airports index: the country name as FR24
+// prints it ("UNITED STATES") and the slug of its listing page, which is also
+// its Country constant.
+type airportsCountry struct {
+	Name string
+	Slug string
+}
+
+// parseAirportsIndex parses the airports index (endpoints.airportsData) into
+// its countries. The payload is the page HTML, or its decoded page object.
+func parseAirportsIndex(payload any) []airportsCountry {
+	page, ok := parseInertiaPage(payload)
+	var rows []any
+
+	if ok {
+		rows, _ = page["props"].(map[string]any)["airportsByCountry"].([]any)
+	}
+	if rows == nil {
+		log().Warn(`parseAirportsIndex: no "airportsByCountry" list in response — FR24 page layout may have changed`)
+		return []airportsCountry{}
 	}
 
-	var wanted map[string]bool
-
-	if countries != nil {
-		wanted = make(map[string]bool, len(countries))
-
-		for _, country := range countries {
-			wanted[countryToSlug(string(country))] = true
-		}
-	}
-
-	matched := make(map[string]bool, len(wanted))
-	var unpositioned []string
-	airports := []*Airport{}
+	countries := []airportsCountry{}
 
 	for _, entry := range rows {
 		row, ok := entry.(map[string]any)
@@ -265,58 +351,63 @@ func parseAirportsJSON(payload []byte, countries []Country) []*Airport {
 			continue
 		}
 
-		// Slugified only when filtering: this loop runs over every airport in
-		// the feed.
-		if wanted != nil {
-			slug := countryToSlug(toText(row["country"]))
+		name := toText(row["name"])
+		slug := countryToSlug(name)
 
-			if !wanted[slug] {
-				continue
-			}
-			matched[slug] = true
+		if slug != "" {
+			countries = append(countries, airportsCountry{Name: name, Slug: slug})
 		}
+	}
+	return countries
+}
 
-		latitude := toNumber(row["lat"])
-		longitude := toNumber(row["lon"])
+// parseAirportsPage parses a country or state airports page into its airports
+// and the paths of its state pages. The payload is the page HTML, or its
+// decoded page object.
+//
+// A country with many airports lists its states instead, each with the path of
+// its own page; those paths come back for the caller to fetch. The listing has
+// no coordinates or altitude: [Client.GetAirport] has them for one airport.
+func parseAirportsPage(payload any) (airports []*Airport, statePaths []string) {
+	airports, statePaths = []*Airport{}, []string{}
+	page, ok := parseInertiaPage(payload)
 
-		// One bad coordinate drops both: half a position reads as located.
-		if latitude == nil || longitude == nil {
-			latitude, longitude = nil, nil
-			unpositioned = append(unpositioned, toText(row["name"]))
+	if !ok {
+		return airports, statePaths
+	}
+
+	props := page["props"].(map[string]any)
+	country, _ := props["country"].(map[string]any)
+	countryName := toText(country["name"])
+
+	rows, _ := props["airports"].([]any)
+	states, _ := props["states"].([]any)
+
+	for _, entry := range rows {
+		row, ok := entry.(map[string]any)
+
+		if !ok {
+			continue
 		}
-
 		airports = append(airports, newAirportFromBasicInfo(basicAirportInfo{
-			Name:      toText(row["name"]),
-			ICAO:      toText(row["icao"]),
-			IATA:      toText(row["iata"]),
-			Latitude:  latitude,
-			Longitude: longitude,
-			Altitude:  toNumber(row["alt"]),
-			Country:   toText(row["country"]),
+			Name:    toText(row["name"]),
+			ICAO:    toText(row["icao"]),
+			IATA:    toText(row["iata"]),
+			Country: countryName,
 		}))
 	}
 
-	// One line, not one per row: the feed carries every airport.
-	if len(unpositioned) > 0 {
-		log().Warn("parseAirportsJSON: airports with unusable coordinates carry no position",
-			"count", len(unpositioned), "examples", unpositioned[:min(3, len(unpositioned))])
-	}
+	for _, entry := range states {
+		state, ok := entry.(map[string]any)
 
-	if wanted != nil {
-		var missing []string
-
-		for slug := range wanted {
-			if !matched[slug] {
-				missing = append(missing, slug)
-			}
+		if !ok {
+			continue
 		}
-		if len(missing) > 0 {
-			slices.Sort(missing)
-			log().Warn("parseAirportsJSON: no airports found for some countries — check the Country constants",
-				"countries", strings.Join(missing, ", "))
+		if path := toText(state["url"]); path != "" {
+			statePaths = append(statePaths, path)
 		}
 	}
-	return airports
+	return airports, statePaths
 }
 
 // --- HTML helpers ---
@@ -350,8 +441,15 @@ func attr(node *html.Node, name string) string {
 	return ""
 }
 
-func hasClass(node *html.Node, name string) bool {
-	return slices.Contains(strings.Fields(attr(node, "class")), name)
+// hasAttr reports whether the element carries the attribute at all, which
+// attr cannot tell from an empty value.
+func hasAttr(node *html.Node, name string) bool {
+	for _, attribute := range node.Attr {
+		if attribute.Key == name {
+			return true
+		}
+	}
+	return false
 }
 
 // textContent concatenates the node's text, trimming each piece, as

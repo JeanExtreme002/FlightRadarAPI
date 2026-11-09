@@ -36,6 +36,12 @@ You can fetch various types of data using the following methods:
     airports = fr_api.get_airports(...)  # Returns a list of Airport objects
     ```
 
+    FR24 lists airports one page per country (and per state for the largest
+    countries), so this makes one request per page: a handful for a few
+    countries, a few hundred for every airport, `max_workers` at a time. The
+    listing carries the name, codes and country only; use `get_airport(code)`
+    for the position and altitude of an airport.
+
 - **Airlines list:**
 
     ```python

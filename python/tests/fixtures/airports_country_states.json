@@ -1,0 +1,41 @@
+{
+    "component": "Data/AirportsByCountry",
+    "props": {
+        "errors": {},
+        "name": "Flightradar24 API",
+        "host": "www.flightradar24.com",
+        "locale": "en",
+        "route": {
+            "name": "web.data.airports.by-country",
+            "params": {
+                "country": "brazil"
+            },
+            "query": []
+        },
+        "country": {
+            "id": 32,
+            "name": "Brazil",
+            "slug": "brazil"
+        },
+        "states": [
+            {
+                "code": "RJ",
+                "name": "Rio de Janeiro",
+                "total": 1,
+                "url": "/data/airports/brazil/rj"
+            },
+            {
+                "code": "SP",
+                "name": "Sao Paulo",
+                "total": 2,
+                "url": "/data/airports/brazil/sp"
+            }
+        ],
+        "busiestAirports": [],
+        "bestAirports": []
+    },
+    "url": "/data/airports/brazil",
+    "version": "919b94d2a33f365a34f99828f6eeec6a",
+    "clearHistory": false,
+    "encryptHistory": false
+}

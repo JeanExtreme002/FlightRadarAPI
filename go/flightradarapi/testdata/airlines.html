@@ -1,60 +1,72 @@
-<html><body>
-<table>
-  <tbody>
-    <tr>
-      <td class="notranslate">
-        <a href="/data/airlines/lan-lan">LATAM Airlines</a>
-      </td>
-      <td>x</td>
-      <td>x</td>
-      <td>LA / LAN</td>
-      <td>340 aircraft</td>
-    </tr>
-    <tr>
-      <td class="notranslate">
-        <a href="/data/airlines/glo-gol">Gol</a>
-      </td>
-      <td>x</td>
-      <td>x</td>
-      <td>G3 / GLO</td>
-      <td>140 aircraft</td>
-    </tr>
-    <tr>
-      <td class="notranslate">
-        <a href="/data/airlines/dal-delta">Delta Air Lines</a>
-      </td>
-      <td>x</td>
-      <td>x</td>
-      <td>DL / DAL</td>
-      <td>900 aircraft</td>
-    </tr>
-    <tr>
-      <td class="notranslate">
-        <a href="/data/airlines/short-only-iata">Sky2</a>
-      </td>
-      <td>x</td>
-      <td>x</td>
-      <td>SK</td>
-      <td>10 aircraft</td>
-    </tr>
-    <tr>
-      <td class="notranslate">
-        <a href="/data/airlines/short-only-icao">SkyTeam</a>
-      </td>
-      <td>x</td>
-      <td>x</td>
-      <td>SKT</td>
-      <td>15 aircraft</td>
-    </tr>
-    <tr>
-      <!-- row with no notranslate td: must be skipped -->
-      <td>placeholder</td>
-    </tr>
-    <tr>
-      <td class="notranslate">
-        <a href="/wrong-link">Should Skip</a>
-      </td>
-    </tr>
-  </tbody>
-</table>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Airlines - Flightradar24</title></head>
+<body>
+<section aria-labelledby="largest-fleets-title">
+  <header>
+    <h2 id="largest-fleets-title">Largest fleets</h2>
+    <a href="/data/airlines/largest-fleets"><span>All</span></a>
+  </header>
+  <ul>
+    <li><a href="/data/airlines/dl-dal">
+      <div aria-label="Delta Air Lines" role="img" style="background-image:url(https://cdn.flightradar24.com/assets/airlines/logotypes/32.png);" aria-hidden="true"></div>
+      <span><span title="Delta Air Lines">Delta Air Lines</span>
+        <span><span><span><span>DL</span></span><span id="v-1-description" hidden>Airline IATA code</span></span>
+        <span><span><span>DAL</span></span><span id="v-2-description" hidden>Airline ICAO code</span></span></span></span>
+      <span><span><strong>1,900</strong><span>aircraft</span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/la-lan">
+      <div aria-label="LATAM Airlines" role="img" aria-hidden="true"></div>
+      <span><span title="LATAM Airlines">LATAM Airlines</span>
+        <span><span><span><span>LA</span></span><span id="v-3-description" hidden>Airline IATA code</span></span>
+        <span><span><span>LAN</span></span><span id="v-4-description" hidden>Airline ICAO code</span></span></span></span>
+      <span><span><strong>340</strong><span>aircraft</span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/g3-glo">
+      <div aria-label="Gol" role="img" aria-hidden="true"></div>
+      <span><span title="Gol">Gol</span>
+        <span><span><span><span>G3</span></span><span id="v-5-description" hidden>Airline IATA code</span></span>
+        <span><span><span>GLO</span></span><span id="v-6-description" hidden>Airline ICAO code</span></span></span></span>
+      <span><span><strong>140</strong><span>aircraft</span></span></span>
+    </a></li>
+  </ul>
+</section>
+<section aria-labelledby="all-airlines-title">
+  <h2 id="all-airlines-title">All airlines</h2>
+  <ul>
+    <li><a href="/data/airlines/dl-dal">
+      <div aria-label="Delta Air Lines" role="img" aria-hidden="true"></div>
+      <span><span title="Delta Air Lines">Delta Air Lines</span>
+        <span><span><span><span>DL</span></span><span id="v-7-description" hidden>Airline IATA code</span></span>
+        <span><span><span>DAL</span></span><span id="v-8-description" hidden>Airline ICAO code</span></span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/g3-glo">
+      <div aria-label="Gol" role="img" aria-hidden="true"></div>
+      <span><span title="Gol">Gol</span>
+        <span><span><span><span>G3</span></span><span id="v-9-description" hidden>Airline IATA code</span></span>
+        <span><span><span>GLO</span></span><span id="v-10-description" hidden>Airline ICAO code</span></span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/sk">
+      <div aria-label="Sky2" role="img" aria-hidden="true"></div>
+      <span><span title="Sky2">Sky2</span>
+        <span><span><span><span>SK</span></span><span id="v-11-description" hidden>Airline IATA code</span></span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/skt">
+      <div aria-label="SkyTeam" role="img" aria-hidden="true"></div>
+      <span><span title="SkyTeam">SkyTeam</span>
+        <span><span><span><span>SKT</span></span><span id="v-12-description" hidden>Airline ICAO code</span></span></span></span>
+    </a></li>
+    <li><a href="/data/airlines/tap">
+      <!-- the name is a code-shaped word: the title attribute, not the badge regex, must win -->
+      <div aria-label="TAP" role="img" aria-hidden="true"></div>
+      <span><span title="TAP">TAP</span>
+        <span><span><span><span>TP</span></span><span id="v-13-description" hidden>Airline IATA code</span></span>
+        <span><span><span>TAP</span></span><span id="v-14-description" hidden>Airline ICAO code</span></span></span></span>
+    </a></li>
+    <li><!-- an entry with no link at all: must be skipped --><span>placeholder</span></li>
+    <li><a href="/wrong-link"><span title="Should Skip">Should Skip</span><span><span>WS</span></span></a></li>
+    <li><a href="/data/airlines/x"><span title="X">X</span><span><span>XX</span></span></a></li>
+  </ul>
+</section>
+</body>
+</html>

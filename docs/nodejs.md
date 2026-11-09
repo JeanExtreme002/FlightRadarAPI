@@ -36,6 +36,12 @@ You can fetch various types of data using the following methods:
     let airports = await frApi.getAirports(...);  // Returns a list of Airport objects
     ```
 
+    FR24 lists airports one page per country (and per state for the largest
+    countries), so this makes one request per page: a handful for a few
+    countries, a few hundred for every airport, `maxWorkers` at a time. The
+    listing carries the name, codes and country only; use `getAirport(code)`
+    for the position and altitude of an airport.
+
 - **Airlines list:**
 
     ```javascript

@@ -1,16 +1,22 @@
 package flightradarapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -48,7 +54,8 @@ func testEndpoints(base string) endpoints {
 		historicalData:            base + "/download/?flight=%s&file=%s&trailLimit=0&history=%d",
 		apiAirportData:            base + "/common/v1/airport.json",
 		airportData:               base + "/airports/traffic-stats/?airport=%s",
-		airportsJSON:              base + "/_json/airports.php",
+		airportsData:              base + "/data/airports",
+		airportsByCountry:         base + "/data/airports/%s",
 		airportDisruption:         base + "/webapi/v1/airport-disruptions",
 		airlinesData:              base + "/data/airlines",
 		volcanicEruptionData:      base + "/weather/volcanic",
@@ -97,54 +104,399 @@ func TestGetAirlinesParsesTheListingPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(airlines) != 5 {
-		t.Errorf("got %d airlines, want 5", len(airlines))
+	if len(airlines) != 6 {
+		t.Errorf("got %d airlines, want 6", len(airlines))
 	}
 }
 
-func TestGetAirportsFiltersByCountry(t *testing.T) {
+// --- GetAirports ---
+//
+// FR24 lists airports one Inertia page per country, and per state for the
+// largest countries. These tests pin down which pages the crawl asks for and
+// how it reads them, against the bundled fixtures, mirroring
+// python/tests/test_airports_offline.py.
+
+// Every page the fixtures model, by the path FR24 serves it at.
+var airportPages = map[string]string{
+	"/data/airports":               "airports_index.html",
+	"/data/airports/uruguay":       "airports_country.json",
+	"/data/airports/brazil":        "airports_country_states.json",
+	"/data/airports/brazil/sp":     "airports_state_sp.json",
+	"/data/airports/brazil/rj":     "airports_state_rj.json",
+	"/data/airports/myanmar-burma": "airports_country.html",
+}
+
+const fixtureAssetVersion = "919b94d2a33f365a34f99828f6eeec6a"
+
+// airportsCall is one request the fake FR24 saw.
+type airportsCall struct {
+	path    string
+	headers http.Header
+}
+
+// airportsServer serves the fixture pages the way FR24 does. A request carrying
+// the inertia headers gets the page JSON when the version matches and a 409
+// otherwise; a plain request gets the HTML. The index page only exists as HTML,
+// like the real one as the crawl fetches it.
+type airportsServer struct {
+	t       *testing.T
+	version string
+
+	mu    sync.Mutex
+	calls []airportsCall
+}
+
+func newAirportsServer(t *testing.T, version string) *airportsServer {
+	t.Helper()
+	return &airportsServer{t: t, version: version}
+}
+
+func (s *airportsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	s.calls = append(s.calls, airportsCall{path: r.URL.Path, headers: r.Header.Clone()})
+	s.mu.Unlock()
+
+	fixture, ok := airportPages[r.URL.Path]
+
+	if !ok {
+		fixture = "airports_index.html"
+	}
+
+	if r.Header.Get("X-Inertia") == "true" {
+		if r.Header.Get("X-Inertia-Version") != s.version {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		if strings.HasSuffix(fixture, ".json") {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(loadFixture(s.t, fixture))
+			return
+		}
+
+		page, ok := parseInertiaPage(loadFixture(s.t, fixture))
+
+		if !ok {
+			s.t.Errorf("fixture %s carries no page object", fixture)
+		}
+		writeJSON(s.t, w, page)
+		return
+	}
+
+	if strings.HasSuffix(fixture, ".json") {
+		fixture = strings.TrimSuffix(fixture, ".json") + ".html"
+
+		if _, err := os.Stat(filepath.Join("testdata", fixture)); err != nil {
+			fixture = "airports_country.html"
+		}
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(loadFixture(s.t, fixture))
+}
+
+// paths are the paths requested so far, in order.
+func (s *airportsServer) paths() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	paths := make([]string, 0, len(s.calls))
+
+	for _, call := range s.calls {
+		paths = append(paths, call.path)
+	}
+	return paths
+}
+
+func (s *airportsServer) call(index int) airportsCall {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls[index]
+}
+
+// newSerialAirportsClient wires a client to the fake, one request at a time, so
+// the order of the requests is the order of the crawl rather than the order the
+// goroutines happened to run in.
+func newSerialAirportsClient(t *testing.T, server *airportsServer) *Client {
+	t.Helper()
+	client := newTestClient(t, server)
+	client.MaxWorkers = 1
+	return client
+}
+
+func TestGetAirportsCrawlsTheCountryThenItsStates(t *testing.T) {
+	server := newAirportsServer(t, fixtureAssetVersion)
+
+	airports, err := newSerialAirportsClient(t, server).GetAirports(context.Background(), []Country{CountryBrazil})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := iatas(airports); !slices.Equal(got, []string{"GIG", "GRU", "CGH"}) {
+		t.Errorf("got %v, want GIG, GRU, CGH", got)
+	}
+	for _, airport := range airports {
+		if airport.Country != "Brazil" {
+			t.Errorf("%s: got country %q, want Brazil", airport.IATA, airport.Country)
+		}
+	}
+
+	want := []string{"/data/airports", "/data/airports/brazil", "/data/airports/brazil/rj", "/data/airports/brazil/sp"}
+
+	if got := server.paths(); !slices.Equal(got, want) {
+		t.Errorf("got requests %v, want %v", got, want)
+	}
+}
+
+func TestGetAirportsAsksForThePageJSONWithTheIndexVersion(t *testing.T) {
+	server := newAirportsServer(t, fixtureAssetVersion)
+
+	if _, err := newTestClient(t, server).GetAirports(context.Background(), []Country{CountryUruguay}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := server.paths(); !slices.Equal(got, []string{"/data/airports", "/data/airports/uruguay"}) {
+		t.Fatalf("got requests %v, want the index then the country", got)
+	}
+
+	index, country := server.call(0), server.call(1)
+
+	if index.headers.Get("X-Inertia") != "" || !strings.Contains(index.headers.Get("Accept"), "text/html") {
+		t.Errorf("index: got headers %v, want the html headers", index.headers)
+	}
+	if country.headers.Get("X-Inertia") != "true" || country.headers.Get("X-Inertia-Version") != fixtureAssetVersion {
+		t.Errorf("country: got headers %v, want the inertia headers with the index version", country.headers)
+	}
+	if country.headers.Get("X-Requested-With") != "XMLHttpRequest" || country.headers.Get("Accept") != "application/json" {
+		t.Errorf("country: got headers %v, want an XMLHttpRequest for JSON", country.headers)
+	}
+}
+
+func TestGetAirportsFallsBackToHTMLWhenTheAssetsWereRedeployed(t *testing.T) {
+	server := newAirportsServer(t, "something-newer")
+
+	airports, err := newTestClient(t, server).GetAirports(context.Background(), []Country{"uruguay"})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The index answered with a stale version, the JSON request got a 409 and
+	// the HTML page was read instead.
+	if len(airports) != 1 {
+		t.Errorf("got %d airports, want the one on the HTML page", len(airports))
+	}
+
+	want := []string{"/data/airports", "/data/airports/uruguay", "/data/airports/uruguay"}
+
+	if got := server.paths(); !slices.Equal(got, want) {
+		t.Fatalf("got requests %v, want %v", got, want)
+	}
+
+	retry := server.call(2).headers
+
+	if retry.Get("X-Inertia") != "" || !strings.Contains(retry.Get("Accept"), "text/html") {
+		t.Errorf("got headers %v, want the html headers", retry)
+	}
+}
+
+func TestGetAirportsReadsTheHTMLWhenTheIndexDeclaresNoVersion(t *testing.T) {
+	// An index with no page object leaves the crawl without a version, so it
+	// asks for the HTML straight away rather than fishing for a 409.
 	mux := http.NewServeMux()
-	mux.HandleFunc("/_json/airports.php", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(loadFixture(t, "airports.json"))
+	server := newAirportsServer(t, fixtureAssetVersion)
+	mux.HandleFunc("/data/airports", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<html><body>maintenance</body></html>"))
 	})
+	mux.Handle("/data/airports/", server)
 
-	client := newTestClient(t, mux)
-	airports, err := client.GetAirports(context.Background(), []Country{CountryBrazil})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(airports) != 4 {
-		t.Errorf("got %d Brazilian airports, want 4", len(airports))
-	}
-
-	every, err := client.GetAirports(context.Background(), nil)
+	airports, err := newTestClient(t, mux).GetAirports(context.Background(), []Country{CountryMyanmarBurma})
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(every) != 8 {
-		t.Errorf("got %d airports for nil, want all 8", len(every))
+	if got := iatas(airports); !slices.Equal(got, []string{"RGN"}) {
+		t.Errorf("got %v, want RGN", got)
+	}
+	if got := server.paths(); !slices.Equal(got, []string{"/data/airports/myanmar-burma"}) {
+		t.Fatalf("got requests %v, want the country page once", got)
+	}
+	if headers := server.call(0).headers; headers.Get("X-Inertia") != "" {
+		t.Errorf("got headers %v, want the html headers", headers)
+	}
+}
+
+func TestGetAirportsWithoutCountriesWalksTheWholeIndex(t *testing.T) {
+	server := newAirportsServer(t, fixtureAssetVersion)
+
+	airports, err := newSerialAirportsClient(t, server).GetAirports(context.Background(), nil)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := iatas(airports); !slices.Equal(got, []string{"GIG", "GRU", "CGH", "RGN", "CYR", "MVD"}) {
+		t.Errorf("got %v, want every airport grouped by country", got)
+	}
+
+	want := []string{
+		"/data/airports",
+		"/data/airports/brazil", "/data/airports/myanmar-burma", "/data/airports/uruguay",
+		"/data/airports/brazil/rj", "/data/airports/brazil/sp",
+	}
+
+	if got := server.paths(); !slices.Equal(got, want) {
+		t.Errorf("got requests %v, want %v", got, want)
+	}
+}
+
+func TestGetAirportsGroupsByCountryWhateverOrderThePagesArriveIn(t *testing.T) {
+	server := newAirportsServer(t, fixtureAssetVersion)
+	client := newTestClient(t, server)
+	client.MaxWorkers = 16
+
+	// Repeated so a scheduling order that happens to match does not pass it.
+	for range 5 {
+		airports, err := client.GetAirports(context.Background(), []Country{CountryUruguay, CountryBrazil, CountryMyanmarBurma})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := iatas(airports); !slices.Equal(got, []string{"CYR", "MVD", "GIG", "GRU", "CGH", "RGN"}) {
+			t.Fatalf("got %v, want the countries in the order asked for", got)
+		}
+	}
+}
+
+func TestGetAirportsAcceptsMixedSpellingsAndDropsRepeats(t *testing.T) {
+	server := newAirportsServer(t, fixtureAssetVersion)
+
+	airports, err := newTestClient(t, server).GetAirports(context.Background(),
+		[]Country{"Uruguay", CountryUruguay, "uruguay", ""})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := iatas(airports); !slices.Equal(got, []string{"CYR", "MVD"}) {
+		t.Errorf("got %v, want CYR and MVD once", got)
+	}
+	if got := server.paths(); !slices.Equal(got, []string{"/data/airports", "/data/airports/uruguay"}) {
+		t.Errorf("got requests %v, want the country page once", got)
 	}
 }
 
 func TestGetAirportsWithAnEmptyFilterMakesNoRequest(t *testing.T) {
-	var calls atomic.Int32
-	mux := http.NewServeMux()
-	mux.HandleFunc("/_json/airports.php", func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(loadFixture(t, "airports.json"))
-	})
+	server := newAirportsServer(t, fixtureAssetVersion)
 
-	airports, err := newTestClient(t, mux).GetAirports(context.Background(), []Country{})
+	airports, err := newTestClient(t, server).GetAirports(context.Background(), []Country{})
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(airports) != 0 || calls.Load() != 0 {
-		t.Errorf("got %d airports after %d calls, want neither", len(airports), calls.Load())
+	if airports == nil || len(airports) != 0 || len(server.paths()) != 0 {
+		t.Errorf("got %v after %v, want an empty slice and no request", airports, server.paths())
+	}
+}
+
+func TestGetAirportsUnknownCountryReturnsNothingAndWarns(t *testing.T) {
+	var logged bytes.Buffer
+	SetLogger(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { SetLogger(nil) })
+
+	server := newAirportsServer(t, fixtureAssetVersion)
+	airports, err := newTestClient(t, server).GetAirports(context.Background(), []Country{"atlantis"})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if airports == nil || len(airports) != 0 {
+		t.Errorf("got %v, want an empty slice", airports)
+	}
+
+	output := logged.String()
+
+	if !strings.Contains(output, "level=WARN") || !strings.Contains(output, "no airports found") ||
+		!strings.Contains(output, "atlantis") {
+		t.Errorf("got %q, want a warning naming atlantis", output)
+	}
+}
+
+func TestGetAirportsFailsWhenAPageCannotBeFetched(t *testing.T) {
+	mux := http.NewServeMux()
+	server := newAirportsServer(t, fixtureAssetVersion)
+	mux.Handle("/", server)
+	mux.HandleFunc("/data/airports/brazil/sp", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	_, err := newTestClient(t, mux).GetAirports(context.Background(), []Country{CountryBrazil})
+	var statusErr *StatusError
+
+	if !errors.As(err, &statusErr) || statusErr.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("got %v, want the 500 reported", err)
+	}
+}
+
+func TestGetAirportsFailsWhenTheIndexCannotBeFetched(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/data/airports", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+
+	if _, err := newTestClient(t, mux).GetAirports(context.Background(), nil); err == nil {
+		t.Fatal("got no error, want the 503 reported")
+	}
+}
+
+func TestGetAirportsRejectsAMalformedPageJSON(t *testing.T) {
+	mux := http.NewServeMux()
+	server := newAirportsServer(t, fixtureAssetVersion)
+	mux.Handle("/", server)
+	mux.HandleFunc("/data/airports/uruguay", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"component": "Data/AirportsByCountry", "props": `))
+	})
+
+	_, err := newTestClient(t, mux).GetAirports(context.Background(), []Country{CountryUruguay})
+
+	if !errors.Is(err, ErrFlightRadar) || !strings.Contains(err.Error(), "could not parse the JSON body") {
+		t.Fatalf("got %v, want the malformed body reported", err)
+	}
+}
+
+func TestGetAirportsTreatsAPageJSONThatIsNotAnObjectAsEmpty(t *testing.T) {
+	mux := http.NewServeMux()
+	server := newAirportsServer(t, fixtureAssetVersion)
+	mux.Handle("/", server)
+	mux.HandleFunc("/data/airports/uruguay", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`null`))
+	})
+
+	airports, err := newTestClient(t, mux).GetAirports(context.Background(), []Country{CountryUruguay})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(airports) != 0 {
+		t.Errorf("got %d airports, want none", len(airports))
+	}
+}
+
+func TestGetAirportsResolvesStatePathsAgainstTheCountryPage(t *testing.T) {
+	// FR24 prints state paths without a host; an absolute URL must survive too.
+	base := "https://www.flightradar24.com/data/airports/brazil"
+
+	cases := map[string]string{
+		"/data/airports/brazil/sp":                        "https://www.flightradar24.com/data/airports/brazil/sp",
+		"https://www.flightradar24.com/data/airports/x/y": "https://www.flightradar24.com/data/airports/x/y",
+		"rj":          "https://www.flightradar24.com/data/airports/rj",
+		"::not a url": "::not a url",
+	}
+
+	for reference, want := range cases {
+		if got := resolveReference(base, reference); got != want {
+			t.Errorf("%q: got %q, want %q", reference, got, want)
+		}
+	}
+	if got := resolveReference("::broken base", "/data/airports/brazil/sp"); got != "/data/airports/brazil/sp" {
+		t.Errorf("got %q, want the path as given", got)
 	}
 }
 
