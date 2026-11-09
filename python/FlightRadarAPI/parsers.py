@@ -2,86 +2,111 @@
 
 import json
 import logging
-import math
 import re
 import unicodedata
 from enum import Enum
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from .entities.airport import Airport
 
 _logger = logging.getLogger(__name__)
 
-# ASCII only: \d would otherwise match Unicode digits such as "٤٣".
-NUMERIC_PATTERN = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$", re.ASCII)
+# An airline code badge: a two-letter IATA code or a three-letter ICAO code.
+# ASCII only, so a stray Unicode letter does not pass for a code.
+AIRLINE_CODE_PATTERN = re.compile(r"^[A-Z0-9]{2,3}$", re.ASCII)
 
-# str.strip() and trim() disagree on U+001C-U+001F and U+FEFF: pick one set.
-SURROUNDING_SPACE = " \t\n\r\f\v"
+# A fleet size as the page prints it: "340" or "3,878".
+AIRCRAFT_COUNT_PATTERN = re.compile(r"^\d{1,3}(?:[,.]\d{3})*$|^\d+$", re.ASCII)
 
-# Number.MAX_SAFE_INTEGER, the largest integer JavaScript holds exactly.
-MAX_EXACT_INTEGER = 2 ** 53 - 1
+AIRLINES_PATH_PREFIX = "/data/airlines/"
+
+
+def _is_airline_link(href: object) -> bool:
+    return isinstance(href, str) and href.startswith(AIRLINES_PATH_PREFIX)
+
+
+def _leaf_texts(root: Tag, tag: str) -> List[str]:
+    """
+    Text of the `tag` elements under `root` that hold no other element.
+
+    The name element is left out by its `title` attribute: an airline called
+    "TAP" would otherwise read as an ICAO code.
+    """
+    return [
+        element.get_text(strip=True)
+        for element in root.find_all(tag)
+        if element.find() is None and not element.has_attr("title")
+    ]
+
+
+def _airline_name(link: Tag) -> str:
+    """
+    The airline name of a listing entry.
+
+    The name sits in the element titled with it, with the logo's aria-label as a
+    fallback; the anchor text also carries the codes and the fleet size.
+    """
+    for attribute in ("title", "aria-label"):
+        element = link.find(lambda tag, name=attribute: tag.has_attr(name))
+
+        if isinstance(element, Tag):
+            return str(element[attribute]).strip()
+
+    return link.get_text(strip=True)
 
 
 def parse_airlines_html(html: bytes) -> List[Dict]:
     """
-    Parse the airlines listing HTML page into a list of airline dicts.
+    Parse the airlines listing page into a list of airline dicts.
+
+    Every airline is a link to its data page, with the IATA and ICAO codes as
+    badges next to the name. The "Largest fleets" section repeats a few airlines
+    with their aircraft count; an airline the page lists twice becomes one entry
+    carrying everything the page said about it.
     """
     soup = BeautifulSoup(html, "html.parser")
-    tbody = soup.find("tbody")
+    links = soup.find_all("a", href=_is_airline_link)
 
-    if not tbody:
+    if not links:
         _logger.warning(
-            "parse_airlines_html: no <tbody> in response — FR24 page layout may have changed."
+            "parse_airlines_html: no airline links in response — FR24 page layout may have changed."
         )
         return []
 
-    airlines = []
+    airlines: Dict[str, Dict] = {}
 
-    for tr in tbody.find_all("tr"):
-        td_notranslate = tr.find("td", class_="notranslate")
+    for link in links:
+        name = _airline_name(link)
 
-        if not td_notranslate:
+        if len(name) < 2:
             continue
 
-        a_element = td_notranslate.find("a", href=lambda href: href and href.startswith("/data/airlines"))
+        codes = [text for text in _leaf_texts(link, "span") if AIRLINE_CODE_PATTERN.match(text)]
+        iata = next((code for code in codes if len(code) == 2), None)
+        icao = next((code for code in codes if len(code) == 3), None)
 
-        if not a_element:
+        # Section links ("All") point under /data/airlines/ too; a code tells
+        # an airline apart from them.
+        if iata is None and icao is None:
             continue
 
-        airline_name = a_element.get_text(strip=True)
+        n_aircrafts = next(
+            (int(re.sub(r"\D", "", text)) for text in _leaf_texts(link, "strong") if AIRCRAFT_COUNT_PATTERN.match(text)),
+            None,
+        )
 
-        if len(airline_name) < 2:
-            continue
+        airline = airlines.setdefault(
+            str(link["href"]), {"Name": name, "ICAO": None, "IATA": None, "n_aircrafts": None},
+        )
 
-        td_elements = tr.find_all("td")
-        iata = None
-        icao = None
+        for key, value in (("ICAO", icao), ("IATA", iata), ("n_aircrafts", n_aircrafts)):
+            if airline[key] is None:
+                airline[key] = value
 
-        if len(td_elements) >= 4:
-            codes_text = td_elements[3].get_text(strip=True)
-
-            if " / " in codes_text:
-                parts = codes_text.split(" / ")
-                if len(parts) == 2:
-                    iata = parts[0].strip()
-                    icao = parts[1].strip()
-            elif len(codes_text) == 2:
-                iata = codes_text
-            elif len(codes_text) == 3:
-                icao = codes_text
-
-        n_aircrafts = None
-
-        if len(td_elements) >= 5:
-            aircrafts_text = td_elements[4].get_text(strip=True)
-            if aircrafts_text:
-                n_aircrafts = int(aircrafts_text.split(" ", maxsplit=1)[0].strip())
-
-        airlines.append({"Name": airline_name, "ICAO": icao, "IATA": iata, "n_aircrafts": n_aircrafts})
-
-    return airlines
+    return list(airlines.values())
 
 
 def country_to_slug(country: object) -> str:
@@ -115,125 +140,103 @@ def _to_text(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _to_number(value: object) -> Optional[Union[int, float]]:
+def parse_inertia_page(payload: Union[bytes, str, Dict]) -> Optional[Dict]:
     """
-    Coerce a numeric feed field into a number, or None when it is unusable.
+    Return the Inertia page object (component, props, version) of a FR24 data page.
 
-    An unusable coordinate must not become 0.0: that would place the airport in
-    the Gulf of Guinea instead of marking its position as unknown.
-
-    Plain whole numbers stay ints, so an altitude reads 2436 in both ports rather
-    than 2436.0 here -- the feed sends `alt` as an int for most rows and as a
-    string ("-1") for the rest. Anything written with a decimal point or an
-    exponent stays a float: "2436.0" and "1e3" are floats here and integral
-    Numbers in Node, equal in value but not in type.
+    Served as HTML, the page keeps it JSON-encoded in the data-page attribute of
+    its root element; asked with Core.inertia_headers, FR24 sends it as the body,
+    which `request.get_content()` has already decoded into a dict.
     """
-    # bool is an int here, and str([43]) would invent a number.
-    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
-        return None
+    if isinstance(payload, dict):
+        page: object = payload
+    else:
+        root = BeautifulSoup(payload, "html.parser").find(lambda tag: tag.has_attr("data-page"))
 
-    if isinstance(value, str):
-        stripped = value.strip(SURROUNDING_SPACE)
-
-        if not NUMERIC_PATTERN.match(stripped):
+        if not isinstance(root, Tag):
+            _logger.warning("parse_inertia_page: no data-page attribute in response — FR24 page layout may have changed.")
             return None
 
-        text: Union[int, float, str] = stripped
-    else:
-        text = value
-
-    # One conversion, so overflow is handled once: Python ints have no ceiling.
-    try:
-        number = float(text)
-    except OverflowError:
-        return None
-
-    if not math.isfinite(number):
-        return None
-
-    try:
-        exact = int(text)
-    except (ValueError, OverflowError):
-        return number
-
-    # int only when lossless (so -23.4 survives) and only where JavaScript is exact.
-    return exact if exact == number and abs(exact) <= MAX_EXACT_INTEGER else number
-
-
-def parse_airports_json(
-    payload: Union[bytes, str, Dict], countries: Optional[Iterable[object]] = None,
-) -> List[Airport]:
-    """
-    Parse the airports JSON feed into a list of Airport instances.
-
-    :param payload: Body of Core.airports_json_url.
-    :param countries: Country slugs, or Countries members. Every airport is kept when omitted.
-    """
-    if isinstance(payload, (bytes, str)):
         try:
-            data = json.loads(payload)
+            page = json.loads(str(root["data-page"]))
         except ValueError:
-            _logger.warning("parse_airports_json: response is not valid JSON — FR24 feed may have changed.")
-            return []
-    else:
-        data = payload
+            _logger.warning("parse_inertia_page: data-page is not valid JSON — FR24 page layout may have changed.")
+            return None
 
-    rows = data.get("rows") if isinstance(data, dict) else None
+    if not isinstance(page, dict) or not isinstance(page.get("props"), dict):
+        _logger.warning("parse_inertia_page: no page props in response — FR24 page layout may have changed.")
+        return None
+
+    return page
+
+
+def parse_airports_index(payload: Union[bytes, str, Dict]) -> List[Dict]:
+    """
+    Parse the airports index (Core.airports_data_url) into its countries.
+
+    Each entry has the country "name" as FR24 prints it ("UNITED STATES") and the
+    "slug" of its listing page, which is also its Countries enum value.
+    """
+    page = parse_inertia_page(payload)
+    rows = page["props"].get("airportsByCountry") if page is not None else None
 
     if not isinstance(rows, list):
-        _logger.warning('parse_airports_json: no "rows" array in response — FR24 feed may have changed.')
+        _logger.warning('parse_airports_index: no "airportsByCountry" list in response — FR24 page layout may have changed.')
         return []
 
-    wanted = {country_to_slug(country) for country in countries} if countries is not None else None
-    matched = set()
-    unpositioned = []
-    airports = []
+    countries = []
 
     for row in rows:
         if not isinstance(row, dict):
             continue
 
-        # Slugified only when filtering: it is otherwise unused, and this loop
-        # runs over every airport in the feed.
-        if wanted is not None:
-            slug = country_to_slug(row.get("country"))
+        name = _to_text(row.get("name"))
+        slug = country_to_slug(name)
 
-            if slug not in wanted:
-                continue
-            matched.add(slug)
+        if slug:
+            countries.append({"name": name, "slug": slug})
 
-        latitude = _to_number(row.get("lat"))
-        longitude = _to_number(row.get("lon"))
+    return countries
 
-        # One bad coordinate drops both: half a position reads as located.
-        if latitude is None or longitude is None:
-            latitude = longitude = None
-            unpositioned.append(_to_text(row.get("name")))
 
-        airports.append(Airport(basic_info={
+def parse_airports_page(payload: Union[bytes, str, Dict]) -> Tuple[List[Airport], List[str]]:
+    """
+    Parse a country or state airports page into (airports, state_paths).
+
+    A country with many airports lists its states instead, each with the path of
+    its own page; those paths come back for the caller to fetch. The listing has
+    no coordinates or altitude: `get_airport(code)` has them for one airport.
+    """
+    page = parse_inertia_page(payload)
+
+    if page is None:
+        return [], []
+
+    props = page["props"]
+    country = props.get("country")
+    country_name = _to_text(country.get("name")) if isinstance(country, dict) else ""
+
+    rows = props.get("airports")
+    states = props.get("states")
+
+    airports = [
+        Airport(basic_info={
             "name": _to_text(row.get("name")),
             "icao": _to_text(row.get("icao")),
             "iata": _to_text(row.get("iata")),
-            "lat": latitude,
-            "lon": longitude,
-            "alt": _to_number(row.get("alt")),
-            "country": _to_text(row.get("country")),
-        }))
+            "lat": None,
+            "lon": None,
+            "alt": None,
+            "country": country_name,
+        })
+        for row in (rows if isinstance(rows, list) else [])
+        if isinstance(row, dict)
+    ]
 
-    # One line, not one per row: the feed carries every airport.
-    if unpositioned:
-        _logger.warning(
-            "parse_airports_json: %d airport(s) had unusable coordinates and carry no position (e.g. %s).",
-            len(unpositioned), ", ".join(repr(name) for name in unpositioned[:3]),
-        )
+    state_paths = [
+        state["url"]
+        for state in (states if isinstance(states, list) else [])
+        if isinstance(state, dict) and isinstance(state.get("url"), str) and state["url"]
+    ]
 
-    if wanted is not None:
-        missing = sorted(wanted - matched)
-
-        if missing:
-            _logger.warning(
-                "parse_airports_json: no airports found for %s — check the Countries enum.",
-                ", ".join(missing),
-            )
-
-    return airports
+    return airports, state_paths

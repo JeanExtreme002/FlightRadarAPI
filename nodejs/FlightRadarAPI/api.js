@@ -5,7 +5,7 @@ const Flight = require("./entities/flight");
 const FlightTrackerConfig = require("./flightTrackerConfig");
 const { AirportNotFoundError, LoginError } = require("./errors");
 const { isNumeric, radians, rad2deg } = require("./util");
-const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("./parsers");
+const { parseAirlinesHtml, parseAirportsIndex, parseAirportsPage, parseInertiaPage, countryToSlug } = require("./parsers");
 
 
 /**
@@ -200,8 +200,14 @@ class FlightRadar24API {
     /**
      * Return a list with all airports, optionally narrowed to some countries.
      *
+     * FR24 lists airports one page per country, and one per state for the
+     * largest countries, so this fetches one page per country asked for (a few
+     * hundred for every airport), `maxWorkers` at a time. The listing carries
+     * the name, codes and country only: use getAirport(code) for the position
+     * and altitude of an airport.
+     *
      * @param {Iterable<string>|string} [countries] - Country names from the Countries enum,
-     *     as any iterable or a single value; every country when omitted
+     *     or their slug strings, as any iterable or a single value; every country when omitted
      * @return {Promise<Array<Airport>>}
      */
     async getAirports(countries) {
@@ -222,10 +228,94 @@ class FlightRadar24API {
 
         if (wanted && wanted.length === 0) return [];
 
+        // The index names every country, and declares the asset version the
+        // JSON requests below have to quote.
         const { content } = await this.__client.request(
-            Core.airportsJsonUrl, { headers: Core.jsonHeaders, timeout: this.timeout },
+            Core.airportsDataUrl, { headers: Core.htmlHeaders, timeout: this.timeout },
         );
-        return parseAirportsJson(content, wanted);
+        const index = parseInertiaPage(content);
+        const version = typeof index?.["version"] === "string" ? index["version"] : null;
+
+        const slugs = wanted === null ?
+            parseAirportsIndex(index ?? {}).map((country) => country.slug) :
+            wanted.map(countryToSlug);
+        const uniqueSlugs = [...new Set(slugs.filter((slug) => slug))];
+
+        const countryPages = await this.__getAirportPages(uniqueSlugs.map(Core.airportsByCountryUrl), version);
+
+        // Second pass for the countries split by state, every state at once.
+        const stateOwners = [];
+        const stateUrls = [];
+
+        countryPages.forEach(({ statePaths }, owner) => {
+            for (const path of statePaths) {
+                stateOwners.push(owner);
+                stateUrls.push(path.startsWith("http") ? path : Core.flightRadarBaseUrl + path);
+            }
+        });
+
+        const statePages = await this.__getAirportPages(stateUrls, version);
+
+        // Grouped by country, in the order asked for, each country's states after it.
+        const airportsByCountry = countryPages.map(({ airports }) => [...airports]);
+
+        statePages.forEach(({ airports }, i) => airportsByCountry[stateOwners[i]].push(...airports));
+
+        // A country FR24 does not know answers with the index page, which lists
+        // neither airports nor states.
+        const missing = uniqueSlugs.filter(
+            (slug, i) => countryPages[i].airports.length === 0 && countryPages[i].statePaths.length === 0,
+        );
+
+        if (missing.length > 0) {
+            console.warn(`getAirports: no airports found for ${missing.join(", ")} — check the Countries enum.`);
+        }
+
+        return airportsByCountry.flat();
+    }
+
+    /**
+     * Fetch and parse the airport listing pages at `urls`, in order, maxWorkers at a time.
+     *
+     * @param {Array<string>} urls
+     * @param {string|null} version - Asset version declared by the index page
+     * @return {Promise<Array<{airports: Array<Airport>, statePaths: Array<string>}>>}
+     */
+    async __getAirportPages(urls, version) {
+        const pages = new Array(urls.length);
+
+        await mapConcurrent(urls.map((url, i) => [url, i]), this.maxWorkers, async ([url, i]) => {
+            pages[i] = parseAirportsPage(await this.__getInertiaPage(url, version));
+        });
+
+        return pages;
+    }
+
+    /**
+     * Fetch a FR24 data page as its Inertia page object, falling back to the HTML.
+     *
+     * With the asset version FR24 answers the bare page JSON, a fraction of the
+     * HTML. A 409 means the assets were redeployed since the version was read:
+     * the HTML carries the same page object and needs no version.
+     *
+     * @param {string} url
+     * @param {string|null} version
+     * @return {Promise<object|string|ArrayBuffer>}
+     */
+    async __getInertiaPage(url, version) {
+        if (version !== null) {
+            const headers = { ...Core.inertiaHeaders, "x-inertia-version": version };
+            const { content, statusCode } = await this.__client.requestStandalone(
+                url, { headers, timeout: this.timeout, allowedErrorCodes: [409] },
+            );
+
+            if (statusCode !== 409) return content;
+        }
+
+        const { content } = await this.__client.requestStandalone(
+            url, { headers: Core.htmlHeaders, timeout: this.timeout },
+        );
+        return content;
     }
 
     /**

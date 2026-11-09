@@ -57,6 +57,12 @@ You can fetch various types of data using the following methods:
     allAirports, err := client.GetAirports(ctx, nil)
     ```
 
+    FR24 lists airports one page per country (and per state for the largest
+    countries), so this makes one request per page: a handful for a few
+    countries, a few hundred for every airport, `MaxWorkers` at a time. The
+    listing carries the name, codes and country only; use `GetAirport(ctx, code)`
+    for the position and altitude of an airport.
+
 - **Airlines list:**
 
     ```go

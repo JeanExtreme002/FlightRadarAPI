@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import dataclasses
+import logging
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
@@ -11,8 +12,10 @@ from .entities.airport import Airport
 from .entities.flight import Flight
 from .errors import AirportNotFoundError, LoginError
 from .flight_tracker_config import FlightTrackerConfig
-from .parsers import country_to_slug, parse_airlines_html, parse_airports_json
+from .parsers import country_to_slug, parse_airlines_html, parse_airports_index, parse_airports_page, parse_inertia_page
 from .request import APIClient, RetryPolicy
+
+_logger = logging.getLogger(__name__)
 
 # Some FR24 live-feed backends answer 200 with a well-formed envelope but no
 # flight entries -- indistinguishable from a legitimately empty result. The
@@ -193,6 +196,12 @@ class FlightRadar24API:
         """
         Return a list with all airports, optionally narrowed to some countries.
 
+        FR24 lists airports one page per country, and one per state for the
+        largest countries, so this fetches one page per country asked for (a few
+        hundred for every airport), `max_workers` at a time. The listing carries
+        the name, codes and country only: use get_airport(code) for the position
+        and altitude of an airport.
+
         :param countries: Country names from the Countries enum, or their slug strings,
             as any iterable or a single value. Every country when omitted.
         """
@@ -207,13 +216,82 @@ class FlightRadar24API:
         if wanted is not None and len(wanted) == 0:
             return []
 
-        response = self.__client.request(
-            Core.airports_json_url, headers=Core.json_headers, timeout=self.timeout,
+        # The index names every country, and declares the asset version the
+        # JSON requests below have to quote.
+        response = self.__client.request(Core.airports_data_url, headers=Core.html_headers, timeout=self.timeout)
+        index = parse_inertia_page(response.get_bytes_content())
+        version = index.get("version") if index is not None else None
+
+        if wanted is None:
+            slugs = [country["slug"] for country in parse_airports_index(index or {})]
+        else:
+            slugs = [country_to_slug(country) for country in wanted]
+
+        slugs = list(dict.fromkeys(slug for slug in slugs if slug))
+        version = version if isinstance(version, str) else None
+
+        country_pages = self.__get_airport_pages(
+            [Core.airports_by_country_url.format(slug) for slug in slugs], version,
         )
 
-        # get_content(), not get_json_content(): an html body reaches the parser's
-        # guard; a malformed JSON body still raises. The parser slugifies `wanted`.
-        return parse_airports_json(response.get_content(), wanted)
+        # Second pass for the countries split by state, every state at once.
+        state_owners = [index for index, (_, paths) in enumerate(country_pages) for _ in paths]
+        state_pages = self.__get_airport_pages(
+            [
+                path if path.startswith("http") else Core.flightradar_base_url + path
+                for _, paths in country_pages for path in paths
+            ],
+            version,
+        )
+
+        # Grouped by country, in the order asked for, each country's states after it.
+        airports_by_country: List[List[Airport]] = [list(found) for found, _ in country_pages]
+
+        for owner, (found, _) in zip(state_owners, state_pages):
+            airports_by_country[owner].extend(found)
+
+        airports = [airport for found in airports_by_country for airport in found]
+
+        # A country FR24 does not know answers with the index page, which lists
+        # neither airports nor states.
+        missing = [slug for slug, (found, paths) in zip(slugs, country_pages) if not found and not paths]
+
+        if missing:
+            _logger.warning(
+                "get_airports: no airports found for %s — check the Countries enum.", ", ".join(missing),
+            )
+
+        return airports
+
+    def __get_airport_pages(self, urls: List[str], version: Optional[str]) -> List[Tuple[List[Airport], List[str]]]:
+        """
+        Fetch and parse the airport listing pages at `urls`, in order, max_workers at a time.
+        """
+        if not urls:
+            return []
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            return list(executor.map(lambda url: parse_airports_page(self.__get_inertia_page(url, version)), urls))
+
+    def __get_inertia_page(self, url: str, version: Optional[str]) -> Union[Dict, bytes]:
+        """
+        Fetch a FR24 data page as its Inertia page object, falling back to the HTML.
+
+        With the asset version FR24 answers the bare page JSON, a fraction of the
+        HTML. A 409 means the assets were redeployed since the version was read:
+        the HTML carries the same page object and needs no version.
+        """
+        if version is not None:
+            headers = {**Core.inertia_headers, "x-inertia-version": version}
+            response = self.__client.request_standalone(
+                url, headers=headers, timeout=self.timeout, allowed_error_codes=[409],
+            )
+
+            if response.get_status_code() != 409:
+                return response.get_content()
+
+        response = self.__client.request_standalone(url, headers=Core.html_headers, timeout=self.timeout)
+        return response.get_bytes_content()
 
     def get_bookmarks(self) -> Dict:
         """

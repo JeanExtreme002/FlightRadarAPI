@@ -30,10 +30,12 @@ class Core:
     # Airports data URLs.
     api_airport_data_url = api_flightradar_base_url + "/airport.json"
     airport_data_url = flightradar_base_url + "/airports/traffic-stats/?airport={}"
+    # The listing is split by country, and by state for the largest countries.
+    # These are Inertia pages: the data rides JSON-encoded in the data-page
+    # attribute of the HTML, or comes as the whole body when the request carries
+    # `inertia_headers` and the asset version the index page declares.
     airports_data_url = flightradar_base_url + "/data/airports"
-
-    # Every airport in one payload; the per-country pages above are client-rendered.
-    airports_json_url = flightradar_base_url + "/_json/airports.php"
+    airports_by_country_url = airports_data_url + "/{}"
 
     # Airlines data URL.
     airlines_data_url = flightradar_base_url + "/data/airlines"
@@ -85,6 +87,12 @@ class Core:
 
     image_headers = headers.copy()
     image_headers["accept"] = "image/gif, image/jpg, image/jpeg, image/png"
+
+    # Asks an Inertia page for its page object instead of the HTML around it.
+    # `x-inertia-version` must match the deployed assets or FR24 answers 409.
+    inertia_headers = json_headers.copy()
+    inertia_headers["x-inertia"] = "true"
+    inertia_headers["x-requested-with"] = "XMLHttpRequest"
 
     html_headers = {
         "accept": (

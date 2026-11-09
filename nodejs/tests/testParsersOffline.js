@@ -11,29 +11,22 @@ const fs = require("fs");
 const path = require("path");
 const expect = require("chai").expect;
 
-const { parseAirlinesHtml, parseAirportsJson, countryToSlug } = require("../FlightRadarAPI/parsers");
+const {
+    parseAirlinesHtml, parseInertiaPage, parseAirportsIndex, parseAirportsPage, countryToSlug,
+} = require("../FlightRadarAPI/parsers");
 const { Countries } = require("../FlightRadarAPI/core");
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const load = (name) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
-
-// Keep in step with the same list in python/tests/test_parsers_offline.py.
-const NUMERIC_CASES = [
-    ["whitespace", " ", null],
-    ["an array holding a number", [43], null],
-    ["a coordinate with a hemisphere suffix", "43.30 N", null],
-    ["an exponent overflowing a double", "1e999", null],
-    ["400 plain digits", "1".repeat(400), null],
-    ["a whole number as a string", "2436", 2436],
-    ["a negative decimal", "-23.4", -23.4],
-    ["a genuine zero", 0, 0],
-];
+const loadJson = (name) => JSON.parse(load(name));
 
 
 describe("parseAirlinesHtml (offline)", function() {
     let airlines;
+    let byName;
     before(function() {
         airlines = parseAirlinesHtml(load("airlines.html"));
+        byName = Object.fromEntries(airlines.map((a) => [a.Name, a]));
     });
 
     it("extracts known airline rows", function() {
@@ -44,7 +37,6 @@ describe("parseAirlinesHtml (offline)", function() {
     });
 
     it("splits IATA and ICAO when both are present", function() {
-        const byName = Object.fromEntries(airlines.map((a) => [a.Name, a]));
         expect(byName["LATAM Airlines"].IATA).to.equal("LA");
         expect(byName["LATAM Airlines"].ICAO).to.equal("LAN");
         expect(byName["Gol"].IATA).to.equal("G3");
@@ -52,182 +44,167 @@ describe("parseAirlinesHtml (offline)", function() {
     });
 
     it("handles IATA-only or ICAO-only rows", function() {
-        const byName = Object.fromEntries(airlines.map((a) => [a.Name, a]));
         expect(byName["Sky2"].IATA).to.equal("SK");
         expect(byName["Sky2"].ICAO).to.equal(null);
         expect(byName["SkyTeam"].ICAO).to.equal("SKT");
         expect(byName["SkyTeam"].IATA).to.equal(null);
     });
 
-    it("parses aircraft count from the last column", function() {
-        const byName = Object.fromEntries(airlines.map((a) => [a.Name, a]));
+    it("parses the aircraft count", function() {
         expect(byName["LATAM Airlines"].n_aircrafts).to.equal(340);
         expect(byName["Gol"].n_aircrafts).to.equal(140);
+        // Thousands separator, as the page prints large fleets.
+        expect(byName["Delta Air Lines"].n_aircrafts).to.equal(1900);
+        // Only the "Largest fleets" section carries a count.
+        expect(byName["Sky2"].n_aircrafts).to.equal(null);
     });
 
-    it("skips rows without notranslate td or with wrong href", function() {
-        expect(airlines.length).to.equal(5);
+    it("merges an airline listed in two sections", function() {
+        // Delta and Gol appear under "Largest fleets" and again under "All airlines".
+        const names = airlines.map((a) => a.Name);
+        expect(names.filter((name) => name === "Delta Air Lines")).to.have.lengthOf(1);
+        expect(names.filter((name) => name === "Gol")).to.have.lengthOf(1);
+    });
+
+    it("keeps a code-shaped name", function() {
+        expect(byName["TAP"]).to.deep.equal({ "Name": "TAP", "ICAO": "TAP", "IATA": "TP", "n_aircrafts": null });
+    });
+
+    it("skips invalid rows", function() {
+        // 6 airlines; the section link, the entry with no link, the wrong href
+        // and the one-letter name must be skipped.
+        expect(airlines).to.have.lengthOf(6);
+        expect(airlines.map((a) => a.Name)).to.not.include("All");
     });
 
     it("returns an empty list for empty or unrecognised HTML", function() {
         expect(parseAirlinesHtml("")).to.deep.equal([]);
-        expect(parseAirlinesHtml("<html><body><p>no tbody here</p></body></html>")).to.deep.equal([]);
+        expect(parseAirlinesHtml("<html><body><p>no airlines here</p></body></html>")).to.deep.equal([]);
     });
 });
 
 
-describe("parseAirportsJson (offline)", function() {
-    let airports;
-    before(function() {
-        airports = parseAirportsJson(load("airports.json"));
+describe("parseInertiaPage (offline)", function() {
+    it("reads the data-page attribute", function() {
+        const page = parseInertiaPage(load("airports_index.html"));
+        expect(page.component).to.equal("Data/Airports");
+        expect(page.version).to.equal("919b94d2a33f365a34f99828f6eeec6a");
+        expect(page.props).to.have.property("airportsByCountry");
     });
 
-    it("extracts iata, icao, name, country and position", function() {
-        const byIata = Object.fromEntries(airports.map((a) => [a.iata, a]));
-        expect(byIata["GRU"]).to.exist;
-        expect(byIata["GIG"]).to.exist;
-        expect(byIata["GRU"].icao).to.equal("SBGR");
-        expect(byIata["GRU"].country).to.equal("Brazil");
-        expect(byIata["GRU"].latitude).to.be.closeTo(-23.429991, 1e-6);
-        expect(byIata["GRU"].longitude).to.be.closeTo(-46.4674, 1e-6);
-        expect(byIata["GRU"].altitude).to.equal(2436);
+    it("accepts a decoded JSON body", function() {
+        const body = loadJson("airports_country.json");
+        expect(parseInertiaPage(body)).to.equal(body);
     });
 
-    it("keeps every country when no filter is given", function() {
-        const countries = new Set(airports.map((a) => a.country));
-        expect(countries).to.include("Brazil");
-        expect(countries).to.include("United States");
-        expect(countries).to.include("Spain");
-    });
-
-    it("filters by the slugs from the Countries enum", function() {
-        const filtered = parseAirportsJson(load("airports.json"), ["united-states"]);
-        expect(filtered.length).to.be.above(0);
-        for (const airport of filtered) {
-            expect(airport.country).to.equal("United States");
-        }
-    });
-
-    it("accepts several countries at once", function() {
-        const filtered = parseAirportsJson(load("airports.json"), ["brazil", "spain"]);
-        const countries = new Set(filtered.map((a) => a.country));
-        expect([...countries].sort()).to.deep.equal(["Brazil", "Spain"]);
-    });
-
-    it("invalid coordinates become null (regression test for 0,0 fallback)", function() {
-        const bad = airports.find((a) => a.iata === "BAD");
-        expect(bad.latitude).to.equal(null);
-        expect(bad.longitude).to.equal(null);
-    });
-
-    it("keeps FR24's own country spelling and still slugifies it for URLs", function() {
-        const ann = airports.find((airport) => airport.iata === "VBA");
-
-        expect(ann.country).to.equal("Myanmar (Burma)");
-        expect(countryToSlug(ann.country)).to.equal("myanmar-burma");
-        expect(ann.altitude).to.equal(43);
-    });
-
-    it("matches a filter written with either spelling of the country", function() {
-        for (const slug of ["myanmar-burma", "Myanmar (Burma)"]) {
-            expect(parseAirportsJson(load("airports.json"), [slug]).length).to.equal(1);
-        }
-    });
-
-    it("rejects numeric-looking junk instead of truncating it", function() {
-        const payload = JSON.stringify({ rows: [{
-            name: "Junk Airport", iata: "JNK", icao: "JJNK",
-            lat: "43.30 N", lon: -8.37725, country: "Spain", alt: "-1",
-        }] });
-        const [airport] = parseAirportsJson(payload);
-
-        // One bad coordinate drops both; altitude is independent and survives.
-        expect(airport.latitude).to.equal(null);
-        expect(airport.longitude).to.equal(null);
-        expect(airport.altitude).to.equal(-1);
-    });
-
-    it("agrees with the Python port on Unicode digits and stray control bytes", function() {
-        // Each port used to accept what the other rejected.
-        const read = (value) => {
-            const payload = JSON.stringify({ rows: [{
-                name: "X", iata: "XXX", icao: "XXXX", country: "Spain", lat: value, lon: value, alt: value,
-            }] });
-            return parseAirportsJson(payload)[0].altitude;
-        };
-
-        expect(read("\u0664\u0663"), "Arabic-Indic digits").to.equal(null);
-        expect(read("\ufeff43"), "leading U+FEFF").to.equal(null);
-        expect(read("\u001c43"), "leading U+001C").to.equal(null);
-        expect(read("  43  "), "plain spaces still trimmed").to.equal(43);
-    });
-
-    it("returns an empty list for an unknown country", function() {
-        expect(parseAirportsJson(load("airports.json"), ["atlantis"])).to.deep.equal([]);
-    });
-
-    it("survives numbers written raw in the JSON that no double can hold", function() {
-        // Written as text: a JS literal is already rounded before it reaches here.
-        for (const literal of ["1".repeat(400), "9007199254740993", "-1".concat("1".repeat(399))]) {
-            const payload = `{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain","lat":${literal},"lon":1,"alt":2}]}`;
-            const [airport] = parseAirportsJson(payload);
-
-            expect(airport.latitude, literal.slice(0, 12)).to.satisfy(
-                (latitude) => latitude === null || Number.isFinite(latitude),
-            );
-        }
-    });
-
-    it("keeps text fields as strings whatever the feed sends", function() {
-        // Anything else breaks getCountryFlag(airport.country).
-        for (const literal of ["null", "0", "false", "true", "[]", "{}", "123"]) {
-            const payload = `{"rows":[{"name":${literal},"iata":${literal},"icao":${literal},` +
-                `"country":${literal},"lat":1,"lon":2,"alt":3}]}`;
-            const [airport] = parseAirportsJson(payload);
-
-            expect([airport.name, airport.iata, airport.icao, airport.country], literal)
-                .to.deep.equal(["", "", "", ""]);
-        }
-    });
-
-    it("parses a body that arrived as raw bytes", function() {
+    it("reads a body that arrived as raw bytes", function() {
         // request() returns an ArrayBuffer on an unexpected content-type.
-        const json = load("airports.json");
+        const html = load("airports_index.html");
 
-        for (const payload of [Buffer.from(json), new TextEncoder().encode(json), new TextEncoder().encode(json).buffer]) {
-            expect(parseAirportsJson(payload).length, payload.constructor.name).to.equal(airports.length);
+        for (const payload of [Buffer.from(html), new TextEncoder().encode(html), new TextEncoder().encode(html).buffer]) {
+            expect(parseInertiaPage(payload).version, payload.constructor.name).to.equal("919b94d2a33f365a34f99828f6eeec6a");
         }
+    });
+
+    it("rejects unrecognised payloads", function() {
+        expect(parseInertiaPage("")).to.equal(null);
+        expect(parseInertiaPage("<html><body><div id=\"app\"></div></body></html>")).to.equal(null);
+        expect(parseInertiaPage("<div data-page=\"not json\"></div>")).to.equal(null);
+        expect(parseInertiaPage({ component: "Data/Airports" })).to.equal(null);
+    });
+});
+
+
+describe("parseAirportsIndex (offline)", function() {
+    it("lists every country with its slug", function() {
+        const countries = parseAirportsIndex(load("airports_index.html"));
+        expect(countries.map((c) => c.slug)).to.deep.equal(["brazil", "myanmar-burma", "uruguay"]);
+        expect(countries[1].name).to.equal("MYANMAR (BURMA)");
+    });
+
+    it("produces slugs that match the Countries enum", function() {
+        const known = new Set(Object.values(Countries));
+
+        for (const country of parseAirportsIndex(load("airports_index.html"))) {
+            expect(known.has(country.slug), country.slug).to.equal(true);
+        }
+    });
+
+    it("returns an empty list for an invalid payload", function() {
+        expect(parseAirportsIndex("")).to.deep.equal([]);
+        expect(parseAirportsIndex({ props: {} })).to.deep.equal([]);
+        expect(parseAirportsIndex({ props: { airportsByCountry: [1, "x", { name: null }] } })).to.deep.equal([]);
+    });
+});
+
+
+describe("parseAirportsPage (offline)", function() {
+    it("extracts the airports of a country", function() {
+        const { airports, statePaths } = parseAirportsPage(loadJson("airports_country.json"));
+        expect(statePaths).to.deep.equal([]);
+        expect(airports.map((a) => a.iata)).to.deep.equal(["CYR", "MVD"]);
+
+        const mvd = airports[1];
+        expect(mvd.name).to.equal("Montevideo Carrasco International Airport");
+        expect(mvd.icao).to.equal("SUMU");
+        expect(mvd.country).to.equal("Uruguay");
+    });
+
+    it("carries no position: the listing has none", function() {
+        const { airports } = parseAirportsPage(loadJson("airports_country.json"));
+
+        for (const airport of airports) {
+            expect(airport.latitude).to.equal(null);
+            expect(airport.longitude).to.equal(null);
+            expect(airport.altitude).to.equal(null);
+        }
+    });
+
+    it("returns the state pages of a split country", function() {
+        const { airports, statePaths } = parseAirportsPage(loadJson("airports_country_states.json"));
+        expect(airports).to.deep.equal([]);
+        expect(statePaths).to.deep.equal(["/data/airports/brazil/rj", "/data/airports/brazil/sp"]);
+    });
+
+    it("keeps the country name on a state page", function() {
+        const { airports, statePaths } = parseAirportsPage(loadJson("airports_state_sp.json"));
+        expect(statePaths).to.deep.equal([]);
+        expect(airports.map((a) => a.iata)).to.deep.equal(["GRU", "CGH"]);
+        expect(new Set(airports.map((a) => a.country))).to.deep.equal(new Set(["Brazil"]));
+    });
+
+    it("reads an HTML page", function() {
+        const { airports } = parseAirportsPage(load("airports_country.html"));
+        expect(airports.map((a) => a.iata)).to.deep.equal(["RGN"]);
+        // FR24 spells it "Myanmar (Burma)" on the page and "myanmar-burma" in URLs.
+        expect(airports[0].country).to.equal("Myanmar (Burma)");
+        expect(countryToSlug(airports[0].country)).to.equal(Countries.MYANMAR_BURMA);
     });
 
     it("skips rows that are not objects, as the Python port does", function() {
-        const payload = "{\"rows\":[[1,2,3],\"x\",7,null," +
-            "{\"name\":\"Real\",\"iata\":\"RRR\",\"icao\":\"RRRR\",\"country\":\"Spain\",\"lat\":1,\"lon\":2,\"alt\":3}]}";
-
-        expect(parseAirportsJson(payload).map((airport) => airport.iata)).to.deep.equal(["RRR"]);
+        const payload = { props: { country: { name: "Nowhere" }, airports: [1, "x", null, [1, 2], { iata: "RRR" }] } };
+        const { airports } = parseAirportsPage(payload);
+        expect(airports.map((a) => a.iata)).to.deep.equal(["RRR"]);
     });
 
-    it("returns an empty list when the feed has no rows", function() {
-        expect(parseAirportsJson("")).to.deep.equal([]);
-        expect(parseAirportsJson("{}")).to.deep.equal([]);
-        expect(parseAirportsJson("<html>not json</html>")).to.deep.equal([]);
+    it("keeps text fields as strings whatever the page sends", function() {
+        // Anything else breaks getCountryFlag(airport.country).
+        const payload = { props: { country: { name: ["Brazil"] }, airports: [{ name: 42, iata: null, icao: { x: 1 } }] } };
+        const [airport] = parseAirportsPage(payload).airports;
+        expect([airport.name, airport.iata, airport.icao, airport.country]).to.deep.equal(["", "", "", ""]);
     });
-});
 
+    it("ignores malformed states", function() {
+        const payload = { props: { states: [{ url: "/data/airports/x/a" }, { url: "" }, { code: "B" }, "junk", { url: 3 }] } };
+        expect(parseAirportsPage(payload)).to.deep.equal({ airports: [], statePaths: ["/data/airports/x/a"] });
+    });
 
-describe("parseAirportsJson numeric coercion", function() {
-    for (const [label, input, expected] of NUMERIC_CASES) {
-        it(`reads ${label} as ${JSON.stringify(expected)}`, function() {
-            const payload = JSON.stringify({ rows: [{
-                name: "X", iata: "XXX", icao: "XXXX", country: "Spain",
-                lat: input, lon: input, alt: input,
-            }] });
-            const [airport] = parseAirportsJson(payload);
-
-            expect(airport.latitude, "latitude").to.equal(expected);
-            expect(airport.longitude, "longitude").to.equal(expected);
-            expect(airport.altitude, "altitude").to.equal(expected);
-        });
-    }
+    it("returns nothing for an invalid payload", function() {
+        const empty = { airports: [], statePaths: [] };
+        expect(parseAirportsPage("")).to.deep.equal(empty);
+        expect(parseAirportsPage("<html>not a data page</html>")).to.deep.equal(empty);
+        expect(parseAirportsPage({ props: {} })).to.deep.equal(empty);
+    });
 });
 
 

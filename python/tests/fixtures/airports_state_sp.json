@@ -1,0 +1,52 @@
+{
+    "component": "Data/AirportsByState",
+    "props": {
+        "errors": {},
+        "name": "Flightradar24 API",
+        "host": "www.flightradar24.com",
+        "locale": "en",
+        "route": {
+            "name": "web.data.airports.by-state",
+            "params": {
+                "country": "brazil",
+                "state": "sp"
+            },
+            "query": []
+        },
+        "country": {
+            "id": 32,
+            "name": "Brazil",
+            "slug": "brazil"
+        },
+        "state": {
+            "code": "SP",
+            "name": "Sao Paulo",
+            "slug": "sp"
+        },
+        "airports": [
+            {
+                "id": 1255,
+                "name": "Sao Paulo Guarulhos International Airport",
+                "city": "Sao Paulo",
+                "iata": "GRU",
+                "icao": "SBGR",
+                "total": 6796
+            },
+            {
+                "id": 1254,
+                "name": "Sao Paulo Congonhas Airport",
+                "city": "Sao Paulo",
+                "iata": "CGH",
+                "icao": "SBSP",
+                "total": 3100
+            }
+        ],
+        "airportImages": {},
+        "busiestAirports": [],
+        "bestAirports": []
+    },
+    "url": "/data/airports/brazil/sp",
+    "version": "919b94d2a33f365a34f99828f6eeec6a",
+    "clearHistory": false,
+    "encryptHistory": false
+}

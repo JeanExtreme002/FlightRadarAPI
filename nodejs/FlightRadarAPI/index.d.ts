@@ -116,8 +116,11 @@ export class FlightRadar24API {
     /**
      * Return a list with all airports, optionally narrowed to some countries.
      *
-     * @param {Iterable<string>|string} [countries] - Country names, as any iterable
-     *     or a single value; every country when omitted
+     * The listing carries the name, codes and country only: latitude, longitude
+     * and altitude are null. Use getAirport(code) for the position of an airport.
+     *
+     * @param {Iterable<string>|string} [countries] - Country names from the Countries enum,
+     *     or their slug strings, as any iterable or a single value; every country when omitted
      */
     getAirports(countries?: Iterable<string> | string): Promise<Airport[]>;
     

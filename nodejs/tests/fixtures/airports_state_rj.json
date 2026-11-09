@@ -1,0 +1,44 @@
+{
+    "component": "Data/AirportsByState",
+    "props": {
+        "errors": {},
+        "name": "Flightradar24 API",
+        "host": "www.flightradar24.com",
+        "locale": "en",
+        "route": {
+            "name": "web.data.airports.by-state",
+            "params": {
+                "country": "brazil",
+                "state": "rj"
+            },
+            "query": []
+        },
+        "country": {
+            "id": 32,
+            "name": "Brazil",
+            "slug": "brazil"
+        },
+        "state": {
+            "code": "RJ",
+            "name": "Rio de Janeiro",
+            "slug": "rj"
+        },
+        "airports": [
+            {
+                "id": 1252,
+                "name": "Rio de Janeiro Galeao International Airport",
+                "city": "Rio de Janeiro",
+                "iata": "GIG",
+                "icao": "SBGL",
+                "total": 2500
+            }
+        ],
+        "airportImages": {},
+        "busiestAirports": [],
+        "bestAirports": []
+    },
+    "url": "/data/airports/brazil/rj",
+    "version": "919b94d2a33f365a34f99828f6eeec6a",
+    "clearHistory": false,
+    "encryptHistory": false
+}

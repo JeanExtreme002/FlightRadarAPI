@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -286,13 +287,21 @@ func (c *Client) GetAirportDisruptions(ctx context.Context) (map[string]any, err
 
 // GetAirports returns every airport, or only those of the given countries. Pass
 // nil for every airport; an empty non-nil slice selects none.
+//
+// FR24 lists airports one page per country, and one per state for the largest
+// countries, so this fetches one page per country asked for (a few hundred for
+// every airport), MaxWorkers at a time. The listing carries the name, codes and
+// country only: use [Client.GetAirport] for the position and altitude of an
+// airport.
 func (c *Client) GetAirports(ctx context.Context, countries []Country) ([]*Airport, error) {
 	if countries != nil && len(countries) == 0 {
 		return []*Airport{}, nil
 	}
 
-	response, err := c.client.request(ctx, c.endpoints.airportsJSON, requestOptions{
-		headers: jsonHeaders,
+	// The index names every country, and declares the asset version the JSON
+	// requests below have to quote.
+	response, err := c.client.request(ctx, c.endpoints.airportsData, requestOptions{
+		headers: htmlHeaders,
 		timeout: c.Timeout,
 	})
 
@@ -300,9 +309,212 @@ func (c *Client) GetAirports(ctx context.Context, countries []Country) ([]*Airpo
 		return nil, err
 	}
 
-	// The raw body, not JSON(): an HTML body reaches the parser's guard, and a
-	// malformed JSON body still returns empty rather than failing the call.
-	return parseAirportsJSON(response.Body, countries), nil
+	indexPage, _ := parseInertiaPage(response.Body)
+	version := toText(indexPage["version"])
+
+	var slugs []string
+
+	if countries == nil {
+		for _, country := range parseAirportsIndex(indexPage) {
+			slugs = append(slugs, country.Slug)
+		}
+	} else {
+		for _, country := range countries {
+			slugs = append(slugs, countryToSlug(string(country)))
+		}
+	}
+
+	slugs = uniqueInOrder(slices.DeleteFunc(slugs, func(slug string) bool { return slug == "" }))
+
+	countryURLs := make([]string, len(slugs))
+
+	for index, slug := range slugs {
+		countryURLs[index] = c.endpoints.airportsByCountryURL(slug)
+	}
+
+	countryPages, err := c.getAirportPages(ctx, countryURLs, version)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Second pass for the countries split by state, every state at once. A
+	// state path is relative to the site, so it is resolved against the page
+	// that listed it rather than against a fixed host.
+	var stateURLs []string
+	var stateOwners []int
+
+	for owner, page := range countryPages {
+		for _, path := range page.statePaths {
+			stateURLs = append(stateURLs, resolveReference(countryURLs[owner], path))
+			stateOwners = append(stateOwners, owner)
+		}
+	}
+
+	statePages, err := c.getAirportPages(ctx, stateURLs, version)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Grouped by country, in the order asked for, each country's states after
+	// it.
+	airportsByCountry := make([][]*Airport, len(countryPages))
+
+	for index, page := range countryPages {
+		airportsByCountry[index] = page.airports
+	}
+	for index, page := range statePages {
+		owner := stateOwners[index]
+		airportsByCountry[owner] = append(airportsByCountry[owner], page.airports...)
+	}
+
+	airports := []*Airport{}
+
+	for _, found := range airportsByCountry {
+		airports = append(airports, found...)
+	}
+
+	// A country FR24 does not know answers with the index page, which lists
+	// neither airports nor states.
+	var missing []string
+
+	for index, page := range countryPages {
+		if len(page.airports) == 0 && len(page.statePaths) == 0 {
+			missing = append(missing, slugs[index])
+		}
+	}
+	if len(missing) > 0 {
+		log().Warn("GetAirports: no airports found for some countries — check the Country constants",
+			"countries", strings.Join(missing, ", "))
+	}
+	return airports, nil
+}
+
+// airportsPage is what one airports listing page said: its airports, or the
+// paths of the state pages it is split into.
+type airportsPage struct {
+	airports   []*Airport
+	statePaths []string
+}
+
+// getAirportPages fetches and parses the airport listing pages at urls, in
+// order, MaxWorkers at a time. The first failure fails the whole call.
+func (c *Client) getAirportPages(ctx context.Context, urls []string, version string) ([]airportsPage, error) {
+	pages := make([]airportsPage, len(urls))
+
+	if len(urls) == 0 {
+		return pages, nil
+	}
+
+	// Clamped rather than skipped: MaxWorkers is public, and a zero there must
+	// not deadlock the crawl.
+	workers := make(chan struct{}, max(c.MaxWorkers, 1))
+	var group sync.WaitGroup
+	var once sync.Once
+	var firstErr error
+
+	for index, target := range urls {
+		workers <- struct{}{}
+		group.Add(1)
+
+		go func() {
+			defer group.Done()
+			defer func() { <-workers }()
+
+			payload, err := c.getInertiaPage(ctx, target, version)
+
+			if err != nil {
+				once.Do(func() { firstErr = err })
+				return
+			}
+			pages[index].airports, pages[index].statePaths = parseAirportsPage(payload)
+		}()
+	}
+	group.Wait()
+
+	if firstErr != nil {
+		return nil, firstErr
+	}
+	return pages, nil
+}
+
+// getInertiaPage fetches a FR24 data page as its Inertia page object, falling
+// back to the HTML. It returns the decoded JSON body, or the HTML bytes, for
+// parseInertiaPage to read.
+//
+// With the asset version FR24 answers the bare page JSON, a fraction of the
+// HTML. A 409 means the assets were redeployed since the version was read: the
+// HTML carries the same page object and needs no version.
+func (c *Client) getInertiaPage(ctx context.Context, target, version string) (any, error) {
+	if version != "" {
+		response, err := c.client.requestStandalone(ctx, target, requestOptions{
+			headers:           withHeaders(inertiaHeaders, map[string]string{"x-inertia-version": version}),
+			allowedErrorCodes: []int{409},
+			timeout:           c.Timeout,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if response.StatusCode != 409 {
+			if !response.IsJSON() {
+				return response.Body, nil
+			}
+
+			// Decoded as any value, not as an object: a body that is not a
+			// page object is the parser's warning, not a failed call.
+			var page any
+
+			if err := json.Unmarshal([]byte(response.Text()), &page); err != nil {
+				return nil, fmt.Errorf("%w: could not parse the JSON body of %s: %w", ErrFlightRadar, response.URL, err)
+			}
+			return page, nil
+		}
+	}
+
+	response, err := c.client.requestStandalone(ctx, target, requestOptions{
+		headers: htmlHeaders,
+		timeout: c.Timeout,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return response.Body, nil
+}
+
+// uniqueInOrder drops repeated values, keeping the first occurrence of each.
+func uniqueInOrder(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	unique := values[:0:0]
+
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			unique = append(unique, value)
+		}
+	}
+	return unique
+}
+
+// resolveReference resolves a path FR24 printed on a page against that page's
+// URL, so "/data/airports/brazil/sp" lands on the host the page came from. A
+// reference that will not parse is returned as given.
+func resolveReference(base, reference string) string {
+	baseURL, err := url.Parse(base)
+
+	if err != nil {
+		return reference
+	}
+
+	referenceURL, err := url.Parse(reference)
+
+	if err != nil {
+		return reference
+	}
+	return baseURL.ResolveReference(referenceURL).String()
 }
 
 // GetBookmarks returns the bookmarks of the logged-in account.

@@ -30,7 +30,8 @@ type endpoints struct {
 
 	apiAirportData    string
 	airportData       string
-	airportsJSON      string
+	airportsData      string
+	airportsByCountry string
 	airportDisruption string
 
 	airlinesData string
@@ -56,9 +57,15 @@ func defaultEndpoints() endpoints {
 
 		historicalData: flightRadarBaseURL + "/download/?flight=%s&file=%s&trailLimit=0&history=%d",
 
-		apiAirportData:    apiFlightRadarBaseURL + "/airport.json",
-		airportData:       flightRadarBaseURL + "/airports/traffic-stats/?airport=%s",
-		airportsJSON:      flightRadarBaseURL + "/_json/airports.php",
+		apiAirportData: apiFlightRadarBaseURL + "/airport.json",
+		airportData:    flightRadarBaseURL + "/airports/traffic-stats/?airport=%s",
+		// The listing is split by country, and by state for the largest
+		// countries. These are Inertia pages: the data rides JSON-encoded in the
+		// data-page attribute of the HTML, or comes as the whole body when the
+		// request carries inertiaHeaders and the asset version the index page
+		// declares.
+		airportsData:      flightRadarBaseURL + "/data/airports",
+		airportsByCountry: flightRadarBaseURL + "/data/airports/%s",
 		airportDisruption: flightRadarBaseURL + "/webapi/v1/airport-disruptions",
 
 		airlinesData: flightRadarBaseURL + "/data/airlines",
@@ -97,6 +104,10 @@ func (e endpoints) countryFlagURL(slug string) string {
 	return fmt.Sprintf(e.countryFlag, url.PathEscape(slug))
 }
 
+func (e endpoints) airportsByCountryURL(slug string) string {
+	return fmt.Sprintf(e.airportsByCountry, url.PathEscape(slug))
+}
+
 func (e endpoints) airlineLogoURL(iata, icao string) string {
 	return fmt.Sprintf(e.airlineLogo, url.PathEscape(iata), url.PathEscape(icao))
 }
@@ -129,6 +140,13 @@ var (
 	jsonHeaders  = withHeaders(baseHeaders, map[string]string{"accept": "application/json"})
 	imageHeaders = withHeaders(baseHeaders, map[string]string{
 		"accept": "image/gif, image/jpg, image/jpeg, image/png",
+	})
+	// inertiaHeaders ask an Inertia page for its page object instead of the
+	// HTML around it. The request must also carry an x-inertia-version matching
+	// the deployed assets, or FR24 answers 409.
+	inertiaHeaders = withHeaders(jsonHeaders, map[string]string{
+		"x-inertia":        "true",
+		"x-requested-with": "XMLHttpRequest",
 	})
 	htmlHeaders = map[string]string{
 		"accept": "text/html,application/xhtml+xml,application/xml;q=0.9," +

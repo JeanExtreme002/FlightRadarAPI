@@ -2,10 +2,9 @@ package flightradarapi
 
 import (
 	"encoding/json"
-	"fmt"
-	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -33,28 +32,6 @@ func airlinesByName(t *testing.T) map[string]Airline {
 		byName[airline.Name] = airline
 	}
 	return byName
-}
-
-func airportsByIATA(t *testing.T, airports []*Airport) map[string]*Airport {
-	t.Helper()
-	byIATA := map[string]*Airport{}
-
-	for _, airport := range airports {
-		byIATA[airport.IATA] = airport
-	}
-	return byIATA
-}
-
-// airportsFromRow parses a one-row feed built from a raw JSON literal, the way
-// both other ports do it.
-func airportsFromRow(t *testing.T, row string) []*Airport {
-	t.Helper()
-	airports := parseAirportsJSON([]byte(`{"rows":[`+row+`]}`), nil)
-
-	if len(airports) != 1 {
-		t.Fatalf("got %d airports for row %s, want 1", len(airports), row)
-	}
-	return airports
 }
 
 // --- parseAirlinesHTML ---
@@ -102,289 +79,327 @@ func TestParseAirlinesHTMLParsesAircraftCount(t *testing.T) {
 	for _, expected := range []struct {
 		name  string
 		count int
-	}{{"LATAM Airlines", 340}, {"Gol", 140}} {
+	}{
+		{"LATAM Airlines", 340},
+		{"Gol", 140},
+		// Thousands separator, as the page prints large fleets.
+		{"Delta Air Lines", 1900},
+	} {
 		count := byName[expected.name].NumAircrafts
 
 		if count == nil || *count != expected.count {
 			t.Errorf("%s: got %v aircraft, want %d", expected.name, count, expected.count)
 		}
 	}
+
+	// Only the "Largest fleets" section carries a count.
+	if count := byName["Sky2"].NumAircrafts; count != nil {
+		t.Errorf("Sky2: got %d aircraft, want none", *count)
+	}
+}
+
+func TestParseAirlinesHTMLMergesAnAirlineListedInTwoSections(t *testing.T) {
+	// Delta and Gol appear under "Largest fleets" and again under "All airlines".
+	seen := map[string]int{}
+
+	for _, airline := range parseAirlinesHTML(loadFixture(t, "airlines.html")) {
+		seen[airline.Name]++
+	}
+	for _, name := range []string{"Delta Air Lines", "Gol"} {
+		if seen[name] != 1 {
+			t.Errorf("%s: listed %d times, want once", name, seen[name])
+		}
+	}
+}
+
+func TestParseAirlinesHTMLKeepsACodeShapedName(t *testing.T) {
+	tap := airlinesByName(t)["TAP"]
+
+	if tap.Name != "TAP" || tap.ICAO != "TAP" || tap.IATA != "TP" || tap.NumAircrafts != nil {
+		t.Errorf("got %+v, want TAP / TAP / TP with no count", tap)
+	}
 }
 
 func TestParseAirlinesHTMLSkipsInvalidRows(t *testing.T) {
 	airlines := parseAirlinesHTML(loadFixture(t, "airlines.html"))
 
-	// 5 valid rows; 2 invalid (no notranslate, wrong href) must be skipped.
-	if len(airlines) != 5 {
-		t.Errorf("got %d airlines, want 5", len(airlines))
+	// 6 airlines; the section link, the entry with no link, the wrong href and
+	// the one-letter name must be skipped.
+	if len(airlines) != 6 {
+		t.Errorf("got %d airlines, want 6", len(airlines))
+	}
+	for _, airline := range airlines {
+		if airline.Name == "All" {
+			t.Errorf("the section link was read as an airline: %+v", airline)
+		}
+	}
+}
+
+func TestParseAirlinesHTMLKeepsTheOrderOfThePage(t *testing.T) {
+	var names []string
+
+	for _, airline := range parseAirlinesHTML(loadFixture(t, "airlines.html")) {
+		names = append(names, airline.Name)
+	}
+
+	want := []string{"Delta Air Lines", "LATAM Airlines", "Gol", "Sky2", "SkyTeam", "TAP"}
+
+	if !slices.Equal(names, want) {
+		t.Errorf("got %v, want %v", names, want)
 	}
 }
 
 func TestParseAirlinesHTMLEmptyInputReturnsEmptyList(t *testing.T) {
-	for _, page := range []string{"", "<html><body><p>no tbody here</p></body></html>"} {
+	for _, page := range []string{"", "<html><body><p>no airlines here</p></body></html>"} {
 		if airlines := parseAirlinesHTML([]byte(page)); len(airlines) != 0 {
 			t.Errorf("got %d airlines for %q, want 0", len(airlines), page)
 		}
 	}
 }
 
-// --- parseAirportsJSON ---
+// --- parseInertiaPage ---
 
-func TestParseAirportsJSONExtractsBasicFields(t *testing.T) {
-	byIATA := airportsByIATA(t, parseAirportsJSON(loadFixture(t, "airports.json"), nil))
+func decodeFixture(t *testing.T, name string) map[string]any {
+	t.Helper()
+	var page map[string]any
 
-	for _, code := range []string{"GRU", "GIG"} {
-		if _, ok := byIATA[code]; !ok {
-			t.Fatalf("missing airport %q", code)
+	if err := json.Unmarshal(loadFixture(t, name), &page); err != nil {
+		t.Fatalf("could not decode fixture %s: %v", name, err)
+	}
+	return page
+}
+
+func TestParseInertiaPageReadsTheDataPageAttribute(t *testing.T) {
+	page, ok := parseInertiaPage(loadFixture(t, "airports_index.html"))
+
+	if !ok {
+		t.Fatal("no page object found")
+	}
+	if page["component"] != "Data/Airports" || page["version"] != "919b94d2a33f365a34f99828f6eeec6a" {
+		t.Errorf("got component %v version %v", page["component"], page["version"])
+	}
+	if _, ok := page["props"].(map[string]any)["airportsByCountry"]; !ok {
+		t.Errorf("got props %v, want airportsByCountry among them", page["props"])
+	}
+}
+
+func TestParseInertiaPageAcceptsADecodedJSONBody(t *testing.T) {
+	body := decodeFixture(t, "airports_country.json")
+	page, ok := parseInertiaPage(body)
+
+	if !ok || page["component"] != body["component"] {
+		t.Errorf("got %v, want the body handed back", page)
+	}
+}
+
+func TestParseInertiaPageAcceptsAString(t *testing.T) {
+	if _, ok := parseInertiaPage(string(loadFixture(t, "airports_index.html"))); !ok {
+		t.Error("the HTML as a string was not read")
+	}
+}
+
+func TestParseInertiaPageRejectsUnrecognisedPayloads(t *testing.T) {
+	for _, payload := range []any{
+		[]byte(""),
+		[]byte(`<html><body><div id="app"></div></body></html>`),
+		[]byte(`<div data-page="not json"></div>`),
+		[]byte(`<div data-page="[1, 2]"></div>`),
+		map[string]any{"component": "Data/Airports"},
+		map[string]any{"props": "not an object"},
+		[]any{1, 2},
+		nil,
+		42,
+	} {
+		if page, ok := parseInertiaPage(payload); ok || page != nil {
+			t.Errorf("%v: got %v, want nothing", payload, page)
 		}
 	}
+}
 
-	gru := byIATA["GRU"]
+// --- parseAirportsIndex ---
 
-	if gru.ICAO != "SBGR" || gru.Country != "Brazil" {
-		t.Errorf("GRU: got ICAO %q country %q", gru.ICAO, gru.Country)
+func TestParseAirportsIndexListsEveryCountryWithItsSlug(t *testing.T) {
+	countries := parseAirportsIndex(loadFixture(t, "airports_index.html"))
+	var slugs []string
+
+	for _, country := range countries {
+		slugs = append(slugs, country.Slug)
 	}
-	if gru.Latitude == nil || math.Abs(*gru.Latitude-(-23.429991)) > 1e-6 {
-		t.Errorf("GRU latitude: got %v", gru.Latitude)
+	if want := []string{"brazil", "myanmar-burma", "uruguay"}; !slices.Equal(slugs, want) {
+		t.Fatalf("got %v, want %v", slugs, want)
 	}
-	if gru.Longitude == nil || math.Abs(*gru.Longitude-(-46.4674)) > 1e-6 {
-		t.Errorf("GRU longitude: got %v", gru.Longitude)
-	}
-	if gru.Altitude == nil || *gru.Altitude != 2436 {
-		t.Errorf("GRU altitude: got %v, want 2436", gru.Altitude)
+	if countries[1].Name != "MYANMAR (BURMA)" {
+		t.Errorf("got name %q, want it as FR24 prints it", countries[1].Name)
 	}
 }
 
-func TestParseAirportsJSONFormatsAltitudeWithoutDecimals(t *testing.T) {
-	// Both other ports report 2436, never 2436.0.
-	byIATA := airportsByIATA(t, parseAirportsJSON(loadFixture(t, "airports.json"), nil))
+func TestParseAirportsIndexSlugsMatchTheCountryConstants(t *testing.T) {
+	known := map[Country]bool{}
 
-	if got := formatNumber(*byIATA["GRU"].Altitude); got != "2436" {
-		t.Errorf("got altitude %q, want \"2436\"", got)
+	for _, country := range AllCountries() {
+		known[country] = true
 	}
-}
-
-func TestParseAirportsJSONKeepsEveryCountryWithoutFilter(t *testing.T) {
-	countries := map[string]bool{}
-
-	for _, airport := range parseAirportsJSON(loadFixture(t, "airports.json"), nil) {
-		countries[airport.Country] = true
-	}
-
-	for _, country := range []string{"Brazil", "United States", "Spain"} {
-		if !countries[country] {
-			t.Errorf("missing country %q", country)
+	for _, country := range parseAirportsIndex(loadFixture(t, "airports_index.html")) {
+		if !known[Country(country.Slug)] {
+			t.Errorf("%q is not a Country constant", country.Slug)
 		}
 	}
 }
 
-func TestParseAirportsJSONFiltersByCountrySlug(t *testing.T) {
-	airports := parseAirportsJSON(loadFixture(t, "airports.json"), []Country{"united-states"})
+func TestParseAirportsIndexInvalidPayloadReturnsEmptyList(t *testing.T) {
+	for _, payload := range []any{
+		[]byte(""),
+		map[string]any{"props": map[string]any{}},
+		map[string]any{"props": map[string]any{"airportsByCountry": "x"}},
+		map[string]any{"props": map[string]any{"airportsByCountry": []any{1, "x", map[string]any{"name": nil}}}},
+	} {
+		if countries := parseAirportsIndex(payload); len(countries) != 0 {
+			t.Errorf("%v: got %v, want none", payload, countries)
+		}
+	}
+}
 
-	if len(airports) == 0 {
-		t.Fatal("no airports returned")
+// --- parseAirportsPage ---
+
+func iatas(airports []*Airport) []string {
+	codes := make([]string, 0, len(airports))
+
+	for _, airport := range airports {
+		codes = append(codes, airport.IATA)
+	}
+	return codes
+}
+
+func TestParseAirportsPageExtractsTheAirportsOfACountry(t *testing.T) {
+	airports, statePaths := parseAirportsPage(decodeFixture(t, "airports_country.json"))
+
+	if len(statePaths) != 0 {
+		t.Errorf("got state paths %v, want none", statePaths)
+	}
+	if got := iatas(airports); !slices.Equal(got, []string{"CYR", "MVD"}) {
+		t.Fatalf("got %v, want CYR and MVD", got)
+	}
+
+	mvd := airports[1]
+
+	if mvd.Name != "Montevideo Carrasco International Airport" || mvd.ICAO != "SUMU" || mvd.Country != "Uruguay" {
+		t.Errorf("got %q / %q / %q", mvd.Name, mvd.ICAO, mvd.Country)
+	}
+}
+
+func TestParseAirportsPageListingCarriesNoPosition(t *testing.T) {
+	airports, _ := parseAirportsPage(decodeFixture(t, "airports_country.json"))
+
+	for _, airport := range airports {
+		if airport.Latitude != nil || airport.Longitude != nil || airport.Altitude != nil {
+			t.Errorf("%s: got position (%v, %v) altitude %v, want none",
+				airport.IATA, airport.Latitude, airport.Longitude, airport.Altitude)
+		}
+	}
+}
+
+func TestParseAirportsPageReturnsTheStatePagesOfASplitCountry(t *testing.T) {
+	airports, statePaths := parseAirportsPage(decodeFixture(t, "airports_country_states.json"))
+
+	if len(airports) != 0 {
+		t.Errorf("got %d airports, want none", len(airports))
+	}
+	if want := []string{"/data/airports/brazil/rj", "/data/airports/brazil/sp"}; !slices.Equal(statePaths, want) {
+		t.Errorf("got %v, want %v", statePaths, want)
+	}
+}
+
+func TestParseAirportsPageStatePageKeepsTheCountryName(t *testing.T) {
+	airports, statePaths := parseAirportsPage(decodeFixture(t, "airports_state_sp.json"))
+
+	if len(statePaths) != 0 {
+		t.Errorf("got state paths %v, want none", statePaths)
+	}
+	if got := iatas(airports); !slices.Equal(got, []string{"GRU", "CGH"}) {
+		t.Errorf("got %v, want GRU and CGH", got)
 	}
 	for _, airport := range airports {
-		if airport.Country != "United States" {
-			t.Errorf("got country %q, want United States", airport.Country)
+		if airport.Country != "Brazil" {
+			t.Errorf("%s: got country %q, want Brazil", airport.IATA, airport.Country)
 		}
 	}
 }
 
-func TestParseAirportsJSONAcceptsSeveralCountries(t *testing.T) {
-	airports := parseAirportsJSON(loadFixture(t, "airports.json"), []Country{"brazil", "spain"})
-	countries := map[string]bool{}
+func TestParseAirportsPageReadsAnHTMLPage(t *testing.T) {
+	airports, _ := parseAirportsPage(loadFixture(t, "airports_country.html"))
 
-	for _, airport := range airports {
-		countries[airport.Country] = true
+	if got := iatas(airports); !slices.Equal(got, []string{"RGN"}) {
+		t.Fatalf("got %v, want RGN", got)
 	}
-	if len(countries) != 2 || !countries["Brazil"] || !countries["Spain"] {
-		t.Errorf("got countries %v, want Brazil and Spain", countries)
+	// FR24 spells it "Myanmar (Burma)" on the page and "myanmar-burma" in URLs.
+	if airports[0].Country != "Myanmar (Burma)" {
+		t.Errorf("got country %q", airports[0].Country)
 	}
-}
-
-func TestParseAirportsJSONInvalidCoordinatesBecomeNil(t *testing.T) {
-	// Regression: invalid coords used to be coerced to (0, 0), placing the
-	// airport in the Gulf of Guinea.
-	byIATA := airportsByIATA(t, parseAirportsJSON(loadFixture(t, "airports.json"), nil))
-	bad := byIATA["BAD"]
-
-	if bad == nil {
-		t.Fatal("missing airport BAD")
-	}
-	if bad.Latitude != nil || bad.Longitude != nil {
-		t.Errorf("got position (%v, %v), want no position", bad.Latitude, bad.Longitude)
+	if slug := countryToSlug(airports[0].Country); slug != string(CountryMyanmarBurma) {
+		t.Errorf("got slug %q, want %q", slug, CountryMyanmarBurma)
 	}
 }
 
-func TestParseAirportsJSONRejectsNumericLookingJunk(t *testing.T) {
-	payload, err := json.Marshal(map[string]any{"rows": []any{map[string]any{
-		"name": "Junk Airport", "iata": "JNK", "icao": "JJNK",
-		"lat": "43.30 N", "lon": -8.37725, "country": "Spain", "alt": "-1",
-	}}})
+func TestParseAirportsPageSkipsRowsThatAreNotObjects(t *testing.T) {
+	payload := map[string]any{"props": map[string]any{
+		"country":  map[string]any{"name": "Nowhere"},
+		"airports": []any{1, "x", nil, map[string]any{"iata": "RRR"}},
+	}}
+	airports, _ := parseAirportsPage(payload)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	airport := parseAirportsJSON(payload, nil)[0]
-
-	// One bad coordinate drops both; altitude is independent and survives.
-	if airport.Latitude != nil || airport.Longitude != nil {
-		t.Errorf("got position (%v, %v), want no position", airport.Latitude, airport.Longitude)
-	}
-	if airport.Altitude == nil || *airport.Altitude != -1 {
-		t.Errorf("got altitude %v, want -1", airport.Altitude)
+	if got := iatas(airports); !slices.Equal(got, []string{"RRR"}) {
+		t.Errorf("got %v, want only RRR", got)
 	}
 }
 
-func TestParseAirportsJSONAgreesWithOtherPortsOnUnicode(t *testing.T) {
-	cases := []struct {
-		name     string
-		value    string
-		expected *float64
-	}{
-		// Arabic-Indic digits, which a Unicode-aware \d matched before.
-		{"arabic-indic digits", "٤٣", nil},
-		// U+FEFF, which JavaScript's trim() drops and Python's strip() keeps.
-		{"leading byte-order mark", "\ufeff43", nil},
-		// U+001C, which Python's strip() drops and JavaScript's trim() keeps.
-		{"leading file separator", "\u001c43", nil},
-		{"plain spaces are trimmed", "  43  ", float64Ptr(43)},
-	}
-
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			row, err := json.Marshal(map[string]any{
-				"name": "X", "iata": "XXX", "icao": "XXXX", "country": "Spain",
-				"lat": testCase.value, "lon": testCase.value, "alt": testCase.value,
-			})
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			airport := airportsFromRow(t, string(row))[0]
-
-			if !equalOptional(airport.Altitude, testCase.expected) {
-				t.Errorf("got altitude %v, want %v", airport.Altitude, testCase.expected)
-			}
-		})
-	}
-}
-
-func TestParseAirportsJSONNumericCoercion(t *testing.T) {
-	// Keep in step with the same list in the Python and Node.js suites.
-	cases := []struct {
-		name     string
-		literal  string
-		expected *float64
-	}{
-		{"whitespace", `" "`, nil},
-		{"an array holding a number", `[43]`, nil},
-		{"a coordinate with a hemisphere suffix", `"43.30 N"`, nil},
-		{"an exponent overflowing a double", `"1e999"`, nil},
-		{"400 plain digits", `"` + repeat("1", 400) + `"`, nil},
-		{"a whole number as a string", `"2436"`, float64Ptr(2436)},
-		{"a negative decimal", `-23.4`, float64Ptr(-23.4)},
-		{"a genuine zero", `0`, float64Ptr(0)},
-	}
-
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			row := fmt.Sprintf(
-				`{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain","lat":%s,"lon":%s,"alt":%s}`,
-				testCase.literal, testCase.literal, testCase.literal)
-			airport := airportsFromRow(t, row)[0]
-
-			for label, got := range map[string]*float64{
-				"latitude":  airport.Latitude,
-				"longitude": airport.Longitude,
-				"altitude":  airport.Altitude,
-			} {
-				if !equalOptional(got, testCase.expected) {
-					t.Errorf("%s: got %v, want %v", label, got, testCase.expected)
-				}
-			}
-		})
-	}
-}
-
-func TestParseAirportsJSONSurvivesRawNumbersNoDoubleCanHold(t *testing.T) {
-	for _, literal := range []string{repeat("1", 400), "9007199254740993", "-" + repeat("1", 400)} {
-		row := fmt.Sprintf(
-			`{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain","lat":%s,"lon":1,"alt":2}`, literal)
-		latitude := airportsFromRow(t, row)[0].Latitude
-
-		if latitude != nil && (math.IsInf(*latitude, 0) || math.IsNaN(*latitude)) {
-			t.Errorf("%s: got %v, want nil or a finite number", literal, *latitude)
-		}
-	}
-}
-
-func TestParseAirportsJSONKeepsTextFieldsAsStrings(t *testing.T) {
+func TestParseAirportsPageKeepsTextFieldsAsStrings(t *testing.T) {
 	// Anything else breaks GetCountryFlag(airport.Country).
-	for _, literal := range []string{"null", "0", "false", "true", "[]", "{}", "123"} {
-		row := fmt.Sprintf(
-			`{"name":%s,"iata":%s,"icao":%s,"country":%s,"lat":1,"lon":2,"alt":3}`,
-			literal, literal, literal, literal)
-		airport := airportsFromRow(t, row)[0]
+	payload := map[string]any{"props": map[string]any{
+		"country":  map[string]any{"name": []any{"Brazil"}},
+		"airports": []any{map[string]any{"name": 42.0, "iata": nil, "icao": map[string]any{"x": 1.0}}},
+	}}
+	airports, _ := parseAirportsPage(payload)
 
-		if airport.Name != "" || airport.IATA != "" || airport.ICAO != "" || airport.Country != "" {
-			t.Errorf("%s: got %q/%q/%q/%q, want empty strings",
-				literal, airport.Name, airport.IATA, airport.ICAO, airport.Country)
+	if len(airports) != 1 {
+		t.Fatalf("got %d airports, want 1", len(airports))
+	}
+
+	airport := airports[0]
+
+	if airport.Name != "" || airport.IATA != "" || airport.ICAO != "" || airport.Country != "" {
+		t.Errorf("got %q/%q/%q/%q, want empty strings", airport.Name, airport.IATA, airport.ICAO, airport.Country)
+	}
+}
+
+func TestParseAirportsPageIgnoresMalformedStates(t *testing.T) {
+	payload := map[string]any{"props": map[string]any{"states": []any{
+		map[string]any{"url": "/data/airports/x/a"},
+		map[string]any{"url": ""},
+		map[string]any{"code": "B"},
+		"junk",
+		map[string]any{"url": 3.0},
+	}}}
+	airports, statePaths := parseAirportsPage(payload)
+
+	if len(airports) != 0 || !slices.Equal(statePaths, []string{"/data/airports/x/a"}) {
+		t.Errorf("got %d airports and state paths %v, want only /data/airports/x/a", len(airports), statePaths)
+	}
+}
+
+func TestParseAirportsPageInvalidPayloadReturnsNothing(t *testing.T) {
+	for _, payload := range []any{
+		[]byte(""),
+		[]byte("<html>not a data page</html>"),
+		map[string]any{"props": map[string]any{}},
+		map[string]any{"props": map[string]any{"country": "Brazil", "airports": "none", "states": 7.0}},
+	} {
+		airports, statePaths := parseAirportsPage(payload)
+
+		if airports == nil || statePaths == nil {
+			t.Errorf("%v: got nil slices, want empty ones", payload)
 		}
-	}
-}
-
-func TestParseAirportsJSONCountrySpellingAndSlugRoundTrip(t *testing.T) {
-	byIATA := airportsByIATA(t, parseAirportsJSON(loadFixture(t, "airports.json"), nil))
-	ann := byIATA["VBA"]
-
-	if ann == nil {
-		t.Fatal("missing airport VBA")
-	}
-	if ann.Country != "Myanmar (Burma)" {
-		t.Errorf("got country %q", ann.Country)
-	}
-	if slug := countryToSlug(ann.Country); slug != "myanmar-burma" {
-		t.Errorf("got slug %q, want myanmar-burma", slug)
-	}
-	if ann.Altitude == nil || *ann.Altitude != 43 {
-		t.Errorf("got altitude %v, want 43", ann.Altitude)
-	}
-}
-
-func TestParseAirportsJSONFilterAcceptsEitherCountrySpelling(t *testing.T) {
-	for _, spelling := range []Country{"myanmar-burma", "Myanmar (Burma)", CountryMyanmarBurma} {
-		airports := parseAirportsJSON(loadFixture(t, "airports.json"), []Country{spelling})
-
-		if len(airports) != 1 {
-			t.Errorf("%q: got %d airports, want 1", spelling, len(airports))
-		}
-	}
-}
-
-func TestParseAirportsJSONSkipsRowsThatAreNotObjects(t *testing.T) {
-	payload := []byte(`{"rows":[[1,2,3],"x",7,null,` +
-		`{"name":"Real","iata":"RRR","icao":"RRRR","country":"Spain","lat":1,"lon":2,"alt":3}]}`)
-	airports := parseAirportsJSON(payload, nil)
-
-	if len(airports) != 1 || airports[0].IATA != "RRR" {
-		t.Errorf("got %d airports, want only RRR", len(airports))
-	}
-}
-
-func TestParseAirportsJSONUnknownCountryReturnsEmptyList(t *testing.T) {
-	if airports := parseAirportsJSON(loadFixture(t, "airports.json"), []Country{"atlantis"}); len(airports) != 0 {
-		t.Errorf("got %d airports, want 0", len(airports))
-	}
-}
-
-func TestParseAirportsJSONInvalidPayloadReturnsEmptyList(t *testing.T) {
-	for _, payload := range []string{"", "{}", "<html>not json</html>"} {
-		if airports := parseAirportsJSON([]byte(payload), nil); len(airports) != 0 {
-			t.Errorf("%q: got %d airports, want 0", payload, len(airports))
+		if len(airports) != 0 || len(statePaths) != 0 {
+			t.Errorf("%v: got %d airports and %v, want nothing", payload, len(airports), statePaths)
 		}
 	}
 }
@@ -431,46 +446,12 @@ func TestCountryConstantsRoundTripThroughTheSlugifier(t *testing.T) {
 	}
 }
 
-func equalOptional(got, want *float64) bool {
-	if got == nil || want == nil {
-		return got == nil && want == nil
-	}
-	return *got == *want
-}
-
 // float64Ptr is the shorthand the table-driven tests need for optional numbers.
 func float64Ptr(value float64) *float64 { return &value }
 
-func repeat(text string, times int) string {
-	result := make([]byte, 0, len(text)*times)
-
-	for range times {
-		result = append(result, text...)
-	}
-	return string(result)
-}
-
-func TestParseAirportsJSONRejectsDataPastTheJSONBody(t *testing.T) {
-	// Decode reads the first value only, so a spliced body used to pass.
-	payload := []byte(`{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",` +
-		`"lat":1,"lon":2,"alt":3}]}trailing garbage`)
-
-	if airports := parseAirportsJSON(payload, nil); len(airports) != 0 {
-		t.Errorf("got %d airports, want the body rejected", len(airports))
-	}
-
-	// Trailing whitespace is not garbage.
-	clean := []byte(`{"rows":[{"name":"X","iata":"XXX","icao":"XXXX","country":"Spain",` +
-		`"lat":1,"lon":2,"alt":3}]}` + "\n\n  ")
-
-	if airports := parseAirportsJSON(clean, nil); len(airports) != 1 {
-		t.Errorf("got %d airports, want the body accepted", len(airports))
-	}
-}
-
 func TestTextFieldsReadAPayloadDecodedWithUseNumber(t *testing.T) {
-	// This package decodes the airports feed that way, and the exported
-	// constructors take a map the caller may have decoded the same way.
+	// The exported constructors take a map the caller may have decoded with
+	// UseNumber, and must read a number there as text.
 	decoder := json.NewDecoder(strings.NewReader(`{"age": 12, "name": "Lukla"}`))
 	decoder.UseNumber()
 
