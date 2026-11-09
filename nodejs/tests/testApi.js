@@ -44,6 +44,10 @@ describe("Testing FlightRadarAPI version " + version, function() {
     });
 
     describe("Getting Airports", function() {
+        // The listing is one page per country and state, crawled maxWorkers at
+        // a time: the whole index takes well over mocha's default 10 seconds.
+        this.timeout(60000);
+
         const expected = 1800;
         const countries = [Countries.BRAZIL, Countries.UNITED_STATES];
 
