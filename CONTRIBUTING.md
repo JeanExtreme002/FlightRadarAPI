@@ -56,12 +56,13 @@ Sphinx. It is published on [Read the Docs](https://flightradarapi.readthedocs.io
 from `main`, and every pull request gets a preview build.
 
 ```bash
-pip install -r docs/requirements.txt
-python -m sphinx -n -W --keep-going -b html docs docs/_build/html
+make venv               # optional: creates .venv, which the targets below then use
+make install-docs       # installs Sphinx and the theme
+make docs               # builds into docs/_build/html
+make docs-serve         # live-reload server at http://127.0.0.1:8000
 ```
 
-`make docs` and `make docs-serve`, in `python/`, do the same. Warnings fail the
-build, here and in CI.
+Run these from the repository root. Warnings fail the build, here and in CI.
 
 Each page shows its examples in the three languages, in tabs. When a change
 reaches the public surface, update the guide that covers it and the reference
