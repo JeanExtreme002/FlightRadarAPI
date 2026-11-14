@@ -1,16 +1,5 @@
 /* FlightRadarAPI docs: tweaks on top of the Read the Docs theme. */
 
-/* --- Sidebar logo -------------------------------------------------------- */
-.wy-side-nav-search .wy-dropdown > a img.logo,
-.wy-side-nav-search > a img.logo {
-  width: 72px;
-  height: 72px;
-  margin: 0.2rem auto 0.5rem;
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
-}
-
 /* --- Repository link (injected in _templates/layout.html) --------------- */
 /* Scoped under `.wy-menu-vertical a` so it beats the theme's own link rule. */
 .wy-menu-vertical a.repo-link {
