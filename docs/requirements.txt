@@ -1,0 +1,9 @@
+# Pinned so a compromised release cannot be pulled in automatically: these
+# packages execute during the docs build. Bump deliberately, not implicitly.
+# sphinx-rtd-theme 3.x does not yet support Sphinx 9.
+sphinx==8.2.3
+sphinx-rtd-theme==3.1.0
+myst-parser==5.2.0
+sphinx-copybutton==0.5.2
+sphinx-design==0.8.0
+sphinxext-opengraph==0.13.0

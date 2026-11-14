@@ -67,4 +67,4 @@ Countries.FRANCE           // "france"
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/).
+Explore the documentation of FlightRadarAPI package through [this site](https://flightradarapi.readthedocs.io/).

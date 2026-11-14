@@ -64,8 +64,8 @@ help:
 	@echo "  $(YELLOW)check-deps$(NC)       - Check for outdated dependencies"
 	@echo "  $(YELLOW)update-deps$(NC)      - Update dependencies"
 	@echo "  $(YELLOW)security$(NC)         - Run security audit"
-	@echo "  $(YELLOW)docs$(NC)             - Build the MkDocs site (output in ../site/)"
-	@echo "  $(YELLOW)docs-serve$(NC)       - Serve the MkDocs site locally with auto-reload"
+	@echo "  $(YELLOW)docs$(NC)             - Build the documentation (output in ../docs/_build/html/)"
+	@echo "  $(YELLOW)docs-serve$(NC)       - Serve the documentation locally with auto-reload"
 	@echo "  $(YELLOW)venv$(NC)             - Create virtual environment"
 	@echo "  $(YELLOW)all$(NC)              - Run full pipeline (install, lint, test, build)"
 
@@ -245,22 +245,23 @@ security:
 	$(PYTHON) -m pip_audit
 	@echo "$(GREEN)Security audit completed!$(NC)"
 
-# Build the MkDocs site. The configuration (`mkdocs.yml`) and the `docs/`
-# directory live in the repository root, so we invoke MkDocs from one level
-# up. Requires `mkdocs-material` (install with `pip install mkdocs-material`
-# — kept out of `install-dev` because the docs site is rebuilt by CI, not
-# every developer needs the dependency locally).
+# Build the documentation with the same flags as CI and Read the Docs: warnings
+# (including broken cross-references, via -n) fail the build. The sources live
+# in `../docs/`; install the tooling with `pip install -r ../docs/requirements.txt`
+# (kept out of `install-dev` because not every developer needs it locally).
 .PHONY: docs
 docs:
-	@echo "$(GREEN)Building MkDocs site...$(NC)"
-	cd .. && mkdocs build
-	@echo "$(GREEN)Site generated in ../site/$(NC)"
+	@echo "$(GREEN)Building the documentation...$(NC)"
+	$(PYTHON) -m sphinx -n -W --keep-going -b html ../docs ../docs/_build/html
+	@echo "$(GREEN)Documentation generated at ../docs/_build/html/index.html$(NC)"
 
-# Serve the MkDocs site locally with auto-reload.
+# Serve the documentation locally with auto-reload. sphinx-autobuild is
+# installed on demand.
 .PHONY: docs-serve
 docs-serve:
-	@echo "$(GREEN)Serving MkDocs site at http://127.0.0.1:8000 ...$(NC)"
-	cd .. && mkdocs serve
+	@echo "$(GREEN)Serving the documentation at http://127.0.0.1:8000 ...$(NC)"
+	@$(PYTHON) -c "import sphinx_autobuild" 2>/dev/null || $(PIP) install sphinx-autobuild
+	$(PYTHON) -m sphinx_autobuild ../docs ../docs/_build/html
 
 # Full development pipeline. Uses `install-dev` (not `install`) so that
 # `lint`, `type-check`, and `test` have flake8 / mypy / pytest available

@@ -13,7 +13,6 @@ venv/
 .mypy_cache/
 .pytest_cache/
 htmlcov/
-site/
 .coverage
 coverage.xml
 
@@ -33,6 +32,9 @@ coverage.out
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Docs build output
+docs/_build/
 
 # Misc
 .env

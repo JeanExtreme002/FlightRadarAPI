@@ -69,4 +69,4 @@ for _, country := range flightradarapi.AllCountries() { }
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/), or read the [Go reference](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi).
+Explore the documentation of FlightRadarAPI package through [this site](https://flightradarapi.readthedocs.io/), or read the [Go reference](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi).

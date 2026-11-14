@@ -47,7 +47,25 @@ is a documented reason not to. Common targets that must stay in sync:
 - The public surface — `FlightRadar24API` methods (`Client` in Go), the
   `Countries` enum (`Country` constants in Go), `FlightTrackerConfig` fields,
   and the `Entity` / `Airport` / `Flight` attributes consumers depend on.
-  `docs/go.md` documents where the Go surface deliberately differs.
+  `docs/sdk-differences.md` documents where the Go surface deliberately differs.
+
+## Documentation
+
+The documentation lives in `docs/`, written in Markdown (MyST) and built with
+Sphinx. It is published on [Read the Docs](https://flightradarapi.readthedocs.io/)
+from `main`, and every pull request gets a preview build.
+
+```bash
+pip install -r docs/requirements.txt
+python -m sphinx -n -W --keep-going -b html docs docs/_build/html
+```
+
+`make docs` and `make docs-serve`, in `python/`, do the same. Warnings fail the
+build, here and in CI.
+
+Each page shows its examples in the three languages, in tabs. When a change
+reaches the public surface, update the guide that covers it and the reference
+pages (`docs/api.md`, `docs/flight.md`, `docs/airport.md`, `docs/countries.md`).
 
 ## Style
 
@@ -100,5 +118,5 @@ module was tagged by hand, does what you would expect and nothing else.
 ## Reporting bugs and asking questions
 
 - Bugs: open a GitHub issue with the bug report template.
-- Security: see [`SECURITY.md`](SECURITY.md). **Do not** report via GitHub
-  issues.
+- Security: see [`SECURITY.md`](https://github.com/JeanExtreme002/FlightRadarAPI/blob/main/SECURITY.md).
+  **Do not** report via GitHub issues.
