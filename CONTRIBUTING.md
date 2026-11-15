@@ -9,30 +9,30 @@ touch every side.
 ### Python
 ```bash
 cd python
-make dev-setup          # creates venv, installs package + test extras + tooling
+make dev-setup            # creates venv, installs package + test extras + tooling
 source venv/bin/activate
-make test               # runs offline + integration
-make lint               # flake8
-make type-check         # mypy
+make test                 # runs offline + integration
+make lint                 # flake8
+make type-check           # mypy
 ```
 
 ### Node.js
 ```bash
 cd nodejs
 make install
-make test               # mocha (all tiers)
-make lint               # eslint
-make test-types         # tsd
+make test                 # mocha (all tiers)
+make lint                 # eslint
+make test-types           # tsd
 ```
 
 ### Go
 ```bash
 cd go
 make deps
-make test               # offline suite (the PR gate)
-make test-integration   # live FR24 suite
-make lint               # gofmt + go vet
-make lint-strict        # adds staticcheck
+make test                 # offline suite (the PR gate)
+make test-integration     # live FR24 suite
+make lint                 # gofmt + go vet
+make lint-strict          # adds staticcheck
 ```
 
 ## Keeping the SDKs aligned
@@ -47,7 +47,6 @@ is a documented reason not to. Common targets that must stay in sync:
 - The public surface — `FlightRadar24API` methods (`Client` in Go), the
   `Countries` enum (`Country` constants in Go), `FlightTrackerConfig` fields,
   and the `Entity` / `Airport` / `Flight` attributes consumers depend on.
-  `docs/sdk-differences.md` documents where the Go surface deliberately differs.
 
 ## Documentation
 

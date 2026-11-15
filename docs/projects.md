@@ -42,10 +42,4 @@ By Timofey Dmitrenko, aviation geek and Java Spring Boot programmer
 :::
 ::::
 
-Built something with FlightRadarAPI? Add it to this page.
-
-```{button-link} https://github.com/JeanExtreme002/FlightRadarAPI/edit/main/docs/projects.md
-:color: primary
-
-Contribute your own
-```
+Built something with FlightRadarAPI? Add it to this [page](https://github.com/JeanExtreme002/FlightRadarAPI/edit/main/docs/projects.md).

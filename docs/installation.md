@@ -53,11 +53,11 @@ import "github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
 
 ## Requirements
 
-| SDK | Runtime | Dependencies |
-|---|---|---|
-| Python | Python 3.10 or later | `curl_cffi`, `Brotli`, `beautifulsoup4` |
-| Node.js | Node.js 18.17 or later | `undici`, `node-html-parser` |
-| Go | Go 1.26 or later | `golang.org/x/net`, `golang.org/x/text`, `github.com/andybalholm/brotli` |
+| SDK | Runtime |
+|---|---|
+| Python | Python 3.10 or later |
+| Node.js | Node.js 18.17 or later |
+| Go | Go 1.26 or later |
 
 The dependencies are installed for you by `pip`, `npm` and `go get`.
 

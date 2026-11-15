@@ -106,20 +106,6 @@ london := zones["europe"].Subzones["uk"].Subzones["london"]
 :::
 ::::
 
-### Available zones
-
-| Zone | Subzones |
-|---|---|
-| `europe` | `poland`, `germany`, `uk` (with `london`, `ireland`), `spain`, `france`, `ceur`, `scandinavia`, `italy` |
-| `northamerica` | `na_n`, `na_c` (with `na_cny`, `na_cla`, `na_cat`, `na_cse`, `na_nw`, `na_ne`, `na_sw`, `na_se`, `na_cc`), `na_s` |
-| `southamerica` | |
-| `oceania` | |
-| `asia` | `japan` |
-| `africa` | |
-| `atlantic` | |
-| `maldives` | |
-| `northatlantic` | |
-
 ## Around a point
 
 To look at the sky above one place, build the bounds from its coordinates and a

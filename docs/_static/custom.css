@@ -124,10 +124,6 @@ section#flightradarapi > h1 {
   color: #2980b9;
 }
 
-.rst-content h2.tagline {
-  margin: 0 0 1rem;
-}
-
 @media (max-width: 480px) {
   .rst-content .hero img {
     width: 56px;

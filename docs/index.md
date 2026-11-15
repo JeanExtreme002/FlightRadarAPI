@@ -9,11 +9,13 @@ myst:
 
 <p class="hero"><img alt="" src="_static/logo.png"><span>FlightRadar<em>API</em></span></p>
 
-<h2 class="tagline">Unofficial SDK for FlightRadar24</h2>
+## FlightRadarAPI Documentation
+Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/), for
+**Python**, **Node.js** and **Go**. Live flights, airports, airlines, zones and
+more.
 
-Live flights, airports, airlines, zones and more from
-[FlightRadar24](https://www.flightradar24.com/), for **Python**, **Node.js** and
-**Go**, with the same features in every language.
+This SDK should only be used for your own educational purposes. If you are interested in accessing Flightradar24 data commercially, please contact [business@fr24.com](mailto:business@fr24.com). See
+[Flightradar24's terms and conditions](https://www.flightradar24.com/terms-and-conditions).
 
 <table class="badge-table">
   <tr>
@@ -55,13 +57,12 @@ Live flights, airports, airlines, zones and more from
   </tr>
 </table>
 
-```{warning}
-This is **not** an official FlightRadar24 API, and it should only be used for
-your own educational purposes. If you are interested in accessing Flightradar24
-data commercially, use the [official FR24 API](https://fr24api.flightradar24.com/)
-or contact [business@fr24.com](mailto:business@fr24.com). See
-[Flightradar24's terms and conditions](https://www.flightradar24.com/terms-and-conditions).
+```{admonition} Info
+:class: note
+This is not an official FlightRadar24 API. You can access their official API [here](https://fr24api.flightradar24.com/).
 ```
+
+## Getting Started
 
 ::::{tab-set}
 :sync-group: lang
@@ -111,35 +112,32 @@ go get github.com/JeanExtreme002/FlightRadarAPI/go@latest
 ```
 
 ```go
-client := flightradarapi.New()
+package main
 
-flights, err := client.GetFlights(ctx, flightradarapi.FlightSearch{Airline: "UAE"})
+import (
+    "context"
+    "fmt"
+    "log"
 
-if err != nil {
-    log.Fatal(err)
-}
+    "github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"
+)
 
-for _, flight := range flights[:min(5, len(flights))] {
-    fmt.Println(flight.Callsign, flight.GetFlightLevel(), flight.GetGroundSpeed())
+func main() {
+    client := flightradarapi.New()
+
+    flights, err := client.GetFlights(context.Background(), flightradarapi.FlightSearch{Airline: "UAE"})
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    for _, flight := range flights[:min(5, len(flights))] {
+        fmt.Println(flight.Callsign, flight.GetFlightLevel(), flight.GetGroundSpeed())
+    }
 }
 ```
 :::
 ::::
-
-## What's inside
-
-| Area | Topics |
-|---|---|
-| **Getting started** | [Installation](installation.md), [Quick Start](quickstart.md) |
-| **Flights** | [Live flights](flights.md), [Zones and bounds](zones.md), [Flight tracker settings](tracker-config.md), [Distances](distances.md) |
-| **Airports and airlines** | [Airports](airports.md), [Airlines, logos and flags](airlines.md) |
-| **More data** | [Search](searching.md), [Most tracked, disruptions and eruptions](live-data.md) |
-| **Account** | [Login, bookmarks and flight history](account.md) |
-| **Client** | [Configuration](client.md), [Errors and retries](errors.md) |
-| **Reference** | [Client methods](api.md), [Flight](flight.md), [Airport](airport.md), [Countries](countries.md), [Differences between the SDKs](sdk-differences.md) |
-
-Every page shows its examples in the three languages: pick yours in any tab and
-the rest of the site follows.
 
 New here? Start with [Installation](installation.md) and the
 [Quick Start](quickstart.md).
@@ -201,7 +199,6 @@ api
 flight
 airport
 countries
-sdk-differences
 ```
 
 ```{toctree}
