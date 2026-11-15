@@ -38,7 +38,7 @@ This SDK should only be used for your own educational purposes. If you are inter
     <td>
       <a href="https://pypi.org/project/FlightRadarAPI/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/FlightRadarAPI?logo=pypi"></a>
       <a href="https://pypi.org/project/FlightRadarAPI/"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10+-8A2BE2"></a>
-      <a href="https://pypi.org/project/FlightRadarAPI/"><img alt="Total downloads" src="https://static.pepy.tech/personalized-badge/flightradarapi?period=total&units=international_system&left_color=grey&right_color=orange&left_text=downloads"></a>
+      <a href="https://pypi.org/project/FlightRadarAPI/"><img alt="Total downloads" src="https://static.pepy.tech/personalized-badge/flightradarapi?period=total&units=international_system&left_color=grey&right_color=orange&left_text=downloads%20(total)"></a>
       <a href="https://pypi.org/project/FlightRadarAPI/"><img alt="Monthly downloads" src="https://img.shields.io/pypi/dm/flightradarapi?style=flat&label=frequency"></a>
     </td>
   </tr>
@@ -47,6 +47,8 @@ This SDK should only be used for your own educational purposes. If you are inter
     <td>
       <a href="https://www.npmjs.com/package/flightradarapi"><img alt="npm version" src="https://img.shields.io/npm/v/flightradarapi?logo=npm&color=red"></a>
       <a href="https://www.npmjs.com/package/flightradarapi"><img alt="Node.js 18.17+" src="https://img.shields.io/badge/node-18.17+-339933"></a>
+      <a href="https://www.npmjs.com/package/flightradarapi"><img alt="npm downloads in the last year" src="https://img.shields.io/npm/dy/flightradarapi?label=downloads%20(year)&amp;color=blue"></a>
+      <a href="https://www.npmjs.com/package/flightradarapi"><img alt="npm monthly downloads" src="https://img.shields.io/npm/dm/flightradarapi?style=flat&amp;label=frequency"></a>
     </td>
   </tr>
   <tr>
