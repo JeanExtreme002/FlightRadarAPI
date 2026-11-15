@@ -33,7 +33,7 @@
 package flightradarapi
 
 // Version of this package.
-const Version = "1.7.0"
+const Version = "1.7.1"
 
 // Author of this package.
 const Author = "Jean Loui Bernard Silva de Jesus"
