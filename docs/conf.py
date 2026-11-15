@@ -52,6 +52,9 @@ html_theme_options = {
     "navigation_depth": 3,
     "prev_next_buttons_location": "bottom",
     "style_external_links": True,
+    # The site is published as a single version: no switchers in the sidebar.
+    "version_selector": False,
+    "language_selector": False,
 }
 
 # "Edit on GitHub" link, plus the data the sidebar repository card reads.
@@ -69,7 +72,7 @@ html_css_files = ["custom.css"]
 # -- Extensions --------------------------------------------------------------
 
 # Read the Docs exports the address the build is served from.
-html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "https://flightradarapi.readthedocs.io/en/latest/")
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "https://flightradarapi.readthedocs.io/")
 
 ogp_site_url = html_baseurl
 ogp_site_name = "FlightRadarAPI"
