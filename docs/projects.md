@@ -1,47 +1,45 @@
----
-title: Projects using FlightRadarAPI
-description: Nice projects that use FlightRadarAPI
----
+# Projects Using FlightRadarAPI
 
-<div class="grid cards" align="center" markdown>
+Research, products and weekend builds made with FlightRadarAPI.
 
--  [__Automatic Calibration in Crowd-sourced Network of Spectrum Sensors__](https://dl.acm.org/doi/10.1145/3626111.3628187)
+::::{grid} 1 1 2 2
+:gutter: 3
 
-    ---
+:::{grid-item-card} Automatic Calibration in Crowd-sourced Network of Spectrum Sensors
+:link: https://dl.acm.org/doi/10.1145/3626111.3628187
 
-    By Ali Abedi, Joshua Sanz, Anant Sahai, from University of California (UC), Berkeley
+By Ali Abedi, Joshua Sanz, Anant Sahai, from University of California (UC), Berkeley
+:::
 
+:::{grid-item-card} Airline Status Tracker for top 10 Airport Departures in North America
+:link: https://people.ischool.berkeley.edu/~frank.song/flight.html
 
--   [__Airline Status Tracker for top 10 Airport Departures in North America__](https://people.ischool.berkeley.edu/~frank.song/flight.html)
+By Adeleke Coker, Frank Song, Greg Chi, from University of California (UC), Berkeley, School of Information
+:::
 
-    ---
+:::{grid-item-card} Flight Tracker with Weather
+:link: https://magpi.raspberrypi.com/articles/flight-tracker-with-weather
 
-    By Adeleke Coker, Frank Song, Greg Chi, from University of California (UC), Berkeley, School of Information
+By Adam Paulson, a Reddit user going by the name C0wsaysmoo
+:::
 
--   [__Flight Tracker with Weather__](https://magpi.raspberrypi.com/articles/flight-tracker-with-weather)
+:::{grid-item-card} Design and implementation project of an aircraft mobile node module for the SeamSAT-LEO constellation simulator
+:link: https://upcommons.upc.edu/bitstream/handle/2117/394691/TFG.pdf?sequence=2&isAllowed=y
 
-    ---
+By David Anton Dobarro, graduate in Aerospace Technologies Engineering from Universitat Politècnica de Catalunya
+:::
 
-     By Adam Paulson, a Reddit user going by the name C0wsaysmoo
+:::{grid-item-card} Fridge Flight Tracker
+:link: https://blog.colinwaddell.com/flight-tracker/
 
--   [__Design and implementation project of an aircraft mobile node module for the SeamSAT-LEO constellation simulator__](https://upcommons.upc.edu/bitstream/handle/2117/394691/TFG.pdf?sequence=2&isAllowed=y)
+By Colin Waddell, a Glasgow based programmer, website designer and electronics specialist
+:::
 
-    ---
+:::{grid-item-card} Plane spotting Telegram Bot
+:link: https://github.com/ViLsonCake/avgeek-telegram-bot
 
-    By David Anton Dobarro, graduate in Aerospace Technologies Engineering from Universitat Politècnica de Catalunya
+By Timofey Dmitrenko, aviation geek and Java Spring Boot programmer
+:::
+::::
 
--   [__Fridge Flight Tracker__](https://blog.colinwaddell.com/flight-tracker/)
-
-    ---
-
-    By Colin Waddell, a Glasgow based programmer, website designer and electronics specialist
-
-- [__Plane spotting Telegram Bot__](https://github.com/ViLsonCake/avgeek-telegram-bot)
-
-    ---
-
-    By Timofey Dmitrenko, aviation geek and Java Spring Boot programmer
-
-</div>
-
-[Contribute Your Own :writing_hand:](https://github.com/JeanExtreme002/FlightRadarAPI/edit/main/docs/projects.md){ .md-button .md-button--primary }
+Built something with FlightRadarAPI? Add it to this [page](https://github.com/JeanExtreme002/FlightRadarAPI/edit/main/docs/projects.md).

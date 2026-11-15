@@ -9,6 +9,9 @@ import {
 
 const api = new FlightRadar24API();
 expectType<FlightRadar24API>(new FlightRadar24API({timeout: 5000, maxWorkers: 4}));
+expectType<FlightRadar24API>(new FlightRadar24API({
+    impersonate: {ciphers: ["TLS_AES_128_GCM_SHA256"], sigalgs: ["rsa_pss_rsae_sha256"], ecdhCurve: "X25519:P-256"},
+}));
 
 // getFlights
 expectType<Promise<Flight[]>>(api.getFlights());
@@ -70,3 +73,4 @@ expectType<boolean>(flight.checkInfo({airlineIcao: "TAM"}));
 expectError(api.getFlights(123));
 expectError(api.getBounds({tl_y: 1}));
 expectError(new FlightRadar24API({timeout: "5000"}));
+expectError(new FlightRadar24API({impersonate: {profile: "chrome136"}}));

@@ -64,8 +64,8 @@ help:
 	@echo "  $(YELLOW)check-deps$(NC)       - Check for outdated dependencies"
 	@echo "  $(YELLOW)update-deps$(NC)      - Update dependencies"
 	@echo "  $(YELLOW)security$(NC)         - Run security audit"
-	@echo "  $(YELLOW)docs$(NC)             - Build the MkDocs site (output in ../site/)"
-	@echo "  $(YELLOW)docs-serve$(NC)       - Serve the MkDocs site locally with auto-reload"
+	@echo "  $(YELLOW)docs$(NC)             - Build the documentation (see ../Makefile)"
+	@echo "  $(YELLOW)docs-serve$(NC)       - Serve the documentation locally (see ../Makefile)"
 	@echo "  $(YELLOW)venv$(NC)             - Create virtual environment"
 	@echo "  $(YELLOW)all$(NC)              - Run full pipeline (install, lint, test, build)"
 
@@ -245,22 +245,16 @@ security:
 	$(PYTHON) -m pip_audit
 	@echo "$(GREEN)Security audit completed!$(NC)"
 
-# Build the MkDocs site. The configuration (`mkdocs.yml`) and the `docs/`
-# directory live in the repository root, so we invoke MkDocs from one level
-# up. Requires `mkdocs-material` (install with `pip install mkdocs-material`
-# — kept out of `install-dev` because the docs site is rebuilt by CI, not
-# every developer needs the dependency locally).
+# The documentation belongs to the whole repository, so its targets live in the
+# Makefile one level up (`make install-docs` there installs the tooling). These
+# two forward to it for whoever is working from this directory.
 .PHONY: docs
 docs:
-	@echo "$(GREEN)Building MkDocs site...$(NC)"
-	cd .. && mkdocs build
-	@echo "$(GREEN)Site generated in ../site/$(NC)"
+	$(MAKE) -C .. docs
 
-# Serve the MkDocs site locally with auto-reload.
 .PHONY: docs-serve
 docs-serve:
-	@echo "$(GREEN)Serving MkDocs site at http://127.0.0.1:8000 ...$(NC)"
-	cd .. && mkdocs serve
+	$(MAKE) -C .. docs-serve
 
 # Full development pipeline. Uses `install-dev` (not `install`) so that
 # `lint`, `type-check`, and `test` have flake8 / mypy / pytest available

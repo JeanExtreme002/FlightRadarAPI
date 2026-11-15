@@ -9,30 +9,30 @@ touch every side.
 ### Python
 ```bash
 cd python
-make dev-setup          # creates venv, installs package + test extras + tooling
+make dev-setup            # creates venv, installs package + test extras + tooling
 source venv/bin/activate
-make test               # runs offline + integration
-make lint               # flake8
-make type-check         # mypy
+make test                 # runs offline + integration
+make lint                 # flake8
+make type-check           # mypy
 ```
 
 ### Node.js
 ```bash
 cd nodejs
 make install
-make test               # mocha (all tiers)
-make lint               # eslint
-make test-types         # tsd
+make test                 # mocha (all tiers)
+make lint                 # eslint
+make test-types           # tsd
 ```
 
 ### Go
 ```bash
 cd go
 make deps
-make test               # offline suite (the PR gate)
-make test-integration   # live FR24 suite
-make lint               # gofmt + go vet
-make lint-strict        # adds staticcheck
+make test                 # offline suite (the PR gate)
+make test-integration     # live FR24 suite
+make lint                 # gofmt + go vet
+make lint-strict          # adds staticcheck
 ```
 
 ## Keeping the SDKs aligned
@@ -47,7 +47,25 @@ is a documented reason not to. Common targets that must stay in sync:
 - The public surface — `FlightRadar24API` methods (`Client` in Go), the
   `Countries` enum (`Country` constants in Go), `FlightTrackerConfig` fields,
   and the `Entity` / `Airport` / `Flight` attributes consumers depend on.
-  `docs/go.md` documents where the Go surface deliberately differs.
+
+## Documentation
+
+The documentation lives in `docs/`, written in Markdown (MyST) and built with
+Sphinx. It is published on [Read the Docs](https://flightradarapi.readthedocs.io/)
+from `main`, and every pull request gets a preview build.
+
+```bash
+make venv               # optional: creates .venv, which the targets below then use
+make install-docs       # installs Sphinx and the theme
+make docs               # builds into docs/_build/html
+make docs-serve         # live-reload server at http://127.0.0.1:8000
+```
+
+Run these from the repository root. Warnings fail the build, here and in CI.
+
+Each page shows its examples in the three languages, in tabs. When a change
+reaches the public surface, update the guide that covers it and the reference
+pages (`docs/api.md`, `docs/flight.md`, `docs/airport.md`, `docs/countries.md`).
 
 ## Style
 
@@ -100,5 +118,5 @@ module was tagged by hand, does what you would expect and nothing else.
 ## Reporting bugs and asking questions
 
 - Bugs: open a GitHub issue with the bug report template.
-- Security: see [`SECURITY.md`](SECURITY.md). **Do not** report via GitHub
-  issues.
+- Security: see [`SECURITY.md`](https://github.com/JeanExtreme002/FlightRadarAPI/blob/main/SECURITY.md).
+  **Do not** report via GitHub issues.

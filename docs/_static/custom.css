@@ -1,0 +1,183 @@
+/* FlightRadarAPI docs: tweaks on top of the Read the Docs theme. */
+
+/* --- Repository link (injected in _templates/layout.html) --------------- */
+/* Scoped under `.wy-menu-vertical a` so it beats the theme's own link rule. */
+.wy-menu-vertical a.repo-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.6rem 0.8rem 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.35rem;
+  color: #d9d9d9;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wy-menu-vertical a.repo-link:hover,
+.wy-menu-vertical a.repo-link:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.repo-link__icon {
+  flex-shrink: 0;
+}
+
+.repo-link__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.repo-link__name {
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-link__stats {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.repo-link__stats[hidden] {
+  display: none;
+}
+
+.repo-link__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* The theme's script injects an expand button into every sidebar link. */
+.repo-link button.toctree-expand {
+  display: none;
+}
+
+/* --- Badge table on the home page ---------------------------------------- */
+.badge-table {
+  margin-bottom: 1.5rem;
+  border-collapse: collapse;
+}
+
+.badge-table th,
+.badge-table td {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #e1e4e5;
+  vertical-align: middle;
+}
+
+.badge-table th {
+  background: #f3f6f6;
+  text-align: center;
+}
+
+.badge-table td a {
+  display: inline-block;
+  margin: 0.1rem 0.15rem;
+  line-height: 0;
+}
+
+/* --- Home page hero ------------------------------------------------------ */
+/* The hero stands for the page title, which stays for the browser tab and
+   the navigation but isn't shown. */
+section#flightradarapi > h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.rst-content .hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0.5rem 0 2rem;
+}
+
+.rst-content .hero img {
+  width: 84px;
+  height: 84px;
+}
+
+.rst-content .hero span {
+  font-family: "Roboto Slab", ff-tisa-web-pro, Georgia, Arial, sans-serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #404040;
+}
+
+.rst-content .hero span em {
+  font-style: normal;
+  color: #2980b9;
+}
+
+@media (max-width: 480px) {
+  .rst-content .hero img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .rst-content .hero span {
+    font-size: 1.8rem;
+  }
+}
+
+/* --- Language tabs (sphinx-design) --------------------------------------- */
+.rst-content .sd-tab-set {
+  margin-bottom: 1.5rem;
+}
+
+.rst-content .sd-tab-set > label {
+  padding: 0.6rem 1rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.rst-content .sd-tab-set > input:checked + label {
+  border-color: #2980b9;
+  color: #2980b9;
+}
+
+.rst-content .sd-tab-set > input:not(:checked) + label:hover {
+  color: #2980b9;
+}
+
+.rst-content .sd-tab-content {
+  padding: 0.9rem 0 0;
+  box-shadow: 0 -0.0625rem #e1e4e5;
+}
+
+.rst-content .sd-tab-content > div[class^="highlight"]:last-child,
+.rst-content .sd-tab-content > p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Wide reference tables ----------------------------------------------- */
+/* The theme never wraps table cells, which pushes three-column name tables
+   off the page. */
+.rst-content table.docutils td,
+.rst-content table.docutils th {
+  white-space: normal;
+}
+
+.rst-content table.docutils td code {
+  white-space: nowrap;
+}
+
+/* --- Content width -------------------------------------------------------- */
+/* Room for the reference tables; the theme's 800px is tight for them. */
+.wy-nav-content {
+  max-width: 960px;
+}

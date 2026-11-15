@@ -11,12 +11,16 @@ export interface Zone {
 }
 
 /**
- * Options for TLS impersonation. Currently maps Chrome major versions to
- * the ciphers/sigalgs/curves the runtime should use.
+ * TLS impersonation profile. Each field left out keeps the value of the
+ * bundled Chrome 136 profile.
  */
 export interface ImpersonateOptions {
-    /** Chrome major version label, e.g. "chrome136". Defaults to the latest supported. */
-    profile?: string;
+    /** OpenSSL cipher names, in the order offered. */
+    ciphers?: readonly string[];
+    /** OpenSSL signature algorithm names, in the order offered. */
+    sigalgs?: readonly string[];
+    /** Colon-separated curve names, e.g. "X25519:P-256:P-384". */
+    ecdhCurve?: string;
 }
 
 /**

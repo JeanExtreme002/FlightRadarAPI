@@ -5,6 +5,7 @@ This SDK should only be used for your own educational purposes. If you are inter
 
 **Official FR24 API**: https://fr24api.flightradar24.com/
 
+[![Documentation Status](https://readthedocs.org/projects/flightradarapi/badge/?version=latest)](https://flightradarapi.readthedocs.io/?badge=latest)
 [![Go Package](https://github.com/JeanExtreme002/FlightRadarAPI/actions/workflows/go-package.yml/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
 [![License](https://img.shields.io/pypi/l/FlightRadarAPI)](https://github.com/JeanExtreme002/FlightRadarAPI)
 [![Pypi](https://img.shields.io/pypi/v/FlightRadarAPI?logo=pypi)](https://pypi.org/project/FlightRadarAPI/)
@@ -69,4 +70,4 @@ for _, country := range flightradarapi.AllCountries() { }
 ```
 
 ## Documentation
-Explore the documentation of FlightRadarAPI package through [this site](https://JeanExtreme002.github.io/FlightRadarAPI/), or read the [Go reference](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi).
+Explore the documentation of FlightRadarAPI package through [this site](https://flightradarapi.readthedocs.io/), or read the [Go reference](https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi).

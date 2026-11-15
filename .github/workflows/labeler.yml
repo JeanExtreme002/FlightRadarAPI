@@ -84,7 +84,7 @@ jobs:
 
             const isDocs = (f) =>
               f.startsWith("docs/") ||
-              f === "mkdocs.yml" ||
+              f === ".readthedocs.yaml" ||
               /\.md$/i.test(f);
 
             const isPython = (f) => f.startsWith("python/");

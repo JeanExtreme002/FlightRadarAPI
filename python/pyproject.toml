@@ -43,7 +43,7 @@ tests = [
 [project.urls]
 "Homepage" = "https://github.com/JeanExtreme002/FlightRadarAPI"
 "Source Code" = "https://github.com/JeanExtreme002/FlightRadarAPI"
-"Documentation" = "https://jeanextreme002.github.io/FlightRadarAPI/"
+"Documentation" = "https://flightradarapi.readthedocs.io/"
 "Bug Reports" = "https://github.com/JeanExtreme002/FlightRadarAPI/issues"
 
 [tool.hatch.version]

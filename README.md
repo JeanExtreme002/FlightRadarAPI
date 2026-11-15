@@ -5,6 +5,7 @@ This SDK should only be used for your own educational purposes. If you are inter
 
 **Official FR24 API**: https://fr24api.flightradar24.com/
 
+[![Documentation Status](https://readthedocs.org/projects/flightradarapi/badge/?version=latest)](https://flightradarapi.readthedocs.io/?badge=latest)
 [![Python Package](https://github.com/JeanExtreme002/FlightRadarAPI/workflows/Python%20Package/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
 [![Node.js Package](https://github.com/JeanExtreme002/FlightRadarAPI/actions/workflows/node-package.yml/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
 [![Go Package](https://github.com/JeanExtreme002/FlightRadarAPI/actions/workflows/go-package.yml/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
@@ -35,7 +36,7 @@ go get github.com/JeanExtreme002/FlightRadarAPI/go@latest
 ```
 
 ## Documentation
-Explore the docs of FlightRadarAPI package, for Python, NodeJS or Go, through [FlightRadarAPI Documentation](https://JeanExtreme002.github.io/FlightRadarAPI/) page.
+Explore the docs of FlightRadarAPI package, for Python, NodeJS or Go, through [FlightRadarAPI Documentation](https://flightradarapi.readthedocs.io/) page.
 
 ## Project resources
 **Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md)<br>
