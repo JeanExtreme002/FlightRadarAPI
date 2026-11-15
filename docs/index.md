@@ -19,9 +19,10 @@ This SDK should only be used for your own educational purposes. If you are inter
 
 <table class="badge-table">
   <tr>
-    <th>docs</th>
+    <th>project</th>
     <td>
       <a href="https://flightradarapi.readthedocs.io/?badge=latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/flightradarapi/badge/?version=latest"></a>
+      <a href="https://github.com/JeanExtreme002/FlightRadarAPI/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/FlightRadarAPI"></a>
     </td>
   </tr>
   <tr>
@@ -53,12 +54,6 @@ This SDK should only be used for your own educational purposes. If you are inter
     <td>
       <a href="https://pkg.go.dev/github.com/JeanExtreme002/FlightRadarAPI/go/flightradarapi"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/JeanExtreme002/FlightRadarAPI/go.svg"></a>
       <a href="https://go.dev/dl/"><img alt="Go 1.26+" src="https://img.shields.io/badge/go-1.26+-00ADD8"></a>
-    </td>
-  </tr>
-  <tr>
-    <th>license</th>
-    <td>
-      <a href="https://github.com/JeanExtreme002/FlightRadarAPI/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/FlightRadarAPI"></a>
     </td>
   </tr>
 </table>
