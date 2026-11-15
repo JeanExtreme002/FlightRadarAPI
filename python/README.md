@@ -5,6 +5,7 @@ This SDK should only be used for your own educational purposes. If you are inter
 
 **Official FR24 API**: https://fr24api.flightradar24.com/
 
+[![Documentation Status](https://readthedocs.org/projects/flightradarapi/badge/?version=latest)](https://flightradarapi.readthedocs.io/?badge=latest)
 [![Python Package](https://github.com/JeanExtreme002/FlightRadarAPI/workflows/Python%20Package/badge.svg)](https://github.com/JeanExtreme002/FlightRadarAPI/actions)
 [![License](https://img.shields.io/pypi/l/FlightRadarAPI)](https://github.com/JeanExtreme002/FlightRadarAPI)
 [![Pypi](https://img.shields.io/pypi/v/FlightRadarAPI?logo=pypi)](https://pypi.org/project/FlightRadarAPI/)

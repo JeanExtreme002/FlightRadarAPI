@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FlightRadarAPI">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#46a6e6"/>
+      <stop offset="1" stop-color="#1c5f96"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0.28"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="240"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="url(#sky)"/>
+  <g clip-path="url(#disc)">
+    <!-- radar sweep -->
+    <path d="M256 256 L256 16 A240 240 0 0 1 496 256 Z" fill="url(#sweep)"/>
+    <!-- range rings and crosshair -->
+    <g fill="none" stroke="#fff" stroke-opacity="0.22" stroke-width="6">
+      <circle cx="256" cy="256" r="84"/>
+      <circle cx="256" cy="256" r="162"/>
+      <path d="M256 16 V496 M16 256 H496"/>
+    </g>
+  </g>
+  <!-- aircraft, heading north-east -->
+  <g transform="rotate(45 256 256) translate(256 256) scale(0.86) translate(-256 -256)">
+    <path fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round"
+          d="M256 84 C274 84 282 116 282 150 L282 210 L424 300 L424 336 L282 292 L282 366 L326 400 L326 426 L256 406 L186 426 L186 400 L230 366 L230 292 L88 336 L88 300 L230 210 L230 150 C230 116 238 84 256 84 Z"/>
+  </g>
+</svg>

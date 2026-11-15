@@ -7,7 +7,7 @@ myst:
 
 # FlightRadarAPI
 
-<p class="hero"><img alt="" src="_static/logo.png"><span>FlightRadar<em>API</em></span></p>
+<p class="hero"><img alt="" src="_static/logo.svg"><span>FlightRadar<em>API</em></span></p>
 
 ## FlightRadarAPI Documentation
 Unofficial SDK for [FlightRadar24](https://www.flightradar24.com/), for
@@ -18,6 +18,12 @@ This SDK should only be used for your own educational purposes. If you are inter
 [Flightradar24's terms and conditions](https://www.flightradar24.com/terms-and-conditions).
 
 <table class="badge-table">
+  <tr>
+    <th>docs</th>
+    <td>
+      <a href="https://flightradarapi.readthedocs.io/?badge=latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/flightradarapi/badge/?version=latest"></a>
+    </td>
+  </tr>
   <tr>
     <th>tests</th>
     <td>
