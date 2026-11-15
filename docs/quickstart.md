@@ -29,7 +29,8 @@ const { FlightRadar24API } = require("flightradarapi");
 const frApi = new FlightRadar24API();
 ```
 
-Every method that talks to FlightRadar24 returns a `Promise`.
+Every method that talks to FlightRadar24 returns a `Promise`. The examples use
+`await`, so run them inside an `async` function.
 :::
 
 :::{tab-item} Go

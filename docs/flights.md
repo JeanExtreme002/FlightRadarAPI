@@ -210,6 +210,10 @@ flights, err := client.GetFlights(ctx, flightradarapi.FlightSearch{
     Details: true,
 })
 
+if err != nil {
+    log.Fatal(err)
+}
+
 for _, flight := range flights {
     fmt.Println(flight.Callsign, "→", flight.Details.DestinationAirportName)
 }
@@ -287,6 +291,9 @@ flight.check_info(min_altitude=6700, max_altitude=13000, airline_icao="THY")   #
 ```
 
 The prefixes are `min_` and `max_`. A name the flight does not have is ignored.
+
+A `min_` or `max_` comparison raises `TypeError` when the flight has no value
+for that attribute, which is then the string `"N/A"`.
 :::
 
 :::{tab-item} Node.js
@@ -297,7 +304,8 @@ flight.checkInfo({ minAltitude: 6700, maxAltitude: 13000, airlineIcao: "THY" });
 ```
 
 The prefixes are `min` and `max`, followed by the attribute name in camelCase.
-A name the flight does not have is ignored.
+A name the flight does not have is ignored, and a `min` or `max` comparison is
+`false` when the flight has no value for that attribute.
 :::
 
 :::{tab-item} Go
@@ -312,43 +320,9 @@ matched, err := flight.CheckInfo(map[string]any{
 ```
 
 The keys are the snake_case names the Python SDK uses, with the prefixes `min_`
-and `max_`. A name that exists nowhere is an error, instead of being ignored.
-:::
-::::
-
-A handy way to filter a list you already have:
-
-::::{tab-set}
-:sync-group: lang
-
-:::{tab-item} Python
-:sync: python
-
-```python
-cruising = [flight for flight in flights if flight.check_info(min_altitude=30000)]
-```
-:::
-
-:::{tab-item} Node.js
-:sync: node
-
-```javascript
-const cruising = flights.filter((flight) => flight.checkInfo({ minAltitude: 30000 }));
-```
-:::
-
-:::{tab-item} Go
-:sync: go
-
-```go
-var cruising []*flightradarapi.Flight
-
-for _, flight := range flights {
-    if matched, _ := flight.CheckInfo(map[string]any{"min_altitude": 30000}); matched {
-        cruising = append(cruising, flight)
-    }
-}
-```
+and `max_`. A name that exists nowhere is an error, instead of being ignored,
+and a `min_` or `max_` comparison is `false` when the flight has no value for
+that field.
 :::
 ::::
 

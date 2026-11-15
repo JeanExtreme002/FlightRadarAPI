@@ -174,8 +174,8 @@ When blocks keep happening:
 ## Retrying
 
 By default a failed request is not retried. A `RetryPolicy` retries the
-transient failures (a Cloudflare block, a timeout, a network error) with an
-exponential backoff.
+failures that may go away on their own, such as a Cloudflare block or a timeout,
+with an exponential backoff.
 
 ::::{tab-set}
 :sync-group: lang
@@ -197,6 +197,10 @@ fr_api = FlightRadar24API(retry=RetryPolicy(max_attempts=3))
 | `jitter` | `0.5` | Upper bound of the random seconds added to each wait |
 
 A `max_attempts` below 1 or a negative delay raises `ValueError`.
+
+Retried: a `CloudflareError` and every `curl_cffi` request error. That includes
+timeouts and network errors, and also an unexpected status code, such as a 404
+or a 500, which is retried like the rest.
 :::
 
 :::{tab-item} Node.js
@@ -216,6 +220,9 @@ const frApi = new FlightRadar24API({ retry: new RetryPolicy({ maxAttempts: 3 }) 
 | `jitterMs` | `500` | Upper bound of the random milliseconds added to each wait |
 
 A `maxAttempts` below 1 or a negative delay throws an `Error`.
+
+Retried: a `CloudflareError`, a timeout and a connection reset. An unexpected
+status code is not.
 :::
 
 :::{tab-item} Go
@@ -251,6 +258,9 @@ retry := &flightradarapi.RetryPolicy{
 | `Jitter` | `500ms` | Upper bound of the random time added to each wait. Zero means none. |
 
 `NewRetryPolicy` returns an error for a number of attempts below 1.
+
+Retried: a Cloudflare block, a timeout and a network error. An unexpected
+status code and a cancelled context are not.
 :::
 ::::
 
@@ -258,15 +268,17 @@ The wait doubles after each attempt, up to the maximum: with the defaults, about
 1, 2, 4, 8 seconds and so on, each plus the jitter. When every attempt fails,
 the last error is the one you get.
 
-Only transient failures are retried. An airport that does not exist, a failed
-login or an oversized response fails at once.
+An airport that does not exist, a failed login or an oversized response is
+never retried.
 
 ## Response size limit
 
-A response body is limited to 64 MiB, both as it arrives and after it is
-decompressed. A body past the limit fails with `DecompressionLimitError`
-(`ErrDecompressionLimit` in Go) instead of exhausting memory. Nothing
-FlightRadar24 legitimately sends comes close to it.
+A response body is limited to 64 MiB once decompressed. A body past the limit
+fails with `DecompressionLimitError` (`ErrDecompressionLimit` in Go) instead of
+exhausting memory. Nothing FlightRadar24 legitimately sends comes close to it.
+
+Python and Go also apply the limit to the compressed body as it arrives. Node.js
+counts the decompressed bytes only.
 
 ## Other failures
 
@@ -287,7 +299,7 @@ from the transport.
 | File type of the flight history other than CSV or KML | `ValueError` |
 | Unknown flight tracker option | `KeyError` |
 | Flight tracker value that is not a number | `TypeError` |
-| Distance between entities without a position | `ValueError` |
+| Distance between entities without a position | `ValueError`, or `TypeError` (see [Distances](distances.md#entities-without-a-position)) |
 | Countries that are neither a string nor an iterable | `TypeError` |
 | Unexpected status code | `curl_cffi` `HTTPError` |
 | Timeout | `curl_cffi` `Timeout` |
@@ -306,7 +318,7 @@ The last three are subclasses of `curl_cffi.requests.errors.RequestsError`.
 | File type of the flight history other than CSV or KML | `TypeError` |
 | Unknown flight tracker option | `RangeError` |
 | Flight tracker value that is not a number | `TypeError` |
-| Distance between entities without a position | `TypeError` |
+| Distance between entities without a position | `TypeError`, or no error and `NaN` (see [Distances](distances.md#entities-without-a-position)) |
 | Countries that are neither a string nor an iterable | `TypeError` |
 | Unexpected status code | `Error`, with the status in its message |
 | Timeout | `Error` named `TimeoutError` |

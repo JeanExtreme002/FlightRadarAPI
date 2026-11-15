@@ -99,8 +99,31 @@ A distance needs both positions. The airports returned by the
 [airports listing](airports.md#airports-of-a-country) have none, and a flight
 may be missing its own.
 
-When either position is missing, the call fails with an error instead of
-returning a distance.
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+An airport without a position holds `None`, and the call raises `ValueError`.
+A flight without one holds the string `"N/A"`, and the call raises `TypeError`.
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+An airport without a position holds `null`, and the call throws `TypeError`.
+A flight without one holds the string `"N/A"`, and the call returns `NaN`
+instead of throwing: check the result, or the coordinates, before using it.
+:::
+
+:::{tab-item} Go
+:sync: go
+
+A missing position is `nil`, and the call returns an error wrapping
+`ErrFlightRadar`.
+:::
+::::
 
 To measure from a listed airport, fetch it by its code first: that one carries
 the coordinates.

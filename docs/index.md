@@ -94,13 +94,17 @@ npm install flightradarapi
 ```javascript
 const { FlightRadar24API } = require("flightradarapi");
 
-const frApi = new FlightRadar24API();
+async function main() {
+    const frApi = new FlightRadar24API();
 
-const flights = await frApi.getFlights("UAE");
+    const flights = await frApi.getFlights("UAE");
 
-for (const flight of flights.slice(0, 5)) {
-    console.log(flight.callsign, flight.getFlightLevel(), flight.getGroundSpeed());
+    for (const flight of flights.slice(0, 5)) {
+        console.log(flight.callsign, flight.getFlightLevel(), flight.getGroundSpeed());
+    }
 }
+
+main();
 ```
 :::
 
