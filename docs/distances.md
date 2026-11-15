@@ -99,11 +99,8 @@ A distance needs both positions. The airports returned by the
 [airports listing](airports.md#airports-of-a-country) have none, and a flight
 may be missing its own.
 
-| SDK | When a position is missing |
-|---|---|
-| Python | raises `ValueError` |
-| Node.js | throws `TypeError` |
-| Go | returns an error wrapping `ErrFlightRadar` |
+When either position is missing, the call fails with an error instead of
+returning a distance.
 
 To measure from a listed airport, fetch it by its code first: that one carries
 the coordinates.

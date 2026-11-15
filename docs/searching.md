@@ -57,12 +57,6 @@ The result groups what was found by category. Each key is a category, as
 FlightRadar24 names it in the response, and each value is the list of results of
 that category, as FlightRadar24 sends them.
 
-| SDK | Type |
-|---|---|
-| Python | `dict` of category to `list` |
-| Node.js | `object` of category to `Array` |
-| Go | `map[string][]any` |
-
 `limit` is sent to FlightRadar24 as the maximum number of results.
 
 ```{note}

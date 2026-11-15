@@ -226,13 +226,46 @@ the details of thousands of flights is slow and likely to get you blocked.
 
 A flight can render its numbers with their units.
 
-| Python | Node.js | Go | Example |
-|---|---|---|---|
-| `get_altitude()` | `getAltitude()` | `GetAltitude()` | `"35000 ft"` |
-| `get_flight_level()` | `getFlightLevel()` | `GetFlightLevel()` | `"350 FL"` |
-| `get_ground_speed()` | `getGroundSpeed()` | `GetGroundSpeed()` | `"480 kts"` |
-| `get_heading()` | `getHeading()` | `GetHeading()` | `"90°"` |
-| `get_vertical_speed()` | `getVerticalSpeed()` | `GetVerticalSpeed()` | `"-1280 fpm"` |
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+| Method | Example |
+|---|---|
+| `get_altitude()` | `"35000 ft"` |
+| `get_flight_level()` | `"350 FL"` |
+| `get_ground_speed()` | `"480 kts"` |
+| `get_heading()` | `"90°"` |
+| `get_vertical_speed()` | `"-1280 fpm"` |
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+| Method | Example |
+|---|---|
+| `getAltitude()` | `"35000 ft"` |
+| `getFlightLevel()` | `"350 FL"` |
+| `getGroundSpeed()` | `"480 kts"` |
+| `getHeading()` | `"90°"` |
+| `getVerticalSpeed()` | `"-1280 fpm"` |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Method | Example |
+|---|---|
+| `GetAltitude()` | `"35000 ft"` |
+| `GetFlightLevel()` | `"350 FL"` |
+| `GetGroundSpeed()` | `"480 kts"` |
+| `GetHeading()` | `"90°"` |
+| `GetVerticalSpeed()` | `"-1280 fpm"` |
+:::
+
+::::
 
 The flight level is shown from 10000 ft up; below that, `get_flight_level()`
 returns the same as `get_altitude()`. Each of these returns `"N/A"` when the

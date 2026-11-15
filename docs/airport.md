@@ -3,17 +3,13 @@
 An `Airport` is an [`Entity`](distances.md), so it has a position and can
 measure its distance to a flight or to another airport.
 
-How much an airport carries depends on the call that produced it. The columns
-of the tables below say which:
+How much an airport carries depends on the call that produced it. In the tables
+below, a column per call says whether the attribute is filled in:
 
-| Column | Call |
-|---|---|
-| **List** | [Airports of a country](airports.md#airports-of-a-country): `get_airports` |
-| **Code** | [One airport by code](airports.md#one-airport-by-code): `get_airport` |
-| **Details** | [Airport details](airports.md#airport-details): `get_airport` with details, or `set_airport_details` |
-
-The names follow the convention of each language. What Python calls
-`country_code` is `countryCode` in Node.js and `CountryCode` in Go.
+- the [airports listing](airports.md#airports-of-a-country);
+- [one airport by code](airports.md#one-airport-by-code);
+- an airport [with details](airports.md#airport-details): fetched with the
+  details flag, or filled in from a details payload.
 
 ## Attributes
 
@@ -25,7 +21,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Python
 :sync: python
 
-| Attribute | Description | List | Code | Details |
+| Attribute | Description | `get_airports()` | `get_airport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `name` | Name of the airport | ✓ | ✓ | ✓ |
 | `icao` | ICAO code | ✓ | ✓ | ✓ |
@@ -42,7 +38,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Node.js
 :sync: node
 
-| Property | Description | List | Code | Details |
+| Property | Description | `getAirports()` | `getAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `name` | Name of the airport | ✓ | ✓ | ✓ |
 | `icao` | ICAO code | ✓ | ✓ | ✓ |
@@ -59,7 +55,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Go
 :sync: go
 
-| Field | Description | List | Code | Details |
+| Field | Description | `GetAirports()` | `GetAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `Name` | Name of the airport | ✓ | ✓ | ✓ |
 | `ICAO` | ICAO code | ✓ | ✓ | ✓ |
@@ -83,7 +79,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Python
 :sync: python
 
-| Attribute | Description | List | Code | Details |
+| Attribute | Description | `get_airports()` | `get_airport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `timezone_name` | Name of the timezone, such as `"Asia/Kathmandu"` |  | ✓ | ✓ |
 | `timezone_abbr` | Abbreviation of the timezone |  | ✓ | ✓ |
@@ -95,7 +91,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Node.js
 :sync: node
 
-| Property | Description | List | Code | Details |
+| Property | Description | `getAirports()` | `getAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `timezoneName` | Name of the timezone, such as `"Asia/Kathmandu"` |  | ✓ | ✓ |
 | `timezoneAbbr` | Abbreviation of the timezone |  | ✓ | ✓ |
@@ -107,7 +103,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Go
 :sync: go
 
-| Field | Description | List | Code | Details |
+| Field | Description | `GetAirports()` | `GetAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `TimezoneName` | Name of the timezone, such as `"Asia/Kathmandu"` |  | ✓ | ✓ |
 | `TimezoneAbbr` | Abbreviation of the timezone |  | ✓ | ✓ |
@@ -126,7 +122,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Python
 :sync: python
 
-| Attribute | Description | List | Code | Details |
+| Attribute | Description | `get_airports()` | `get_airport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `website` | Website of the airport |  | ✓ | ✓ |
 | `visible` | The `visible` flag FlightRadar24 sends for the airport |  | ✓ | ✓ |
@@ -137,7 +133,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Node.js
 :sync: node
 
-| Property | Description | List | Code | Details |
+| Property | Description | `getAirports()` | `getAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `website` | Website of the airport |  | ✓ | ✓ |
 | `visible` | The `visible` flag FlightRadar24 sends for the airport |  | ✓ | ✓ |
@@ -148,7 +144,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Go
 :sync: go
 
-| Field | Description | List | Code | Details |
+| Field | Description | `GetAirports()` | `GetAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `Website` | Website of the airport |  | ✓ | ✓ |
 | `Visible` | The `visible` flag FlightRadar24 sends for the airport |  | ✓ | ✓ |
@@ -166,7 +162,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Python
 :sync: python
 
-| Attribute | Description | List | Code | Details |
+| Attribute | Description | `get_airports()` | `get_airport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `runways` | Runways of the airport |  |  | ✓ |
 | `weather` | Current weather at the airport |  |  | ✓ |
@@ -179,7 +175,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Node.js
 :sync: node
 
-| Property | Description | List | Code | Details |
+| Property | Description | `getAirports()` | `getAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `runways` | Runways of the airport |  |  | ✓ |
 | `weather` | Current weather at the airport |  |  | ✓ |
@@ -192,7 +188,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Go
 :sync: go
 
-| Field | Description | List | Code | Details |
+| Field | Description | `GetAirports()` | `GetAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `Runways` | Runways of the airport |  |  | ✓ |
 | `Weather` | Current weather at the airport |  |  | ✓ |
@@ -212,7 +208,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Python
 :sync: python
 
-| Attribute | Description | List | Code | Details |
+| Attribute | Description | `get_airports()` | `get_airport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `reviews_url` | Address of the reviews page on FlightRadar24 |  |  | ✓ |
 | `reviews` | Number of reviews |  |  | ✓ |
@@ -224,7 +220,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Node.js
 :sync: node
 
-| Property | Description | List | Code | Details |
+| Property | Description | `getAirports()` | `getAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `reviewsUrl` | Address of the reviews page on FlightRadar24 |  |  | ✓ |
 | `reviews` | Number of reviews |  |  | ✓ |
@@ -236,7 +232,7 @@ The names follow the convention of each language. What Python calls
 :::{tab-item} Go
 :sync: go
 
-| Field | Description | List | Code | Details |
+| Field | Description | `GetAirports()` | `GetAirport()` | with details |
 |---|---|:-:|:-:|:-:|
 | `ReviewsURL` | Address of the reviews page on FlightRadar24 |  |  | ✓ |
 | `Reviews` | Number of reviews |  |  | ✓ |
@@ -264,7 +260,7 @@ An attribute whose column is blank **does not exist** on that airport: reading
 it raises `AttributeError`. Use `getattr(airport, "city", None)` when the
 airport may come from more than one call.
 
-On a listed airport, `latitude`, `longitude` and `altitude` are `None`.
+On an airport from the listing, `latitude`, `longitude` and `altitude` are `None`.
 
 On the other two, a value FlightRadar24 left out is `None` or the string
 `"N/A"`, depending on the attribute and on the call. The collections are empty
@@ -277,7 +273,7 @@ instead: `runways` is `[]`, and `weather`, `arrivals`,
 
 A property whose column is blank is `undefined` on that airport.
 
-On a listed airport, `latitude`, `longitude` and `altitude` are `null`.
+On an airport from the listing, `latitude`, `longitude` and `altitude` are `null`.
 
 On the other two, a value FlightRadar24 left out is `null` or the string
 `"N/A"`, depending on the property and on the call. The collections are empty
@@ -303,21 +299,34 @@ does not name. It is `nil` on a listed airport.
 
 ## Methods
 
-| Python | Node.js | Go | Description |
-|---|---|---|---|
-| `set_airport_details(details)` | `setAirportDetails(details)` | `SetAirportDetails(details)` | Fill the airport in from a details payload |
-| `get_distance_from(entity)` | `getDistanceFrom(entity)` | `GetDistanceFrom(other)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
+::::{tab-set}
+:sync-group: lang
 
-## Building an airport yourself
+:::{tab-item} Python
+:sync: python
 
-The client builds the airports it returns. There is one constructor for each of
-the three payloads an airport can come from.
+| Method | Description |
+|---|---|
+| `set_airport_details(details)` | Fill the airport in from a details payload |
+| `get_distance_from(entity)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
+:::
 
-| Payload | Python | Node.js | Go |
-|---|---|---|---|
-| A row with `name`, `icao`, `iata`, `lat`, `lon`, `alt` and `country` | `Airport.from_basic_info(row)` | `Airport.fromBasicInfo(row)` | `NewAirportFromBasicInfo(row)` |
-| The `details` block of an airport | `Airport.from_info(info)` | `Airport.fromInfo(info)` | `NewAirportFromInfo(info)` |
-| A [details payload](airports.md#the-raw-details-payload) | `Airport.from_details(details)` | `Airport.fromDetails(details)` | `NewAirportFromDetails(details)` |
+:::{tab-item} Node.js
+:sync: node
 
-An empty airport, to be filled in later with `set_airport_details`, is
-`Airport()` in Python, `new Airport()` in Node.js and `NewAirport()` in Go.
+| Method | Description |
+|---|---|
+| `setAirportDetails(details)` | Fill the airport in from a details payload |
+| `getDistanceFrom(entity)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Method | Description |
+|---|---|
+| `SetAirportDetails(details)` | Fill the airport in from a details payload |
+| `GetDistanceFrom(other)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
+:::
+
+::::

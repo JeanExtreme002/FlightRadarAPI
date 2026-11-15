@@ -5,13 +5,45 @@
 Every error the SDK defines shares one base, so a single handler can catch them
 all.
 
-| Python and Node.js | Go sentinel | Go type | Raised when |
-|---|---|---|---|
-| `FlightRadarError` | `ErrFlightRadar` | | Base of all the errors below |
-| `AirportNotFoundError` | `ErrAirportNotFound` | `*AirportNotFoundError` | No airport answers to the code given |
-| `CloudflareError` | `ErrCloudflare` | `*CloudflareError` | Cloudflare blocked the request |
-| `LoginError` | `ErrLogin` | `*LoginError` | The login failed, or the call needs a session and there is none |
-| `DecompressionLimitError` | `ErrDecompressionLimit` | `*DecompressionLimitError` | A response is larger than the [size limit](#response-size-limit) |
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+| Error | Raised when |
+|---|---|
+| `FlightRadarError` | Base of all the errors below |
+| `AirportNotFoundError` | No airport answers to the code given |
+| `CloudflareError` | Cloudflare blocked the request |
+| `LoginError` | The login failed, or the call needs a session and there is none |
+| `DecompressionLimitError` | A response is larger than the [size limit](#response-size-limit) |
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+| Error | Raised when |
+|---|---|
+| `FlightRadarError` | Base of all the errors below |
+| `AirportNotFoundError` | No airport answers to the code given |
+| `CloudflareError` | Cloudflare blocked the request |
+| `LoginError` | The login failed, or the call needs a session and there is none |
+| `DecompressionLimitError` | A response is larger than the [size limit](#response-size-limit) |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Sentinel | Type | Raised when |
+|---|---|---|
+| `ErrFlightRadar` |  | Base of all the errors below |
+| `ErrAirportNotFound` | `*AirportNotFoundError` | No airport answers to the code given |
+| `ErrCloudflare` | `*CloudflareError` | Cloudflare blocked the request |
+| `ErrLogin` | `*LoginError` | The login failed, or the call needs a session and there is none |
+| `ErrDecompressionLimit` | `*DecompressionLimitError` | A response is larger than the [size limit](#response-size-limit) |
+:::
+::::
 
 ::::{tab-set}
 :sync-group: lang
@@ -107,11 +139,29 @@ many calls or that does not look like a browser. The SDK reports it as a
 
 The error carries the blocked response, for inspection:
 
-| SDK | What the error carries |
-|---|---|
-| Python | `error.response`: the response object, with the challenge page as its content |
-| Node.js | `error.response`: the response object; `error.body`: the challenge page, as text |
-| Go | `Response`: the `*http.Response`; `Body`: the challenge page, as bytes |
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+`error.response` is the response object, with the challenge page as its content.
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+`error.response` is the response object, and `error.body` is the challenge page,
+as text.
+:::
+
+:::{tab-item} Go
+:sync: go
+
+In a `*CloudflareError`, `Response` is the `*http.Response` and `Body` is the
+challenge page, as bytes.
+:::
+::::
 
 When blocks keep happening:
 
@@ -220,31 +270,60 @@ FlightRadar24 legitimately sends comes close to it.
 
 ## Other failures
 
-Not every failure is one of the errors above.
+Not every failure is one of the errors above. Invalid arguments are rejected
+with the error the language uses for them, and HTTP and network failures come
+from the transport.
 
-**Invalid arguments** are rejected with the error the language uses for them:
+::::{tab-set}
+:sync-group: lang
 
-| Situation | Python | Node.js |
-|---|---|---|
-| Airport code that is not 3 or 4 characters long | `ValueError` | `TypeError` |
-| Flight limit of the airport details out of range | `ValueError` | `RangeError` |
-| File type of the flight history other than CSV or KML | `ValueError` | `TypeError` |
-| Unknown flight tracker option | `KeyError` | `RangeError` |
-| Flight tracker value that is not a number | `TypeError` | `TypeError` |
-| Distance between entities without a position | `ValueError` | `TypeError` |
-| Countries that are neither a string nor an iterable | `TypeError` | `TypeError` |
+:::{tab-item} Python
+:sync: python
 
-In Go, all of these are plain errors that wrap `ErrFlightRadar`.
+| Situation | Error |
+|---|---|
+| Airport code that is not 3 or 4 characters long | `ValueError` |
+| Flight limit of the airport details out of range | `ValueError` |
+| File type of the flight history other than CSV or KML | `ValueError` |
+| Unknown flight tracker option | `KeyError` |
+| Flight tracker value that is not a number | `TypeError` |
+| Distance between entities without a position | `ValueError` |
+| Countries that are neither a string nor an iterable | `TypeError` |
+| Unexpected status code | `curl_cffi` `HTTPError` |
+| Timeout | `curl_cffi` `Timeout` |
+| Network error | `curl_cffi` `RequestsError` |
 
-**HTTP and network failures** come from the transport:
+The last three are subclasses of `curl_cffi.requests.errors.RequestsError`.
+:::
 
-| Situation | Python | Node.js | Go |
-|---|---|---|---|
-| Unexpected status code | `curl_cffi` `HTTPError` | `Error`, with the status in its message | `*StatusError` |
-| Timeout | `curl_cffi` `Timeout` | `Error` named `TimeoutError` | error matching `context.DeadlineExceeded` |
-| Network error | `curl_cffi` `RequestsError` | the error of `fetch` | error wrapping a `*url.Error` |
+:::{tab-item} Node.js
+:sync: node
 
-In Python these are all subclasses of `curl_cffi.requests.errors.RequestsError`.
-In Go they wrap `ErrFlightRadar` like every other error of the package, and a
-`*StatusError` carries the `StatusCode`, `Status`, `URL` and `Body` of the
-response.
+| Situation | Error |
+|---|---|
+| Airport code that is not 3 or 4 characters long | `TypeError` |
+| Flight limit of the airport details out of range | `RangeError` |
+| File type of the flight history other than CSV or KML | `TypeError` |
+| Unknown flight tracker option | `RangeError` |
+| Flight tracker value that is not a number | `TypeError` |
+| Distance between entities without a position | `TypeError` |
+| Countries that are neither a string nor an iterable | `TypeError` |
+| Unexpected status code | `Error`, with the status in its message |
+| Timeout | `Error` named `TimeoutError` |
+| Network error | the error of `fetch` |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Situation | Error |
+|---|---|
+| Invalid argument | plain error |
+| Unexpected status code | `*StatusError` |
+| Timeout | error matching `context.DeadlineExceeded` |
+| Network error | error wrapping a `*url.Error` |
+
+All of them wrap `ErrFlightRadar`. A `*StatusError` carries the `StatusCode`,
+`Status`, `URL` and `Body` of the response.
+:::
+::::

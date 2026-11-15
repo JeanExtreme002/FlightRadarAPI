@@ -7,9 +7,6 @@ flight.
 Its attributes come in two groups: the ones the feed sends for every flight, and
 the ones added by the [flight details](flights.md#flight-details).
 
-The names follow the convention of each language. What Python calls
-`ground_speed` is `groundSpeed` in Node.js and `GroundSpeed` in Go.
-
 ## Attributes from the feed
 
 Present on every flight.
@@ -366,51 +363,52 @@ return.
 
 ## Methods
 
-| Python | Node.js | Go | Description |
-|---|---|---|---|
-| `get_altitude()` | `getAltitude()` | `GetAltitude()` | Altitude with its unit. See [Formatted values](flights.md#formatted-values). |
-| `get_flight_level()` | `getFlightLevel()` | `GetFlightLevel()` | Flight level with its unit |
-| `get_ground_speed()` | `getGroundSpeed()` | `GetGroundSpeed()` | Ground speed with its unit |
-| `get_heading()` | `getHeading()` | `GetHeading()` | Heading with its unit |
-| `get_vertical_speed()` | `getVerticalSpeed()` | `GetVerticalSpeed()` | Vertical speed with its unit |
-| `check_info(**info)` | `checkInfo(info)` | `CheckInfo(criteria)` | Whether the flight matches some values. See [Checking a flight](flights.md#checking-a-flight-against-criteria). |
-| `set_flight_details(details)` | `setFlightDetails(details)` | `SetFlightDetails(details)` | Attach a details payload to the flight |
-| `get_distance_from(entity)` | `getDistanceFrom(entity)` | `GetDistanceFrom(other)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
-
-## Building a flight yourself
-
-The client builds the flights it returns. To build one from a feed entry you
-already have, pass the identifier and the entry: the array FlightRadar24 sends
-for that flight.
-
 ::::{tab-set}
 :sync-group: lang
 
 :::{tab-item} Python
 :sync: python
 
-```python
-from FlightRadarAPI import Flight
-
-flight = Flight("2e0f1a2", feed_row)
-```
+| Method | Description |
+|---|---|
+| `get_altitude()` | Altitude with its unit. See [Formatted values](flights.md#formatted-values). |
+| `get_flight_level()` | Flight level with its unit |
+| `get_ground_speed()` | Ground speed with its unit |
+| `get_heading()` | Heading with its unit |
+| `get_vertical_speed()` | Vertical speed with its unit |
+| `check_info(**info)` | Whether the flight matches some values. See [Checking a flight](flights.md#checking-a-flight-against-criteria). |
+| `set_flight_details(details)` | Attach a details payload to the flight |
+| `get_distance_from(entity)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
 :::
 
 :::{tab-item} Node.js
 :sync: node
 
-```javascript
-const { Flight } = require("flightradarapi");
-
-const flight = new Flight("2e0f1a2", feedRow);
-```
+| Method | Description |
+|---|---|
+| `getAltitude()` | Altitude with its unit. See [Formatted values](flights.md#formatted-values). |
+| `getFlightLevel()` | Flight level with its unit |
+| `getGroundSpeed()` | Ground speed with its unit |
+| `getHeading()` | Heading with its unit |
+| `getVerticalSpeed()` | Vertical speed with its unit |
+| `checkInfo(info)` | Whether the flight matches some values. See [Checking a flight](flights.md#checking-a-flight-against-criteria). |
+| `setFlightDetails(details)` | Attach a details payload to the flight |
+| `getDistanceFrom(entity)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
 :::
 
 :::{tab-item} Go
 :sync: go
 
-```go
-flight := flightradarapi.NewFlight("2e0f1a2", feedRow)   // feedRow is a []any
-```
+| Method | Description |
+|---|---|
+| `GetAltitude()` | Altitude with its unit. See [Formatted values](flights.md#formatted-values). |
+| `GetFlightLevel()` | Flight level with its unit |
+| `GetGroundSpeed()` | Ground speed with its unit |
+| `GetHeading()` | Heading with its unit |
+| `GetVerticalSpeed()` | Vertical speed with its unit |
+| `CheckInfo(criteria)` | Whether the flight matches some values. See [Checking a flight](flights.md#checking-a-flight-against-criteria). |
+| `SetFlightDetails(details)` | Attach a details payload to the flight |
+| `GetDistanceFrom(other)` | Distance to another entity, in kilometers. See [Distances](distances.md). |
 :::
+
 ::::

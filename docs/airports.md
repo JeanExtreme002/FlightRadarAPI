@@ -268,26 +268,10 @@ Countries can also be given by name or by slug:
 :::
 ::::
 
-The [Countries reference](countries.md) lists every country.
-
-A few things to know about the listing:
-
-- **It has no coordinates.** A listed airport carries its name, IATA and ICAO
-  codes and country; latitude, longitude and altitude are empty. Fetch
-  [one airport by code](#one-airport-by-code) when you need its position.
-- **It costs one request per page.** FlightRadar24 lists airports one page per
-  country, and one per state for the largest countries. A few countries take a
-  handful of requests; every airport takes a few hundred. They run several at a
-  time (8 by default, see [Configuration](client.md#concurrency)).
-- **The order follows your request.** Airports come grouped by country, in the
-  order the countries were asked for.
-- **An empty selection returns nothing.** An empty list is not the same as no
-  argument: it selects no country, and makes no request.
-- **An unknown country is skipped.** It adds no airports and a warning is
-  logged (see [Logging](client.md#logging)).
+See [Countries](countries.md) for how countries are named.
 
 ## See also
 
 - [Airport reference](airport.md): every attribute of an airport.
-- [Airport disruptions](live-data.md#airport-disruptions): delays and cancellations by airport.
+- [Airport disruptions](live-data.md): delays and cancellations by airport.
 - [Distances](distances.md): how far an airport is from a flight, or from another airport.

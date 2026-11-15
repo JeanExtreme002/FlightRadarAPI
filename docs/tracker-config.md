@@ -11,21 +11,70 @@ as the filters of the FlightRadar24 map, and they live in a
 Every value is a string holding a number. The switches take `"1"` (on) or `"0"`
 (off).
 
-| Python and Node.js | Go | Default | Meaning |
-|---|---|---|---|
-| `faa` | `FAA` | `"1"` | Include data from the FAA |
-| `satellite` | `Satellite` | `"1"` | Include satellite-based tracking |
-| `mlat` | `MLAT` | `"1"` | Include MLAT (multilateration) positions |
-| `flarm` | `FLARM` | `"1"` | Include FLARM positions |
-| `adsb` | `ADSB` | `"1"` | Include ADS-B positions |
-| `gnd` | `GND` | `"1"` | Include aircraft on the ground |
-| `air` | `Air` | `"1"` | Include aircraft in the air |
-| `vehicles` | `Vehicles` | `"1"` | Include ground vehicles |
-| `estimated` | `Estimated` | `"1"` | Include estimated positions |
-| `maxage` | `MaxAge` | `"14400"` | Maximum age of a position, in seconds |
-| `gliders` | `Gliders` | `"1"` | Include gliders |
-| `stats` | `Stats` | `"1"` | Include the feed statistics in the response |
-| `limit` | `Limit` | `"5000"` | Maximum number of flights returned |
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+| Option | Default | Meaning |
+|---|---|---|
+| `faa` | `"1"` | Include data from the FAA |
+| `satellite` | `"1"` | Include satellite-based tracking |
+| `mlat` | `"1"` | Include MLAT (multilateration) positions |
+| `flarm` | `"1"` | Include FLARM positions |
+| `adsb` | `"1"` | Include ADS-B positions |
+| `gnd` | `"1"` | Include aircraft on the ground |
+| `air` | `"1"` | Include aircraft in the air |
+| `vehicles` | `"1"` | Include ground vehicles |
+| `estimated` | `"1"` | Include estimated positions |
+| `maxage` | `"14400"` | Maximum age of a position, in seconds |
+| `gliders` | `"1"` | Include gliders |
+| `stats` | `"1"` | Include the feed statistics in the response |
+| `limit` | `"5000"` | Maximum number of flights returned |
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+| Option | Default | Meaning |
+|---|---|---|
+| `faa` | `"1"` | Include data from the FAA |
+| `satellite` | `"1"` | Include satellite-based tracking |
+| `mlat` | `"1"` | Include MLAT (multilateration) positions |
+| `flarm` | `"1"` | Include FLARM positions |
+| `adsb` | `"1"` | Include ADS-B positions |
+| `gnd` | `"1"` | Include aircraft on the ground |
+| `air` | `"1"` | Include aircraft in the air |
+| `vehicles` | `"1"` | Include ground vehicles |
+| `estimated` | `"1"` | Include estimated positions |
+| `maxage` | `"14400"` | Maximum age of a position, in seconds |
+| `gliders` | `"1"` | Include gliders |
+| `stats` | `"1"` | Include the feed statistics in the response |
+| `limit` | `"5000"` | Maximum number of flights returned |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Field | Default | Meaning |
+|---|---|---|
+| `FAA` | `"1"` | Include data from the FAA |
+| `Satellite` | `"1"` | Include satellite-based tracking |
+| `MLAT` | `"1"` | Include MLAT (multilateration) positions |
+| `FLARM` | `"1"` | Include FLARM positions |
+| `ADSB` | `"1"` | Include ADS-B positions |
+| `GND` | `"1"` | Include aircraft on the ground |
+| `Air` | `"1"` | Include aircraft in the air |
+| `Vehicles` | `"1"` | Include ground vehicles |
+| `Estimated` | `"1"` | Include estimated positions |
+| `MaxAge` | `"14400"` | Maximum age of a position, in seconds |
+| `Gliders` | `"1"` | Include gliders |
+| `Stats` | `"1"` | Include the feed statistics in the response |
+| `Limit` | `"5000"` | Maximum number of flights returned |
+:::
+
+::::
 
 ```{note}
 These are the query parameters of FlightRadar24's own feed, and FlightRadar24
@@ -103,7 +152,7 @@ err := client.SetFlightTrackerConfig(nil, map[string]string{"limit": "10", "gnd"
 flights, err := client.GetFlights(ctx, flightradarapi.FlightSearch{})   // at most 10 flights, none on the ground
 ```
 
-The keys of the map are the lower-case names of the first column.
+The keys of the map are the field names in lower case: `limit`, `maxage`, `gnd`.
 
 Or read the current settings, change them and set them back:
 

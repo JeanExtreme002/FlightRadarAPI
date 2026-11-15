@@ -165,8 +165,6 @@ history_data = fr_api.get_history_data(flight, file_type="CSV", timestamp=170652
 with open("history_data.csv", "w") as file:
     file.write(history_data)
 ```
-
-The document is returned as a `str`.
 :::
 
 :::{tab-item} Node.js
@@ -193,8 +191,6 @@ if err != nil {
 
 err = os.WriteFile("history_data.csv", []byte(historyData), 0o644)
 ```
-
-The document is returned as a `string`.
 :::
 ::::
 

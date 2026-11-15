@@ -3,12 +3,43 @@
 The client works with no configuration. A few options are there for when the
 defaults do not fit.
 
-| Option | Python | Node.js | Go | Default |
-|---|---|---|---|---|
-| [Timeout](#timeout) | `timeout` (seconds) | `timeout` (milliseconds) | `Options.Timeout` | 30 seconds |
-| [Concurrency](#concurrency) | `max_workers` | `maxWorkers` | `Options.MaxWorkers` | 8 |
-| [TLS impersonation](#tls-impersonation) | `impersonate` | `impersonate` | `Options.TLSProfile`, `Options.HTTPClient` | Chrome 136 |
-| [Retry](errors.md#retrying) | `retry` | `retry` | `Options.Retry` | No retry |
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+| Option | Name | Default |
+|---|---|---|
+| [Timeout](#timeout) | `timeout` (seconds) | 30 seconds |
+| [Concurrency](#concurrency) | `max_workers` | 8 |
+| [TLS impersonation](#tls-impersonation) | `impersonate` | Chrome 136 |
+| [Retry](errors.md#retrying) | `retry` | No retry |
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+| Option | Name | Default |
+|---|---|---|
+| [Timeout](#timeout) | `timeout` (milliseconds) | 30 seconds |
+| [Concurrency](#concurrency) | `maxWorkers` | 8 |
+| [TLS impersonation](#tls-impersonation) | `impersonate` | Chrome 136 |
+| [Retry](errors.md#retrying) | `retry` | No retry |
+:::
+
+:::{tab-item} Go
+:sync: go
+
+| Option | Name | Default |
+|---|---|---|
+| [Timeout](#timeout) | `Options.Timeout` | 30 seconds |
+| [Concurrency](#concurrency) | `Options.MaxWorkers` | 8 |
+| [TLS impersonation](#tls-impersonation) | `Options.TLSProfile`, `Options.HTTPClient` | Chrome 136 |
+| [Retry](errors.md#retrying) | `Options.Retry` | No retry |
+:::
+
+::::
 
 ::::{tab-set}
 :sync-group: lang
@@ -210,17 +241,13 @@ The SDKs log a warning when FlightRadar24 answers with something they did not
 expect, such as a page whose layout changed or a country with no airports. A
 warning never interrupts the call.
 
-| SDK | Where warnings go |
-|---|---|
-| Python | The standard `logging` module, under the logger `FlightRadarAPI` |
-| Node.js | `console.warn` |
-| Go | `log/slog`, through `slog.Default()` unless `SetLogger` is called |
-
 ::::{tab-set}
 :sync-group: lang
 
 :::{tab-item} Python
 :sync: python
+
+Warnings go to the standard `logging` module, under the logger `FlightRadarAPI`.
 
 ```python
 import logging
@@ -238,6 +265,8 @@ The warnings are written with `console.warn`, to the standard error stream.
 
 :::{tab-item} Go
 :sync: go
+
+Warnings go to `log/slog`, through `slog.Default()` unless `SetLogger` is called.
 
 ```go
 logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
