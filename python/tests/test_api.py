@@ -104,6 +104,14 @@ def test_get_flight_details():
 
 
 @repeat_test(**repeat_test_config)
+def test_get_flight_history(numbers=["SQ306", "LA3000", "DL1"]):
+    for number in numbers:
+        history = fr_api.get_flight_history(number, limit=10)
+        assert len(history["data"]) > 0
+        assert all(f["identification"]["number"]["default"] == number for f in history["data"])
+
+
+@repeat_test(**repeat_test_config)
 def test_get_flights_by_airline(airlines=["SWA", "GLO", "AZU", "UAL", "THY"], expect=3):
     count = 0
 

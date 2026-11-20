@@ -20,6 +20,7 @@ The Go package is also documented, from its source, on
 |---|---|
 | `get_flights` | Flights of the live feed, optionally filtered. See [Live flights](flights.md). |
 | `get_flight_details` | Details payload of one flight. See [Flight details](flights.md#flight-details). |
+| `get_flight_history` | Past and scheduled flights of a flight number. See [History of a flight number](flights.md#history-of-a-flight-number). |
 | `get_flight_tracker_config` | Copy of the current feed settings. See [Flight tracker settings](tracker-config.md). |
 | `set_flight_tracker_config` | Change the feed settings. See [Flight tracker settings](tracker-config.md). |
 :::
@@ -31,6 +32,7 @@ The Go package is also documented, from its source, on
 |---|---|
 | `getFlights` | Flights of the live feed, optionally filtered. See [Live flights](flights.md). |
 | `getFlightDetails` | Details payload of one flight. See [Flight details](flights.md#flight-details). |
+| `getFlightHistory` | Past and scheduled flights of a flight number. See [History of a flight number](flights.md#history-of-a-flight-number). |
 | `getFlightTrackerConfig` | Copy of the current feed settings. See [Flight tracker settings](tracker-config.md). |
 | `setFlightTrackerConfig` | Change the feed settings. See [Flight tracker settings](tracker-config.md). |
 :::
@@ -42,6 +44,7 @@ The Go package is also documented, from its source, on
 |---|---|
 | `GetFlights` | Flights of the live feed, optionally filtered. See [Live flights](flights.md). |
 | `GetFlightDetails` | Details payload of one flight. See [Flight details](flights.md#flight-details). |
+| `GetFlightHistory` | Past and scheduled flights of a flight number. See [History of a flight number](flights.md#history-of-a-flight-number). |
 | `GetFlightTrackerConfig` | Copy of the current feed settings. See [Flight tracker settings](tracker-config.md). |
 | `SetFlightTrackerConfig` | Change the feed settings. See [Flight tracker settings](tracker-config.md). |
 :::

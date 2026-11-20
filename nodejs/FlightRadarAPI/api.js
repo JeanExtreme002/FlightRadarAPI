@@ -455,6 +455,44 @@ class FlightRadar24API {
     }
 
     /**
+     * Return the recent and scheduled flights of a flight number, newest first.
+     *
+     * @param {string} number - Flight number. Ex: "SQ306"
+     * @param {number} [limit=100] - Limit of flights per page, between 1 and 100
+     * @param {number} [page=1] - Page of result to display
+     * @return {Promise<object>}
+     */
+    async getFlightHistory(number, limit = 100, page = 1) {
+        const params = { "query": number, "fetchBy": "flight", "limit": limit, "page": page };
+
+        if (this.isLoggedIn()) {
+            params["token"] = this.__client.getCookie("_frPl");
+        }
+
+        const { content, statusCode } = await this.__client.request(Core.flightListUrl, {
+            params,
+            headers: Core.jsonHeaders,
+            allowedErrorCodes: [400],
+            timeout: this.timeout,
+        });
+
+        if (statusCode === 400 && content?.["errors"] !== undefined) {
+            const limitError = content["errors"]?.["errors"]?.["parameters"]?.["limit"];
+
+            if (limitError !== undefined) {
+                throw new RangeError(limitError["notBetween"]);
+            }
+            throw new TypeError("The flight number '" + number + "' is invalid.");
+        }
+
+        const result = content["result"]["response"];
+
+        // FR24 sends null, or no key at all past the last page.
+        result["data"] = result["data"] ?? [];
+        return result;
+    }
+
+    /**
      * Return a list of flights. See more options at setFlightTrackerConfig() method.
      *
      * @param {string} [airline] - The airline ICAO. Ex: "DAL"

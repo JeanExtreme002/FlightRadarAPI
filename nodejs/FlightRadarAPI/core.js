@@ -40,6 +40,7 @@ const Core = {
 
     realTimeFlightTrackerDataUrl: `${DATA_CLOUD_BASE}/zones/fcgi/feed.js`,
     flightDataUrl: (id) => `${DATA_LIVE_BASE}/clickhandler/?flight=${id}`,
+    flightListUrl: `${API_FR24_BASE}/flight/list.json`,
 
     historicalDataUrl: (id, fileType, timestamp) =>
         `${FR24_BASE}/download/?flight=${id}&file=${fileType}&trailLimit=0&history=${timestamp}`,

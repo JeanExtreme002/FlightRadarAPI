@@ -140,6 +140,23 @@ AIRPORT_DETAILS_SHAPE = {
     "aircraftImages": None,
 }
 
+FLIGHT_HISTORY_SHAPE = {
+    "page": {"current": None, "more": None},
+    "data": [{
+        "identification": {"id": None, "number": {"default": None}},
+        "status": {"text": None},
+        "aircraft": {"model": {"code": None}, "registration": None},
+        "airport": {
+            "origin": {"code": {"iata": None, "icao": None}},
+            "destination": {"code": {"iata": None, "icao": None}},
+        },
+        "time": {
+            "scheduled": {"departure": None, "arrival": None},
+            "real": {"departure": None, "arrival": None},
+        },
+    }],
+}
+
 AIRLINE_SHAPE = {
     "Name": None,
     "ICAO": None,
@@ -168,6 +185,11 @@ def test_get_flight_details_shape():
     flights = _get_flights()
     details = fr_api.get_flight_details(flights[len(flights) // 2])
     assert_shape(details, FLIGHT_DETAILS_SHAPE)
+
+
+@repeat_test(**repeat_test_config)
+def test_get_flight_history_shape():
+    assert_shape(fr_api.get_flight_history("SQ306", limit=10), FLIGHT_HISTORY_SHAPE)
 
 
 @repeat_test(**repeat_test_config)

@@ -43,6 +43,21 @@ describe("Testing FlightRadarAPI version " + version, function() {
         });
     });
 
+    describe("Getting Flight History", function() {
+        const expected = ["SQ306", "LA3000", "DL1"];
+
+        it("Expected getting the history of the following flights: " + expected.join(", ") + ".", async function() {
+            for (const number of expected) {
+                const history = await frApi.getFlightHistory(number, 10);
+                expect(history["data"].length).to.be.above(0);
+
+                for (const flight of history["data"]) {
+                    expect(flight["identification"]["number"]["default"]).to.equal(number);
+                }
+            }
+        });
+    });
+
     describe("Getting Airports", function() {
         // The listing is one page per country and state, crawled maxWorkers at
         // a time: the whole index takes well over mocha's default 10 seconds.

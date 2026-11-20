@@ -166,7 +166,20 @@ export class FlightRadar24API {
      * @param {Flight} flight - A Flight instance
      */
     getFlightDetails(flight: Flight): Promise<object>;
-    
+
+    /**
+     * Return the recent and scheduled flights of a flight number, newest first.
+     *
+     * @param {string} number - Flight number. Ex: "SQ306"
+     * @param {number} [limit=100] - Limit of flights per page, between 1 and 100
+     * @param {number} [page=1] - Page of result to display
+     */
+    getFlightHistory(
+        number: string,
+        limit?: number,
+        page?: number,
+    ): Promise<object>;
+
     /**
      * Return a list of flights. See more options at setFlightTrackerConfig() method.
      *
