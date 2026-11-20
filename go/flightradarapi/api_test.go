@@ -51,6 +51,7 @@ func testEndpoints(base string) endpoints {
 		searchData:                base + "/v1/search/web/find?query=%s&limit=%d",
 		realTimeFlightTrackerData: base + "/zones/fcgi/feed.js",
 		flightData:                base + "/clickhandler/?flight=%s",
+		flightList:                base + "/common/v1/flight/list.json",
 		historicalData:            base + "/download/?flight=%s&file=%s&trailLimit=0&history=%d",
 		apiAirportData:            base + "/common/v1/airport.json",
 		airportData:               base + "/airports/traffic-stats/?airport=%s",
@@ -635,6 +636,106 @@ func TestGetAirportDetailsRejectsASparsePayload(t *testing.T) {
 	}
 }
 
+// --- flight history ---
+
+func flightListBadRequest(parameters map[string]any) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"errors": map[string]any{
+			"errors": map[string]any{"parameters": parameters},
+		}})
+	}
+}
+
+func TestGetFlightHistoryReturnsTheResponseBlock(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/common/v1/flight/list.json", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		if query.Get("query") != "SQ306" || query.Get("fetchBy") != "flight" ||
+			query.Get("limit") != "10" || query.Get("page") != "2" {
+			t.Errorf("got query %v", query)
+		}
+		writeJSON(t, w, map[string]any{"result": map[string]any{"response": map[string]any{
+			"page": map[string]any{"current": 2, "more": false},
+			"data": []any{map[string]any{
+				"identification": map[string]any{"id": "42a4afc2"},
+			}},
+		}}})
+	})
+
+	history, err := newTestClient(t, mux).GetFlightHistory(context.Background(), "SQ306", 10, 2)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	flights := getSlice(history, "data")
+
+	if len(flights) != 1 || getString(getMap(asMap(flights[0]), "identification"), "id") != "42a4afc2" {
+		t.Errorf("got %v", history)
+	}
+}
+
+func TestGetFlightHistoryDefaultsZeroLimitAndPage(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/common/v1/flight/list.json", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("limit") != "100" || r.URL.Query().Get("page") != "1" {
+			t.Errorf("got query %v", r.URL.Query())
+		}
+		writeJSON(t, w, map[string]any{"result": map[string]any{"response": map[string]any{}}})
+	})
+
+	if _, err := newTestClient(t, mux).GetFlightHistory(context.Background(), "SQ306", 0, 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestGetFlightHistoryAlwaysReturnsASliceOfFlights(t *testing.T) {
+	for _, response := range []map[string]any{{"data": nil}, {"aircraftInfo": nil}} {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/common/v1/flight/list.json", func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(t, w, map[string]any{"result": map[string]any{"response": response}})
+		})
+
+		history, err := newTestClient(t, mux).GetFlightHistory(context.Background(), "ZZ9999", 0, 0)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if flights, ok := history["data"].([]any); !ok || len(flights) != 0 {
+			t.Errorf("%v: got data %#v, want an empty slice", response, history["data"])
+		}
+	}
+}
+
+func TestGetFlightHistoryReportsALimitOutOfRange(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/common/v1/flight/list.json", flightListBadRequest(map[string]any{
+		"limit": map[string]any{"notBetween": "The input is not between '1' and '100'"},
+	}))
+
+	_, err := newTestClient(t, mux).GetFlightHistory(context.Background(), "SQ306", 500, 1)
+
+	if !errors.Is(err, ErrFlightRadar) || !strings.Contains(err.Error(), "between '1' and '100'") {
+		t.Errorf("got %v, want the limit message", err)
+	}
+}
+
+func TestGetFlightHistoryReportsAnInvalidNumber(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/common/v1/flight/list.json", flightListBadRequest(map[string]any{
+		"query": map[string]any{"stringLengthTooShort": "less than 3 characters"},
+	}))
+
+	_, err := newTestClient(t, mux).GetFlightHistory(context.Background(), "S", 0, 0)
+
+	if !errors.Is(err, ErrFlightRadar) || !strings.Contains(err.Error(), `"S"`) {
+		t.Errorf("got %v, want the invalid number message", err)
+	}
+}
+
 func TestGetZonesReturnsACopy(t *testing.T) {
 	client := newTestClient(t, http.NewServeMux())
 	zones := client.GetZones()
@@ -1152,6 +1253,12 @@ func TestLoggedInEndpointsSendTheAccessToken(t *testing.T) {
 			"airport": map[string]any{"pluginData": map[string]any{"details": map[string]any{"name": "x"}}},
 		}}})
 	})
+	mux.HandleFunc("/common/v1/flight/list.json", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("token") != "session-token" {
+			t.Errorf("got token %q, want the session cookie", r.URL.Query().Get("token"))
+		}
+		writeJSON(t, w, map[string]any{"result": map[string]any{"response": map[string]any{"data": []any{}}}})
+	})
 
 	client := newTestClient(t, mux)
 	ctx := context.Background()
@@ -1173,6 +1280,9 @@ func TestLoggedInEndpointsSendTheAccessToken(t *testing.T) {
 	}
 	if _, err := client.GetAirportDetails(ctx, "ATL", 10, 1); err != nil {
 		t.Errorf("GetAirportDetails: %v", err)
+	}
+	if _, err := client.GetFlightHistory(ctx, "SQ306", 10, 1); err != nil {
+		t.Errorf("GetFlightHistory: %v", err)
 	}
 }
 

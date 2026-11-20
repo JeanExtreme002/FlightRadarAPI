@@ -226,6 +226,99 @@ This makes one extra request per flight. Combine it with a filter: asking for
 the details of thousands of flights is slow and likely to get you blocked.
 ```
 
+## History of a flight number
+
+The live feed only knows the flights in the air. For the past and upcoming
+flights of a flight number, such as `SQ306`, there is the list FlightRadar24
+shows on its flight page, newest first. Each entry has the origin and
+destination, the aircraft, the status, and the scheduled, real and estimated
+times as Unix timestamps in UTC.
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| number | | The flight number, such as `"SQ306"` |
+| limit | 100 | Number of flights per page. The maximum is 100. |
+| page | 1 | Page of the list. |
+
+::::{tab-set}
+:sync-group: lang
+
+:::{tab-item} Python
+:sync: python
+
+```python
+from datetime import datetime, timezone
+
+history = fr_api.get_flight_history("SQ306")   # dict, as FR24 sends it
+
+for flight in history["data"]:
+    departure = datetime.fromtimestamp(flight["time"]["scheduled"]["departure"], timezone.utc)
+
+    print(
+        departure.date(),
+        flight["airport"]["origin"]["code"]["iata"], "→",
+        flight["airport"]["destination"]["code"]["iata"],
+        flight["aircraft"]["model"]["code"],
+        flight["status"]["text"],
+    )   # 2026-11-19 SIN → LHR A359 Landed 07:52
+```
+:::
+
+:::{tab-item} Node.js
+:sync: node
+
+```javascript
+const history = await frApi.getFlightHistory("SQ306");   // object, as FR24 sends it
+
+for (const flight of history["data"]) {
+    const departure = new Date(flight["time"]["scheduled"]["departure"] * 1000);
+
+    console.log(
+        departure.toISOString().slice(0, 10),
+        flight["airport"]["origin"]["code"]["iata"], "→",
+        flight["airport"]["destination"]["code"]["iata"],
+        flight["aircraft"]["model"]["code"],
+        flight["status"]["text"],
+    );   // 2026-11-19 SIN → LHR A359 Landed 07:52
+}
+```
+:::
+
+:::{tab-item} Go
+:sync: go
+
+```go
+history, err := client.GetFlightHistory(ctx, "SQ306", 0, 0)   // map[string]any, as FR24 sends it
+
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, item := range history["data"].([]any) {
+    flight := item.(map[string]any)
+    scheduled := flight["time"].(map[string]any)["scheduled"].(map[string]any)
+    departure := time.Unix(int64(scheduled["departure"].(float64)), 0).UTC()
+
+    fmt.Println(departure.Format(time.DateOnly), flight["status"].(map[string]any)["text"])
+}
+```
+
+Zero means the default: `GetFlightHistory(ctx, "SQ306", 0, 0)` asks for 100
+flights of the first page.
+:::
+::::
+
+`data` is always a list, empty when there is nothing to show. `page.more` tells
+whether another page follows. Flights that have not departed yet have no real
+times, and some of their fields, such as the registration and the flight ID,
+are `null`.
+
+Without an account, FlightRadar24 lists about a week of past flights, plus the
+scheduled ones. A limit above 100 is refused by FlightRadar24, and the SDK
+reports its message: as a `ValueError` in Python, a `RangeError` in Node.js and
+an error in Go. A number FlightRadar24 does not accept, such as `"SQ 306"`, is
+reported the same way, as a `TypeError` in Node.js.
+
 ## Formatted values
 
 A flight can render its numbers with their units.

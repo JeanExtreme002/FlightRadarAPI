@@ -222,6 +222,35 @@ func TestLiveGetAirportShape(t *testing.T) {
 	}
 }
 
+func TestLiveGetFlightHistoryShape(t *testing.T) {
+	client := liveClient(t)
+
+	for _, number := range []string{"SQ306", "LA3000", "DL1"} {
+		history, err := client.GetFlightHistory(context.Background(), number, 10, 1)
+		skipIfBlocked(t, err)
+
+		flights := getSlice(history, "data")
+
+		if len(flights) == 0 {
+			t.Fatalf("%s: no flights listed", number)
+		}
+
+		flight := asMap(flights[0])
+
+		if got := getString(getMap(getMap(flight, "identification"), "number"), "default"); got != number {
+			t.Errorf("%s: got flight number %q", number, got)
+		}
+		for _, key := range []string{"status", "aircraft", "airport", "time"} {
+			if _, ok := flight[key]; !ok {
+				t.Errorf("%s: missing key %q", number, key)
+			}
+		}
+		if _, ok := getMap(getMap(flight, "time"), "scheduled")["departure"]; !ok {
+			t.Errorf("%s: missing the scheduled departure", number)
+		}
+	}
+}
+
 func TestLiveGetAirportDetailsShape(t *testing.T) {
 	client := liveClient(t)
 

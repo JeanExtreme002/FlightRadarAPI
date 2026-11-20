@@ -626,6 +626,63 @@ func (c *Client) GetFlightDetails(ctx context.Context, flight *Flight) (map[stri
 	return response.JSON()
 }
 
+// GetFlightHistory returns the recent and scheduled flights of a flight number,
+// such as "SQ306", newest first, with up to limit flights from the given page.
+// Zero means what the Python and Node.js ports default to: 100 flights, first
+// page. The "data" key always holds a slice, empty when there is nothing to list.
+func (c *Client) GetFlightHistory(ctx context.Context, number string, limit, page int) (map[string]any, error) {
+	if limit == 0 {
+		limit = defaultFlightLimit
+	}
+	if page == 0 {
+		page = 1
+	}
+
+	params := url.Values{}
+	params.Set("query", number)
+	params.Set("fetchBy", "flight")
+	params.Set("limit", fmt.Sprint(limit))
+	params.Set("page", fmt.Sprint(page))
+
+	if c.IsLoggedIn() {
+		if token, ok := c.client.getCookie("_frPl"); ok {
+			params.Set("token", token)
+		}
+	}
+
+	response, err := c.client.request(ctx, c.endpoints.flightList, requestOptions{
+		params:            params,
+		headers:           jsonHeaders,
+		allowedErrorCodes: []int{400},
+		timeout:           c.Timeout,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := response.JSON()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode == 400 && content["errors"] != nil {
+		parameters := getMap(getMap(getMap(content, "errors"), "errors"), "parameters")
+
+		if limitError := getMap(parameters, "limit"); len(limitError) > 0 {
+			return nil, fmt.Errorf("%w: %s", ErrFlightRadar, getString(limitError, "notBetween"))
+		}
+		return nil, fmt.Errorf("%w: the flight number %q is invalid", ErrFlightRadar, number)
+	}
+
+	result := getMap(getMap(content, "result"), "response")
+
+	// FR24 sends null, or no key at all past the last page.
+	result["data"] = getSlice(result, "data")
+	return result, nil
+}
+
 // FlightSearch narrows the flights [Client.GetFlights] returns. See
 // [Client.SetFlightTrackerConfig] for the rest of the options.
 type FlightSearch struct {

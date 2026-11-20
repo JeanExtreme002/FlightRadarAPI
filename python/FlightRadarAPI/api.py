@@ -415,6 +415,42 @@ class FlightRadar24API:
         )
         return response.get_json_content()
 
+    def get_flight_history(self, number: str, limit: int = 100, page: int = 1) -> Dict:
+        """
+        Return the recent and scheduled flights of a flight number, newest first.
+
+        :param number: Flight number. Ex: "SQ306"
+        :param limit: Limit of flights per page, between 1 and 100
+        :param page: Page of result to display
+        """
+        request_params: Dict[str, Any] = {"query": number, "fetchBy": "flight", "limit": limit, "page": page}
+
+        if self.is_logged_in():
+            request_params["token"] = self.__client.get_cookie("_frPl")
+
+        response = self.__client.request(
+            Core.flight_list_url,
+            params=request_params,
+            headers=Core.json_headers,
+            allowed_error_codes=[400],
+            timeout=self.timeout,
+        )
+        content = response.get_json_content()
+
+        if response.get_status_code() == 400 and content.get("errors"):
+            errors = content["errors"]["errors"]["parameters"]
+
+            if errors.get("limit"):
+                raise ValueError(errors["limit"]["notBetween"])
+
+            raise ValueError(f"The flight number '{number}' is invalid.")
+
+        result = content["result"]["response"]
+
+        # FR24 sends null, or no key at all past the last page.
+        result["data"] = result.get("data") or []
+        return result
+
     def get_flights(
         self,
         airline: Optional[str] = None,

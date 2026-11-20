@@ -22,6 +22,10 @@ expectType<Promise<Flight[]>>(api.getFlights(null, null, null, null, true));
 declare const flight: Flight;
 expectType<Promise<object>>(api.getFlightDetails(flight));
 
+// getFlightHistory
+expectType<Promise<object>>(api.getFlightHistory("SQ306"));
+expectType<Promise<object>>(api.getFlightHistory("SQ306", 10, 2));
+
 // getAirport / getAirportDetails
 expectType<Promise<Airport>>(api.getAirport("ATL"));
 expectType<Promise<Airport>>(api.getAirport("ATL", true));

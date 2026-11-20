@@ -25,6 +25,7 @@ type endpoints struct {
 
 	realTimeFlightTrackerData string
 	flightData                string
+	flightList                string
 
 	historicalData string
 
@@ -54,6 +55,7 @@ func defaultEndpoints() endpoints {
 
 		realTimeFlightTrackerData: dataCloudBaseURL + "/zones/fcgi/feed.js",
 		flightData:                dataLiveBaseURL + "/clickhandler/?flight=%s",
+		flightList:                apiFlightRadarBaseURL + "/flight/list.json",
 
 		historicalData: flightRadarBaseURL + "/download/?flight=%s&file=%s&trailLimit=0&history=%d",
 

@@ -117,6 +117,23 @@ const AIRPORT_DETAILS_SHAPE = {
     aircraftImages: null,
 };
 
+const FLIGHT_HISTORY_SHAPE = {
+    page: { current: null, more: null },
+    data: [{
+        identification: { id: null, number: { default: null } },
+        status: { text: null },
+        aircraft: { model: { code: null }, registration: null },
+        airport: {
+            origin: { code: { iata: null, icao: null } },
+            destination: { code: { iata: null, icao: null } },
+        },
+        time: {
+            scheduled: { departure: null, arrival: null },
+            real: { departure: null, arrival: null },
+        },
+    }],
+};
+
 const AIRLINE_SHAPE = {
     Name: null,
     ICAO: null,
@@ -155,6 +172,13 @@ describe("Snapshot Tests", function() {
             const flight = flights[Math.trunc(flights.length / 2)];
             const details = await frApi.getFlightDetails(flight);
             assertShape(details, FLIGHT_DETAILS_SHAPE);
+        });
+    });
+
+    describe("getFlightHistory()", function() {
+        it("Flight history response matches expected shape.", async function() {
+            const history = await frApi.getFlightHistory("SQ306", 10);
+            assertShape(history, FLIGHT_HISTORY_SHAPE);
         });
     });
 
